@@ -22,6 +22,7 @@ from .modelo import (
     Alerta,
     IndicadorProducto,
     IndicadorResultado,
+    Objetivo,
     Metadatos,
     RegistroFinanciero,
     ResultadoExtraccion,
@@ -49,7 +50,7 @@ from .exportadores import (
     a_dataframes_consolidado,
 )
 
-__version__ = "0.9.10"
+__version__ = "0.9.11"
 
 __all__ = [
     "extraer_plan_accion",
@@ -60,6 +61,7 @@ __all__ = [
     "Metadatos",
     "IndicadorResultado",
     "IndicadorProducto",
+    "Objetivo",
     "RegistroFinanciero",
     "Alerta",
     "validar_reglas",

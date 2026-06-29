@@ -177,7 +177,7 @@ def extraer_plan_accion(
 
         # 5) Extraer con el motor único.
         try:
-            irs, ips, financiero, alertas_ext = _MOTOR.extraer(
+            irs, ips, financiero, alertas_ext, objetivos = _MOTOR.extraer(
                 ws, mapeo, nombre_archivo, meta.nombre_politica, anio_vigencia)
         except EstructuraNoReconocida as e:
             alertas.append(crear_alerta(
@@ -214,7 +214,7 @@ def extraer_plan_accion(
                 "No se extrajeron indicadores de producto (0 IP).",
                 archivo_fuente=nombre_archivo, nombre_politica=meta.nombre_politica))
 
-        res = ResultadoExtraccion(meta, irs, ips, alertas, financiero)
+        res = ResultadoExtraccion(meta, irs, ips, alertas, financiero, objetivos)
 
         # 8) Reglas de negocio V0–V18 (opcional).
         if incluir_reglas_negocio:

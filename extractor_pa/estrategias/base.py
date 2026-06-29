@@ -27,8 +27,9 @@ class EstrategiaExtraccion(ABC):
         nombre_archivo: str,
         nombre_politica: str | None,
         anio_vigencia: int | None = None,
-    ) -> tuple[list[IndicadorResultado], list[IndicadorProducto], list, list[Alerta]]:
-        """Devuelve (indicadores_resultado, indicadores_producto, financiero, alertas).
+    ) -> tuple[list[IndicadorResultado], list[IndicadorProducto], list, list[Alerta], list]:
+        """Devuelve (indicadores_resultado, indicadores_producto, financiero,
+        alertas, objetivos).
 
         `financiero` es la lista de `RegistroFinanciero` (vacía en formato nuevo).
         `anio_vigencia` es el año de corte para `meta_vigencia_actual/_anterior`."""

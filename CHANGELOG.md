@@ -3,6 +3,21 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.9.11] — B2: objetivo como entidad (jerarquía objetivo→resultado→producto)
+### Añadido
+- **`Objetivo`** como entidad de primera clase del plan (`extractor_pa/modelo.py`):
+  `codigo`/`descripcion`/`peso_pct`. `ResultadoExtraccion.objetivos` la expone;
+  la estrategia la captura aunque la fila **no** tenga IR (objetivo declarado sin
+  resultados). El contrato `EstrategiaExtraccion.extraer` ahora devuelve 5-tupla
+  `(irs, ips, financiero, alertas, objetivos)`.
+- Regla **`objetivo_sin_resultados`** (ADVERTENCIA): un objetivo sin ningún IR debajo.
+- Regla **`jerarquia_ip`** (ERROR): un IP `N.N.N` cuyo resultado padre `N.N` no
+  existe entre los IR (jerarquía rota).
+- Tests `tests/test_b2_jerarquia.py` (disparo y no-disparo). Suite: **113 + 3** pruebas.
+### Validado
+- Barrido sobre **74 planes reales**: 0 disparos espurios (las jerarquías reales
+  son consistentes); golden/paridad intactos. Catálogo: 71 tipos, **56 implementados**.
+
 ## [0.9.10] — B1: V4 sector/entidad + normalización difusa (OPCIONAL)
 ### Añadido
 - `extractor_pa/catalogo_oficial.py`: `CatalogoOficial` con sectores/entidades

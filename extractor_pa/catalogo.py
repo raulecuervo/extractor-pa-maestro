@@ -110,10 +110,10 @@ _TIPOS = [
                regla="V11", implementado=True),
     TipoAlerta("objetivo_sin_resultados", NIVEL_ADVERTENCIA, "Códigos", CAPA_VALIDACION_PLAN,
                "Un objetivo específico no tiene Resultados/IR asociados.",
-               regla="sispp-gobierno", implementado=False),
+               regla="sispp-gobierno", implementado=True),
     TipoAlerta("jerarquia_ip", NIVEL_ERROR, "Códigos", CAPA_VALIDACION_PLAN,
                "El producto N.N.N no cuelga de su resultado N.N (jerarquía rota).",
-               regla="creador", implementado=False),
+               regla="creador", implementado=True),
 
     # ── Familia: Consistencia entre filas (capa extracción) ──
     TipoAlerta("inconsistencia_en_ir", NIVEL_ADVERTENCIA, "Consistencia", CAPA_EXTRACCION,

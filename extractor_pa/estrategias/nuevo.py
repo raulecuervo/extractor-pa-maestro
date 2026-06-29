@@ -23,6 +23,7 @@ from ..modelo import (
     NIVEL_ADVERTENCIA,
     IndicadorProducto,
     IndicadorResultado,
+    Objetivo,
     RegistroFinanciero,
 )
 from ..resolutor_columnas import resolver_columnas
@@ -43,7 +44,7 @@ class ExtractorNuevo(EstrategiaExtraccion):
         filas = leer_filas(ws, mapeo.fila_datos)
         filas = prefiltrar_filas(filas, cols.get("resultado"), cols.get("producto"))
         if not filas:
-            return [], [], financiero, alertas
+            return [], [], financiero, alertas, []
 
         # 2) Snapshot de los valores ORIGINALES (antes de normalizar) para el
         #    chequeo de consistencia; la normalización uniformizaría las filas.
@@ -99,9 +100,16 @@ class ExtractorNuevo(EstrategiaExtraccion):
 
         irs: dict[tuple, IndicadorResultado] = {}
         ips: list[IndicadorProducto] = []
+        objetivos: dict[str, Objetivo] = {}
 
         # 3) Recorrer filas y construir IR (dedup) e IP.
         for fila_abs, valores in filas:
+            # B2: objetivo como entidad (se captura aunque la fila no tenga IR).
+            obj_txt = g(valores, "objetivo")
+            cod_obj = extraer_codigo(obj_txt, niveles=1)
+            if cod_obj and cod_obj not in objetivos:
+                objetivos[cod_obj] = Objetivo(codigo=cod_obj, descripcion=obj_txt,
+                                              peso_pct=g(valores, "peso_objetivo"))
             codigo_ir = extraer_codigo(g(valores, "resultado"), niveles=2)
             clave_ir = (nombre_politica, codigo_ir)
 
@@ -218,4 +226,4 @@ class ExtractorNuevo(EstrategiaExtraccion):
             pares, cols, metas_ir_cols, nombre_archivo, nombre_politica))
         alertas.extend(chequear_duplicados_ip(ips, nombre_archivo, nombre_politica))
 
-        return list(irs.values()), ips, financiero, alertas
+        return list(irs.values()), ips, financiero, alertas, list(objetivos.values())

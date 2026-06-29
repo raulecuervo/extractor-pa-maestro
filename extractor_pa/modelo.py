@@ -54,6 +54,14 @@ class Alerta:
 
 
 @dataclass
+class Objetivo:
+    """Objetivo específico del plan (entidad propia, incluso si no tiene IR)."""
+    codigo: Optional[str] = None
+    descripcion: Optional[str] = None
+    peso_pct: Any = None
+
+
+@dataclass
 class IndicadorResultado:
     """Indicador de Resultado (IR), código tipo N.N."""
     codigo_objetivo: Optional[str] = None
@@ -178,6 +186,7 @@ class ResultadoExtraccion:
     indicadores_producto: list = field(default_factory=list)
     alertas: list = field(default_factory=list)
     financiero: list = field(default_factory=list)   # RegistroFinanciero (formato antiguo)
+    objetivos: list = field(default_factory=list)    # Objetivo (entidad del plan)
 
     @property
     def exitoso(self) -> bool:

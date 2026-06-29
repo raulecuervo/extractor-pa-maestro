@@ -393,6 +393,19 @@ def _codigos_y_estructura(irs, ips, alertas, archivo, politica):
                  archivo=archivo, politica=politica, cod_obj=ir.codigo_objetivo,
                  cod_ir=ir.codigo_ir)
 
+    # B2: jerarquía IP→IR (el producto N.N.N debe colgar de un resultado N.N).
+    ir_codes = {ir.codigo_ir for ir in irs if ir.codigo_ir}
+    for ip in ips:
+        c = ip.codigo_ip
+        if c and str(c).count(".") >= 2:
+            padre = str(c).rsplit(".", 1)[0]
+            if padre not in ir_codes:
+                _add(alertas, "jerarquia_ip",
+                     f"IP '{c}': su resultado padre '{padre}' no existe entre los IR "
+                     f"(jerarquía rota).",
+                     archivo=archivo, politica=politica, cod_ir=padre, cod_ip=c,
+                     campo="codigo_ir", valor=padre)
+
 
 def _sector_entidad(irs, ips, alertas, archivo, politica, catalogo):
     """V4 (OPCIONAL): sector/entidad fuera del catálogo oficial. Solo se ejecuta
@@ -443,4 +456,12 @@ def validar_reglas(resultado, catalogo_oficial=None) -> list:
     _metas_y_lb(ips, alertas, archivo, politica, "IP", "codigo_ip")
     _codigos_y_estructura(irs, ips, alertas, archivo, politica)
     _sector_entidad(irs, ips, alertas, archivo, politica, catalogo_oficial)
+
+    # B2: objetivos (entidad) sin resultados/IR asociados.
+    obj_con_ir = {ir.codigo_objetivo for ir in irs if ir.codigo_objetivo}
+    for obj in getattr(resultado, "objetivos", []):
+        if obj.codigo and obj.codigo not in obj_con_ir:
+            _add(alertas, "objetivo_sin_resultados",
+                 f"Objetivo '{obj.codigo}': no tiene Resultados/IR asociados.",
+                 archivo=archivo, politica=politica, cod_obj=obj.codigo)
     return alertas

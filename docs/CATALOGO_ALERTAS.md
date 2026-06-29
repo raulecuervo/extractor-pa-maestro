@@ -4,7 +4,7 @@
 > Generado automáticamente desde `extractor_pa/catalogo.py` (única fuente de verdad).
 > Niveles unificados: **ERROR** (bloquea / dato inutilizable) · **ADVERTENCIA** (revisar) · **INFO** (informativo).
 
-**71 tipos** catalogados · **54 implementados** en el extractor maestro.
+**71 tipos** catalogados · **56 implementados** en el extractor maestro.
 
 Leyenda `Impl.`: ✅ lo produce el maestro · ⬜ documentado (vive en otro aplicativo o pendiente).
 
@@ -40,8 +40,8 @@ Las produce `validar_reglas()` sobre el modelo canónico.
 | `codigo_malformado` | INFO | V13 | Códigos | Código con formato inesperado (OBJ=N, IR=N.N, IP=N.N.N). | ✅ |
 | `codigo_ip_duplicado` | ERROR | V10 | Códigos | Un mismo código de IP aparece más de una vez. | ✅ |
 | `ir_sin_productos` | ADVERTENCIA | V11 | Códigos | Un IR vigente no tiene Indicadores de Producto asociados. | ✅ |
-| `objetivo_sin_resultados` | ADVERTENCIA | sispp-gobierno | Códigos | Un objetivo específico no tiene Resultados/IR asociados. | ⬜ |
-| `jerarquia_ip` | ERROR | creador | Códigos | El producto N.N.N no cuelga de su resultado N.N (jerarquía rota). | ⬜ |
+| `objetivo_sin_resultados` | ADVERTENCIA | sispp-gobierno | Códigos | Un objetivo específico no tiene Resultados/IR asociados. | ✅ |
+| `jerarquia_ip` | ERROR | creador | Códigos | El producto N.N.N no cuelga de su resultado N.N (jerarquía rota). | ✅ |
 | `ponderacion_objetivos` | ERROR | V0 | Ponderación | Los pesos de los objetivos no suman 100%. | ✅ |
 | `ponderacion_ir` | ERROR | V1 | Ponderación | Los pesos de los IR de un objetivo no igualan el peso del objetivo. | ✅ |
 | `ponderacion_ip` | ERROR | V2 | Ponderación | Los pesos de los IP de un IR no igualan el peso del IR. | ✅ |
