@@ -16,8 +16,8 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja. Esfuerzo: S ≤1d · M 2–4d �
 | A1 | **Versionar y publicar `extractor-pa`**: `git init` + repo en GitHub, **build de wheel** y publicación a un índice interno (o tag de release). Hoy es `pip install -e`. | 🔴 | M |
 | A2 | **Fijar la dependencia** en cada app migrada (`requirements.txt` → `extractor-pa==X.Y.Z`) y dejar de depender del editable. | 🔴 | S |
 | A3 | **CI** del maestro (GitHub Actions ya escrito en `.github/workflows/ci.yml`) — activar al crear el repo. | 🟠 | S |
-| A4 | **`creador-planes-accion`** (último extractor): la extracción está entrelazada con la escritura a ORM (`importar_politica(bytes, db)`). Separar extracción → adaptador maestro y conservar la persistencia; verificar el **test roundtrip** en su entorno (requiere sus deps). | 🟠 | M |
-| A5 | **Etapa 04 de seguimiento de `sispp-gobierno`** (`04_extraer_seguimientos.py`): migrar al maestro (su capa de seguimiento ya es byte-idéntica). | 🟠 | M |
+| A4 | ✅ **`creador-planes-accion`** migrado (adaptador `import_excel_maestro.py`, reconstruye la jerarquía ORM) — **roundtrip 20/20**, activado. | — | — |
+| A5 | ✅ **Etapa 04 de seguimiento de `sispp-gobierno`** migrada (v0.9.9 con `metas_acumuladas`); cuant byte-idéntico, 04→05 validadas. | — | — |
 | A6 | **Retirar los extractores legados** tras un período de validación en producción (hoy quedan intactos como respaldo; cada migración es reversible con 1 línea). | 🟠 | S |
 | A7 | **Correr la suite completa de cada app en su propio entorno** (aquí faltan deps: `bcrypt` en sispp-sdis, deps de creador). Confirmar verde con el adaptador. | 🟠 | S |
 
