@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extractor-pa"
+version = "0.9.8"
+description = "Extractor maestro de planes de acción y seguimiento de política pública desde Excel (SDP/SDIS)."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Equipo PP" }]
+keywords = ["politica-publica", "plan-de-accion", "seguimiento", "excel", "openpyxl", "sdp", "sdis"]
+dependencies = [
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+# Soporte de seguimiento en formato .xlsb
+xlsb = ["pyxlsb>=1.0"]
+# Adaptadores de salida tabular (DataFrame)
+pandas = ["pandas>=2.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+extractor-pa = "extractor_pa.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["extractor_pa*"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not slow'"
+markers = [
+    "slow: regresión exhaustiva sobre todas las políticas (correr con -m slow)",
+]

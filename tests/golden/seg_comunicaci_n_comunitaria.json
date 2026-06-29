@@ -1,0 +1,34 @@
+{
+  "archivo": "Comunicación Comunitaria.xlsb",
+  "politica": "Comunicación Comunitaria",
+  "tipo_archivo": null,
+  "anios": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "n_indicadores": 13,
+  "codigos": [
+    "1.1.1",
+    "1.1.2",
+    "1.1.3",
+    "1.1.4",
+    "2.1.1",
+    "2.1.2",
+    "2.1.3",
+    "3.1.1",
+    "3.1.2",
+    "3.1.3",
+    "3.2.1",
+    "3.2.2",
+    "3.2.3"
+  ],
+  "n_avances_total": 33,
+  "n_cualitativos_total": 51,
+  "alertas_por_tipo": {}
+}

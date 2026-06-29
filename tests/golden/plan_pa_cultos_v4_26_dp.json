@@ -1,0 +1,59 @@
+{
+  "archivo": "PA_Cultos_V4_26_DP.xlsx",
+  "politica": "Política Pública de “Libertades Fundamentales de Religión, Culto y Conciencia para el Distrito Capital",
+  "formato": "nuevo",
+  "anios": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027,
+    2028
+  ],
+  "n_ir": 7,
+  "n_ip": 25,
+  "n_financiero": 0,
+  "codigos_ir": [
+    "1.1",
+    "2.1",
+    "2.2",
+    "2.3",
+    "2.4",
+    "2.5",
+    "3.1"
+  ],
+  "codigos_ip": [
+    "1.1.1",
+    "1.1.2",
+    "1.1.3",
+    "1.1.4",
+    "2.1.1",
+    "2.2.1",
+    "2.2.2",
+    "2.2.3",
+    "2.2.4",
+    "2.2.5",
+    "2.2.6",
+    "2.2.7",
+    "2.2.8",
+    "2.3.1",
+    "2.3.2",
+    "2.4.1",
+    "2.4.2",
+    "2.4.3",
+    "2.5.1",
+    "2.5.2",
+    "3.1.1",
+    "3.1.2",
+    "3.1.3",
+    "3.1.4",
+    "3.1.5"
+  ],
+  "alertas_por_tipo": {
+    "inconsistencia_en_ir": 19
+  }
+}
