@@ -11,11 +11,22 @@ Diseñada combinando lo mejor de los 7 extractores existentes
 
 ## Instalación
 
+Desarrollo (editable, desde el repo):
 ```bash
 pip install -e .              # núcleo (planes .xlsx)
 pip install -e ".[xlsb]"      # + seguimiento .xlsb (pyxlsb)
 pip install -e ".[xlsb,pandas,dev]"   # todo + DataFrame + pruebas
 ```
+
+Para los **aplicativos que la consumen** (fijar una versión estable):
+```bash
+# desde el repo (privado) por tag:
+pip install "extractor-pa @ git+https://github.com/raulecuervo/extractor-pa-maestro.git@v0.9.8"
+pip install "extractor-pa[xlsb] @ git+https://github.com/raulecuervo/extractor-pa-maestro.git@v0.9.8"  # si lee .xlsb
+# o desde el wheel publicado (dist/extractor_pa-0.9.8-py3-none-any.whl):
+pip install extractor_pa-0.9.8-py3-none-any.whl
+```
+En `requirements.txt` de cada app, fijar `extractor-pa @ git+…@vX.Y.Z` (o `extractor-pa[xlsb] @ …`).
 
 ## CLI
 
