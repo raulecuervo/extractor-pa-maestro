@@ -3,6 +3,13 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.9.9] — Seguimiento: metas acumuladas (migración etapa 04 sispp-gobierno)
+### Añadido
+- `IndicadorSeguimiento.metas_acumuladas` (`'2024' -> meta acumulada hasta la
+  vigencia`); el resolutor detecta el bloque (col_pct_vig − n + i) y el extractor
+  lo llena. Habilita la migración de la etapa 04 de seguimiento de `sispp-gobierno`
+  (formato largo) con datos cuantitativos byte-idénticos. Suite: 106 pruebas.
+
 ## [0.9.8] — Hito 5: Tablero de cumplimiento por política
 ### Añadido
 - `extractor_pa/tablero.py`: ensambla por política PLAN + SEGUIMIENTO (empareja por

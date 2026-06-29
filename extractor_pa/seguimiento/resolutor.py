@@ -67,7 +67,10 @@ def detectar_anclas(fila_bloques: dict) -> dict:
 
 def construir_mapas_cuant(fila_anios: dict, anclas: dict):
     """Devuelve (anios, mapa_trim, mapa_acum, mapa_meta, col_meta_final,
-    mapa_pct_vig, mapa_pct_acum, mapa_pct_total)."""
+    mapa_meta_acum, mapa_pct_vig, mapa_pct_acum, mapa_pct_total).
+
+    `mapa_meta_acum` = meta acumulada hasta la vigencia (bloque entre meta_final
+    y pct_vig: col_pct_vig - n + i)."""
     col_avance = anclas["avance"]
     col_metas = anclas["metas"]
     col_pct_vig = anclas["pct_vig"]
@@ -84,19 +87,20 @@ def construir_mapas_cuant(fila_anios: dict, anclas: dict):
         raise AnclasNoEncontradas("No se encontraron años entre las anclas 'avance' y 'metas'.")
 
     n = len(anios)
-    mapa_trim, mapa_acum, mapa_meta = {}, {}, {}
+    mapa_trim, mapa_acum, mapa_meta, mapa_meta_acum = {}, {}, {}, {}
     mapa_pct_vig, mapa_pct_acum, mapa_pct_total = {}, {}, {}
     for i, anio in enumerate(anios):
         base_q = col_avance + i * 4
         mapa_trim[anio] = {1: base_q, 2: base_q + 1, 3: base_q + 2, 4: base_q + 3}
         mapa_acum[anio] = col_metas - n + i     # los acumulados van justo antes de 'metas'
         mapa_meta[anio] = col_metas + i
+        mapa_meta_acum[anio] = col_pct_vig - n + i   # meta acumulada (antes de pct_vig)
         mapa_pct_vig[anio] = col_pct_vig + i
         mapa_pct_acum[anio] = col_pct_acum + i
         mapa_pct_total[anio] = col_pct_total + i
     col_meta_final = col_metas + n
     return (anios, mapa_trim, mapa_acum, mapa_meta, col_meta_final,
-            mapa_pct_vig, mapa_pct_acum, mapa_pct_total)
+            mapa_meta_acum, mapa_pct_vig, mapa_pct_acum, mapa_pct_total)
 
 
 def construir_mapa_cual(fila_anios_cual: dict) -> dict:

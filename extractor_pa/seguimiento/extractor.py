@@ -55,7 +55,8 @@ def _leer_cuantitativo(mapa, meta, alertas):
     fila_anios = mapa.get(R.FILA_ANIOS, {})
     anclas = R.detectar_anclas(fila_bloques)  # lanza AnclasNoEncontradas
     (anios, mapa_trim, mapa_acum, mapa_meta, col_meta_final,
-     mapa_pct_vig, mapa_pct_acum, mapa_pct_total) = R.construir_mapas_cuant(fila_anios, anclas)
+     mapa_meta_acum, mapa_pct_vig, mapa_pct_acum, mapa_pct_total) = \
+        R.construir_mapas_cuant(fila_anios, anclas)
     meta.anios_detectados = anios
 
     indicadores: list = []
@@ -96,6 +97,9 @@ def _leer_cuantitativo(mapa, meta, alertas):
             m = _series(fila, mapa_meta.get(anio))
             if m is not None:
                 ind.metas[sa] = m
+            mac = _series(fila, mapa_meta_acum.get(anio))
+            if mac is not None:
+                ind.metas_acumuladas[sa] = mac
             pv = _series(fila, mapa_pct_vig.get(anio))
             if pv is not None:
                 ind.pct_vigencia[sa] = pv

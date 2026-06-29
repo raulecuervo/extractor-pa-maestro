@@ -52,6 +52,7 @@ class IndicadorSeguimiento:
     avances: dict = field(default_factory=dict)         # '2024_Q1' -> valor
     acumulados: dict = field(default_factory=dict)       # '2024' -> valor
     metas: dict = field(default_factory=dict)            # '2024' -> meta anual
+    metas_acumuladas: dict = field(default_factory=dict)  # '2024' -> meta acumulada hasta vigencia
     pct_vigencia: dict = field(default_factory=dict)     # '2024' -> %
     pct_acumulado: dict = field(default_factory=dict)    # '2024' -> %
     pct_total: dict = field(default_factory=dict)        # '2024' -> %
