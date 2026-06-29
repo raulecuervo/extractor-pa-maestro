@@ -394,9 +394,37 @@ def _codigos_y_estructura(irs, ips, alertas, archivo, politica):
                  cod_ir=ir.codigo_ir)
 
 
-def validar_reglas(resultado) -> list:
+def _sector_entidad(irs, ips, alertas, archivo, politica, catalogo):
+    """V4 (OPCIONAL): sector/entidad fuera del catálogo oficial. Solo se ejecuta
+    si se inyecta `catalogo`. Si hay normalización difusa, sugiere la corrección."""
+    if catalogo is None:
+        return
+    for inds, tipo_label, cir_attr, cip_attr in (
+        (irs, "Resultado", "codigo_ir", None), (ips, "Producto", "codigo_ir", "codigo_ip")):
+        for x in inds:
+            cir = getattr(x, "codigo_ir", None)
+            cip = getattr(x, cip_attr) if cip_attr else None
+            cod = cip or cir
+            for campo, valor, ok, sugerir, tipo in (
+                ("sector_responsable", x.sector_responsable,
+                 catalogo.es_sector_oficial, catalogo.sugerir_sector, "sector_no_oficial"),
+                ("entidad_responsable", x.entidad_responsable,
+                 catalogo.es_entidad_oficial, catalogo.sugerir_entidad, "entidad_no_oficial")):
+                if valor and not ok(valor):
+                    sug = sugerir(valor)
+                    extra = f"; ¿quiso decir «{sug}»?" if sug else ""
+                    _add(alertas, tipo,
+                         f"{tipo_label} '{cod}': {campo} «{valor}» no está en el "
+                         f"catálogo oficial{extra}.",
+                         archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip,
+                         campo=campo, valor=valor)
+
+
+def validar_reglas(resultado, catalogo_oficial=None) -> list:
     """Ejecuta las reglas de negocio V0–V18 sobre el modelo canónico.
 
+    `catalogo_oficial` (opcional): si se provee un `CatalogoOficial`, se evalúa
+    además la regla **V4** (sector/entidad oficial). Por defecto V4 NO se ejecuta.
     Devuelve la lista de alertas (no modifica `resultado`)."""
     irs = resultado.indicadores_resultado
     ips = resultado.indicadores_producto
@@ -414,4 +442,5 @@ def validar_reglas(resultado) -> list:
     _metas_y_lb(irs, alertas, archivo, politica, "IR", "codigo_ir")
     _metas_y_lb(ips, alertas, archivo, politica, "IP", "codigo_ip")
     _codigos_y_estructura(irs, ips, alertas, archivo, politica)
+    _sector_entidad(irs, ips, alertas, archivo, politica, catalogo_oficial)
     return alertas

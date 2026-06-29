@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "extractor-pa"
-version = "0.9.9"
+version = "0.9.10"
 description = "Extractor maestro de planes de acción y seguimiento de política pública desde Excel (SDP/SDIS)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,7 +19,9 @@ dependencies = [
 xlsb = ["pyxlsb>=1.0"]
 # Adaptadores de salida tabular (DataFrame)
 pandas = ["pandas>=2.0"]
-dev = ["pytest>=7.0"]
+# Normalización difusa de sectores/entidades (regla V4 opcional)
+fuzzy = ["rapidfuzz>=3.0"]
+dev = ["pytest>=7.0", "rapidfuzz>=3.0"]
 
 [project.scripts]
 extractor-pa = "extractor_pa.__main__:main"

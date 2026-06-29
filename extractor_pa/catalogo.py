@@ -145,11 +145,11 @@ _TIPOS = [
                "Periodicidad fuera del catálogo.",
                regla="sispp-gobierno", implementado=True),
     TipoAlerta("sector_no_oficial", NIVEL_INFO, "Tipología", CAPA_VALIDACION_PLAN,
-               "Sector responsable no reconocido en el catálogo oficial.",
-               regla="V4", implementado=False),
+               "Sector responsable no reconocido en el catálogo oficial (opcional).",
+               regla="V4", implementado=True),
     TipoAlerta("entidad_no_oficial", NIVEL_INFO, "Tipología", CAPA_VALIDACION_PLAN,
-               "Entidad responsable no reconocida en el catálogo oficial.",
-               regla="V4", implementado=False),
+               "Entidad responsable no reconocida en el catálogo oficial (opcional).",
+               regla="V4", implementado=True),
 
     # ── Familia: Fechas V5 ──
     TipoAlerta("fecha_invalida", NIVEL_ADVERTENCIA, "Fechas", CAPA_VALIDACION_PLAN,

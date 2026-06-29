@@ -3,6 +3,17 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.9.10] — B1: V4 sector/entidad + normalización difusa (OPCIONAL)
+### Añadido
+- `extractor_pa/catalogo_oficial.py`: `CatalogoOficial` con sectores/entidades
+  oficiales del Distrito (heredados de los aplicativos), membresía tolerante a
+  acentos/caso y **sugerencia difusa** (RapidFuzz, opcional).
+- Regla **V4** (`sector_no_oficial` / `entidad_no_oficial`) en `validar_reglas`,
+  **opt-in**: solo se ejecuta si se pasa `catalogo_oficial=`. Por defecto NO se
+  ejecuta (sin cambio de comportamiento). `extraer_plan_accion(..., catalogo_oficial=)`.
+- `sugerencias_normalizacion(res, cat)` / `aplicar_normalizacion(res, cat)` (opt-in).
+- Tests `tests/test_catalogo_oficial.py`. Catálogo: 71 tipos, **54 implementados**.
+
 ## [0.9.9] — Seguimiento: metas acumuladas (migración etapa 04 sispp-gobierno)
 ### Añadido
 - `IndicadorSeguimiento.metas_acumuladas` (`'2024' -> meta acumulada hasta la

@@ -32,6 +32,10 @@ from .modelo import (
 from .pipeline import extraer_plan_accion
 from .validacion import validar_reglas
 from .catalogo import CATALOGO, TipoAlerta, nivel_de
+from .catalogo_oficial import (
+    CatalogoOficial, CATALOGO_OFICIAL_DEFECTO, SECTORES_OFICIALES, ENTIDADES_OFICIALES,
+    sugerencias_normalizacion, aplicar_normalizacion,
+)
 from .exportadores import (
     tablas,
     tablas_consolidadas,
@@ -45,7 +49,7 @@ from .exportadores import (
     a_dataframes_consolidado,
 )
 
-__version__ = "0.9.9"
+__version__ = "0.9.10"
 
 __all__ = [
     "extraer_plan_accion",

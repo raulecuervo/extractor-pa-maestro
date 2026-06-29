@@ -113,6 +113,7 @@ def extraer_plan_accion(
     anio_vigencia: Optional[int] = None,
     leer_fichas_tecnicas: bool = True,
     incluir_reglas_negocio: bool = False,
+    catalogo_oficial=None,
 ) -> ResultadoExtraccion:
     """Extrae un archivo de plan de acción y devuelve el modelo canónico.
 
@@ -218,7 +219,7 @@ def extraer_plan_accion(
         # 8) Reglas de negocio V0–V18 (opcional).
         if incluir_reglas_negocio:
             from .validacion import validar_reglas
-            res.alertas.extend(validar_reglas(res))
+            res.alertas.extend(validar_reglas(res, catalogo_oficial=catalogo_oficial))
 
         # 9) Métricas de extracción.
         meta.n_ir = len(irs)

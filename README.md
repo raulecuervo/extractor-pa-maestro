@@ -28,6 +28,18 @@ pip install extractor_pa-0.9.8-py3-none-any.whl
 ```
 En `requirements.txt` de cada app, fijar `extractor-pa @ git+…@vX.Y.Z` (o `extractor-pa[xlsb] @ …`).
 
+## Catálogo oficial / V4 (opcional)
+
+La validación de **sector/entidad oficial** (regla V4) y la **normalización difusa**
+son opt-in: solo se activan si se inyecta un catálogo.
+```python
+from extractor_pa import extraer_plan_accion, CatalogoOficial, sugerencias_normalizacion
+res = extraer_plan_accion("plan.xlsx", incluir_reglas_negocio=True,
+                          catalogo_oficial=CatalogoOficial())   # dispara V4
+sugerencias_normalizacion(res)   # [{'campo':'sector_responsable','original':'GestiónPública','sugerido':'Gestión Pública'},…]
+```
+El fuzzy requiere `pip install extractor-pa[fuzzy]` (RapidFuzz). Sin catálogo, V4 no se ejecuta.
+
 ## CLI
 
 ```bash

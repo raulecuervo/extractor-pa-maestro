@@ -4,7 +4,7 @@
 > Generado automáticamente desde `extractor_pa/catalogo.py` (única fuente de verdad).
 > Niveles unificados: **ERROR** (bloquea / dato inutilizable) · **ADVERTENCIA** (revisar) · **INFO** (informativo).
 
-**71 tipos** catalogados · **52 implementados** en el extractor maestro.
+**71 tipos** catalogados · **54 implementados** en el extractor maestro.
 
 Leyenda `Impl.`: ✅ lo produce el maestro · ⬜ documentado (vive en otro aplicativo o pendiente).
 
@@ -49,8 +49,8 @@ Las produce `validar_reglas()` sobre el modelo canónico.
 | `vigencia_ponderacion` | ERROR | V18 | Ponderación | Incoherencia vigencia↔ponderación (No Vigente debe pesar 0; Vigente >0). | ✅ |
 | `tipo_anualizacion_invalido` | ERROR | V3 | Tipología | Tipo de anualización fuera del catálogo (CRECIENTE/DECRECIENTE/CONSTANTE/SUMA). | ✅ |
 | `periodicidad_invalida` | ADVERTENCIA | sispp-gobierno | Tipología | Periodicidad fuera del catálogo. | ✅ |
-| `sector_no_oficial` | INFO | V4 | Tipología | Sector responsable no reconocido en el catálogo oficial. | ⬜ |
-| `entidad_no_oficial` | INFO | V4 | Tipología | Entidad responsable no reconocida en el catálogo oficial. | ⬜ |
+| `sector_no_oficial` | INFO | V4 | Tipología | Sector responsable no reconocido en el catálogo oficial (opcional). | ✅ |
+| `entidad_no_oficial` | INFO | V4 | Tipología | Entidad responsable no reconocida en el catálogo oficial (opcional). | ✅ |
 | `fecha_invalida` | ADVERTENCIA | V5 | Fechas | Fecha no parseable. | ✅ |
 | `fecha_inicio_mayor_fin` | ERROR | V5 | Fechas | La fecha de inicio es posterior a la de finalización. | ✅ |
 | `meta_no_numerica` | ERROR | V6/V7 | Metas | Una meta anual no es numérica. | ✅ |
