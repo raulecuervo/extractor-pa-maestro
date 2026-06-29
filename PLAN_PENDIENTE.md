@@ -25,7 +25,7 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja. Esfuerzo: S ≤1d · M 2–4d �
 
 | # | Pendiente | Prio | Esf. |
 |---|---|:--:|:--:|
-| B1 | **Catálogos oficiales + V4**: inyectar sectores/entidades oficiales, alerta `sector_no_oficial`/`entidad_no_oficial`, y **normalización difusa** (RapidFuzz) — heredar de `sispp-gobierno` (paso 03). Habilita la paridad total de la unidad/entidad. | 🟠 | L |
+| B1 | ✅ **Catálogos oficiales + V4 + normalización difusa** (v0.9.10): `CatalogoOficial` + regla V4 **opcional** (`catalogo_oficial=`) + `sugerencias_normalizacion`/`aplicar_normalizacion` (RapidFuzz, extra `[fuzzy]`). | — | — |
 | B2 | **Objetivo como entidad**: `objetivo_sin_resultados`, `jerarquia_ip` (validar N.N.N ⊂ N.N). | 🟠 | M |
 | B3 | **Gobernanza de alertas** (triage persistente): clave estable por hash, estados (nueva/en_gestión/resuelta), autocierre, auditoría; reaplicar correcciones aprobadas — heredar de `sispp-gobierno`. | 🟠 | M |
 | B4 | **Alertas operativas/cualitativas** (vencimiento, rezago, sin responsable, RN-CUL, Q001–Q003): viven en la app de operación; implementarlas consumiendo el modelo canónico. | 🟢 | L |
