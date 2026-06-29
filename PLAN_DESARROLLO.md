@@ -113,9 +113,13 @@ vs golden → reemplazar → retirar el legado. Orden sugerido:
 7. ✅ **`sispp-gobierno`** — **activado y validado aguas abajo**: etapa 01 (maestro)
    → CSVs; etapas 02-06 los consumen sin error (fact_metas 34.228); 49 tests passed.
    (Etapa 04 seguimiento sigue en legado, migrable aparte.) `MIGRACION_PIPELINE.md`.
-8. ◑ **`creador-planes-accion`** — objetivo válido (importa planes SDP a ORM) pero
-   extracción entrelazada con persistencia + tests no corren en este entorno → diferido.
+8. ✅ **`creador-planes-accion`** — adaptador `import_excel_maestro.py` (reconstruye
+   la jerarquía ORM), **activado**; **roundtrip verificado 20/20**. `MIGRACION_IMPORT.md`.
 9. ✖️ **`sistema-seguimiento-v3`** — API/formularios, no extrae de Excel.
+
+**Migración: los 8 extractores reales migrados** (7 activos verificados + creador
+20/20). Pendiente menor: etapa 04 (seguimiento) de sispp-gobierno — ver A5 en
+`PLAN_PENDIENTE.md`.
 - **Aceptación por app**: paridad vs golden + pruebas de la app verdes; legado retirado.
 
 ## Hito 9 — Capa operativa/cualitativa (en la app, opcional) 🟢 (L)
