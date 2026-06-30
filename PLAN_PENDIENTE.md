@@ -21,7 +21,7 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja. Esfuerzo: S ≤1d · M 2–4d �
 | A1 | ✅ **Versionar y publicar `extractor-pa`**: repo privado `extractor-pa-maestro` en GitHub, tags `v0.9.x` (último `v0.9.12`), wheel construible. | — | — |
 | A2 | ✅ **Fijar la dependencia** en cada app migrada (`requirements.txt` → `extractor-pa @ git+…@v0.9.11`). Subir a `@v0.9.12` es opcional (B3 es aditivo). | — | — |
 | A3 | **CI** del maestro: el workflow `.github/workflows/ci.yml` existe; **confirmar que corre verde** en GitHub Actions. | 🟠 | S |
-| A8 | **Merge de las 8 ramas `migracion-extractor-pa` → `main`** en cada app (ver `PLAN_CIERRE.md` §2). Hoy en rama, sin mergear (decisión del usuario). | 🔴 | S |
+| A8 | ✅ **Merge de las 8 ramas → `main`** hecho y pusheado (`--no-ff`; validador: su `main` era un stub V1 de historia no relacionada → se promovió la rama de migración a `main` conservando LICENSE, con respaldo en tag `pre-maestro-main`). Falta **Fase 3** (ventana de validación en producción) y **Fase 4** (retirar legados). | 🟠 | S |
 | A4 | ✅ **`creador-planes-accion`** migrado (adaptador `import_excel_maestro.py`, reconstruye la jerarquía ORM) — **roundtrip 20/20**, activado. | — | — |
 | A5 | ✅ **Etapa 04 de seguimiento de `sispp-gobierno`** migrada (v0.9.9 con `metas_acumuladas`); cuant byte-idéntico, 04→05 validadas. | — | — |
 | A6 | **Retirar los extractores legados** tras un período de validación en producción (hoy quedan intactos como respaldo; cada migración es reversible con 1 línea). | 🟠 | S |

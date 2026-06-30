@@ -48,7 +48,13 @@ python comparar_*.py                      # gate de paridad legado-vs-maestro
 - **Criterio de avance**: suite verde **y** gate de paridad sin regresiones
   (las diferencias legado-vs-maestro deben ser solo las mejoras ya documentadas).
 
-## Fase 2 — Merge de las ramas → `main` (A8) · EL MERGE (S–M)
+> **Estado: Fase 0, 1 y 2 COMPLETADAS** (8/8 apps mergeadas a `main` y pusheadas,
+> cada una validada por su gate de paridad/bitácora). Pendiente: Fase 3 (ventana
+> de validación en producción) y Fase 4 (retirar legados). validador requirió
+> promover la rama de migración a `main` (su `main` era un stub V1 de historia no
+> relacionada); LICENSE conservada, respaldo en tag `pre-maestro-main`.
+
+## Fase 2 — Merge de las ramas → `main` (A8) · EL MERGE (S–M) ✅
 
 Orden **de menor a mayor riesgo** (ver tabla). No mergear validador ni
 sispp-gobierno hasta que las 🟢/🟠 estén verdes en `main`.
