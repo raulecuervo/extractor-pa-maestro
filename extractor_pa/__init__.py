@@ -33,6 +33,10 @@ from .modelo import (
 from .pipeline import extraer_plan_accion
 from .validacion import validar_reglas
 from .catalogo import CATALOGO, TipoAlerta, nivel_de
+from .gobernanza import (
+    clave_alerta, RegistroGobernanza, Reconciliacion, ItemTriage,
+    ESTADOS_VALIDOS, ESTADOS_PENDIENTES,
+)
 from .catalogo_oficial import (
     CatalogoOficial, CATALOGO_OFICIAL_DEFECTO, SECTORES_OFICIALES, ENTIDADES_OFICIALES,
     sugerencias_normalizacion, aplicar_normalizacion,
@@ -50,7 +54,7 @@ from .exportadores import (
     a_dataframes_consolidado,
 )
 
-__version__ = "0.9.11"
+__version__ = "0.9.12"
 
 __all__ = [
     "extraer_plan_accion",
@@ -68,6 +72,12 @@ __all__ = [
     "CATALOGO",
     "TipoAlerta",
     "nivel_de",
+    "clave_alerta",
+    "RegistroGobernanza",
+    "Reconciliacion",
+    "ItemTriage",
+    "ESTADOS_VALIDOS",
+    "ESTADOS_PENDIENTES",
     "tablas",
     "tablas_consolidadas",
     "exportar_json",

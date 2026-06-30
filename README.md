@@ -40,6 +40,23 @@ sugerencias_normalizacion(res)   # [{'campo':'sector_responsable','original':'Ge
 ```
 El fuzzy requiere `pip install extractor-pa[fuzzy]` (RapidFuzz). Sin catálogo, V4 no se ejecuta.
 
+## Gobernanza / triage de alertas (opcional)
+
+Las reglas regeneran las alertas en cada corrida. Para que las decisiones humanas
+sobrevivan, cada alerta tiene una **clave estable** (hash de sus campos
+identitarios, no de la redacción) cuyo estado vive en un store JSON con bitácora.
+```python
+from extractor_pa import extraer_plan_accion, RegistroGobernanza
+res = extraer_plan_accion("plan.xlsx", incluir_reglas_negocio=True)
+reg = RegistroGobernanza("decisiones/alertas_estado.json")   # ruta inyectable
+rec = reg.reconciliar(res.alertas)         # clasifica por clave + estado
+reg.set_estado([rec.items[0].clave], "en_gestion", nota="oficio 123")
+rec.pendientes()       # nueva | en_gestion
+rec.desaparecidas      # claves abiertas que ya no aparecen → autocierre
+```
+Estados: `nueva → en_gestion → resuelta | descartada`. La clave es **byte-idéntica**
+a la de `sispp-gobierno`, así que interoperan. Solo stdlib (sin dependencias extra).
+
 ## CLI
 
 ```bash
@@ -166,6 +183,7 @@ extractor_pa/
   consistencia.py        inconsistencias entre filas del IR + IP duplicados (Fase 5)
   catalogo.py            catálogo consolidado de alertas (64 tipos, fuente única)
   validacion.py          motor de reglas de negocio V0–V18 sobre el modelo canónico
+  gobernanza.py          triage persistente de alertas: clave estable + estados + reconciliación/autocierre + auditoría
   exportadores.py        salidas: JSON/CSV/Excel/DataFrame + consolidado multi-plan
   seguimiento/           SUB-PAQUETE de seguimiento (.xlsb): loader, resolutor
                          por anclas, metadatos, extractor → ResultadoSeguimiento

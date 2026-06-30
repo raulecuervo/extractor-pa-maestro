@@ -3,6 +3,26 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.9.12] — B3: gobernanza / triage persistente de alertas
+### Añadido
+- **`extractor_pa/gobernanza.py`**: triage persistente de alertas, agnóstico de
+  almacenamiento (destilado de `sispp-gobierno`, `app/storage/alertas.py`).
+  - `clave_alerta(alerta)`: hash estable (12 hex) de los campos identitarios
+    (`archivo_fuente`, `tipo`, `codigo_objetivo`/`ir`/`ip`, `campo`, `valor`),
+    **insensible** a descripción y nombre de política. Acepta `Alerta`, dict
+    canónico o dict con los nombres del CSV legado → **clave byte-idéntica** a
+    la de sispp-gobierno (interoperan).
+  - **`RegistroGobernanza(ruta_estado, ruta_audit=, autor=)`**: store JSON
+    atómico + bitácora JSONL. Estados `nueva → en_gestion → resuelta |
+    descartada` (volver a `nueva` elimina la entrada). `set_estado` en bloque.
+  - **`reconciliar(alertas)`** → `Reconciliacion` (items con clave+estado,
+    `por_estado()`, `pendientes()`, y `desaparecidas`: claves abiertas ausentes
+    de la corrida = candidatas a **autocierre** porque el dato se corrigió).
+- Tests `tests/test_gobernanza.py` (11). Suite: **124** pruebas.
+### Validado
+- Demo sobre BTI real: 16 alertas, estados persisten entre corridas, autocierre
+  de la alerta desaparecida, y clave byte-idéntica al algoritmo de sispp-gobierno.
+
 ## [0.9.11] — B2: objetivo como entidad (jerarquía objetivo→resultado→producto)
 ### Añadido
 - **`Objetivo`** como entidad de primera clase del plan (`extractor_pa/modelo.py`):
