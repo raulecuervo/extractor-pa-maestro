@@ -3,6 +3,25 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.9.13] — F2: decisiones humanas de entidad/sector (reaplicar correcciones)
+### Añadido
+- **`extractor_pa/decisiones.py`**: persistencia de las decisiones humanas de
+  normalización de entidad/sector y su **reaplicación** determinista (destilado
+  de `sispp-gobierno`, `app/storage/decisiones.py`). Completa el flujo de B1.
+  - **`RegistroDecisiones(ruta, ruta_audit=, autor=)`**: store JSON atómico +
+    bitácora JSONL. `guardar(valor, accion, nombre_final=)` con acciones
+    `aprobar | nombre_nuevo | ignorar | eliminar`; `eliminar`, `obtener`,
+    `contar`, `como_mapa()` (→ nombre | None=ignorar | ""=vaciar).
+  - **`aplicar_decisiones(resultado, registro, campos=)`**: reescribe in-place
+    `sector_responsable`/`entidad_responsable` de los IR/IP según las decisiones
+    aprobadas (coincidencia exacta tolerante a espacios; sin fuzzy ni catálogo).
+  - **`RegistroDecisiones.aprobar_sugerencias(sugerencias)`**: puente B1→F2
+    (registra como `aprobar` las sugerencias de `sugerencias_normalizacion`).
+- Tests `tests/test_decisiones.py` (9). Suite: **133** pruebas.
+### Validado
+- Demo BTI real: B1 generó 81 sugerencias → 8 decisiones aprobadas → reaplicadas
+  determinista a 81 campos en la corrida siguiente (sin fuzzy).
+
 ## [0.9.12] — B3: gobernanza / triage persistente de alertas
 ### Añadido
 - **`extractor_pa/gobernanza.py`**: triage persistente de alertas, agnóstico de

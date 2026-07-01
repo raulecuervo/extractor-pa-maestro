@@ -37,6 +37,9 @@ from .gobernanza import (
     clave_alerta, RegistroGobernanza, Reconciliacion, ItemTriage,
     ESTADOS_VALIDOS, ESTADOS_PENDIENTES,
 )
+from .decisiones import (
+    RegistroDecisiones, aplicar_decisiones, ACCIONES_VALIDAS, CAMPOS_ENTIDAD,
+)
 from .catalogo_oficial import (
     CatalogoOficial, CATALOGO_OFICIAL_DEFECTO, SECTORES_OFICIALES, ENTIDADES_OFICIALES,
     sugerencias_normalizacion, aplicar_normalizacion,
@@ -54,7 +57,7 @@ from .exportadores import (
     a_dataframes_consolidado,
 )
 
-__version__ = "0.9.12"
+__version__ = "0.9.13"
 
 __all__ = [
     "extraer_plan_accion",
@@ -78,6 +81,10 @@ __all__ = [
     "ItemTriage",
     "ESTADOS_VALIDOS",
     "ESTADOS_PENDIENTES",
+    "RegistroDecisiones",
+    "aplicar_decisiones",
+    "ACCIONES_VALIDAS",
+    "CAMPOS_ENTIDAD",
     "tablas",
     "tablas_consolidadas",
     "exportar_json",

@@ -61,7 +61,7 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja.
 | # | Mejora | Prio | Origen |
 |---|---|:---:|---|
 | F1 | ✅ **Triage persistente de alertas** (v0.9.12): `gobernanza.py` — clave estable por hash, estados nueva/en_gestion/resuelta/descartada, `reconciliar` con autocierre, store JSON atómico + auditoría JSONL | — | `sispp-gobierno` (gobernanza del dato). |
-| F2 | **Reaplicar correcciones humanas aprobadas** antes de extraer | 🟠 | `sispp-gobierno`. Parcial: B1 ya tiene `aplicar_normalizacion`; falta el store de decisiones aprobadas (revisiones de entidades). |
+| F2 | ✅ **Reaplicar correcciones humanas aprobadas** (v0.9.13): `decisiones.py` — `RegistroDecisiones` (store JSON + auditoría, acciones aprobar/nombre_nuevo/ignorar/eliminar) + `aplicar_decisiones` (reaplica sobre IR/IP) + puente `aprobar_sugerencias` desde B1 | — | `sispp-gobierno`. Cierra el flujo B1→F2. |
 | F3 | **Normalización difusa de entidades/sectores** (RapidFuzz) contra catálogo oficial | 🟠 | `sispp-gobierno` (paso 3) → habilita B1. |
 | F4 | **Reportes adicionales**: inconsistencias por política (ya en el CSV), hoja de vida del indicador, brechas/avance agregado | 🟢 | `generador-seguimiento`, `alertas-seguimientos`. |
 

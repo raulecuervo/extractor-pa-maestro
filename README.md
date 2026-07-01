@@ -40,6 +40,15 @@ sugerencias_normalizacion(res)   # [{'campo':'sector_responsable','original':'Ge
 ```
 El fuzzy requiere `pip install extractor-pa[fuzzy]` (RapidFuzz). Sin catálogo, V4 no se ejecuta.
 
+**Reaplicar correcciones aprobadas (F2)**: una vez que un humano aprueba las
+sugerencias, se persisten y se reaplican determinista en cada corrida (sin fuzzy):
+```python
+from extractor_pa import RegistroDecisiones, aplicar_decisiones
+reg = RegistroDecisiones("decisiones/entidades.json")
+reg.aprobar_sugerencias(sugerencias_normalizacion(res, CatalogoOficial()))  # o reg.guardar(...)
+aplicar_decisiones(res, reg)   # reescribe sector_responsable/entidad_responsable de IR/IP
+```
+
 ## Gobernanza / triage de alertas (opcional)
 
 Las reglas regeneran las alertas en cada corrida. Para que las decisiones humanas
@@ -184,6 +193,7 @@ extractor_pa/
   catalogo.py            catálogo consolidado de alertas (64 tipos, fuente única)
   validacion.py          motor de reglas de negocio V0–V18 sobre el modelo canónico
   gobernanza.py          triage persistente de alertas: clave estable + estados + reconciliación/autocierre + auditoría
+  decisiones.py          decisiones humanas de entidad/sector: store + auditoría + reaplicación (puente desde B1)
   exportadores.py        salidas: JSON/CSV/Excel/DataFrame + consolidado multi-plan
   seguimiento/           SUB-PAQUETE de seguimiento (.xlsb): loader, resolutor
                          por anclas, metadatos, extractor → ResultadoSeguimiento

@@ -33,7 +33,8 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja. Esfuerzo: S ≤1d · M 2–4d �
 |---|---|:--:|:--:|
 | B1 | ✅ **Catálogos oficiales + V4 + normalización difusa** (v0.9.10): `CatalogoOficial` + regla V4 **opcional** (`catalogo_oficial=`) + `sugerencias_normalizacion`/`aplicar_normalizacion` (RapidFuzz, extra `[fuzzy]`). | — | — |
 | B2 | ✅ **Objetivo como entidad** (v0.9.11): `Objetivo` en el modelo + `objetivo_sin_resultados` (ADVERTENCIA) + `jerarquia_ip` (ERROR, valida N.N.N ⊂ N.N). 74 planes reales: 0 espurios. | — | — |
-| B3 | ✅ **Gobernanza de alertas** (v0.9.12): `gobernanza.py` con clave estable por hash (byte-idéntica a sispp-gobierno), estados nueva/en_gestion/resuelta/descartada, `reconciliar` con autocierre, store JSON atómico + auditoría JSONL. Falta el resto de F2 (reaplicar correcciones de catálogo) ligado a B1. | — | — |
+| B3 | ✅ **Gobernanza de alertas** (v0.9.12): `gobernanza.py` con clave estable por hash (byte-idéntica a sispp-gobierno), estados nueva/en_gestion/resuelta/descartada, `reconciliar` con autocierre, store JSON atómico + auditoría JSONL. | — | — |
+| F2 | ✅ **Decisiones humanas de entidad/sector** (v0.9.13): `decisiones.py` — `RegistroDecisiones` (store + auditoría) + `aplicar_decisiones` + puente `aprobar_sugerencias` desde B1. Cierra el flujo B1→F2 (sugerir→aprobar→reaplicar). | — | — |
 | B4 | **Alertas operativas/cualitativas** (vencimiento, rezago, sin responsable, RN-CUL, Q001–Q003): viven en la app de operación; implementarlas consumiendo el modelo canónico. | 🟢 | L |
 | B5 | **Adaptador ORM** relacional versionado (modelo de `seguimiento-pp-sdis`). | 🟢 | L |
 
