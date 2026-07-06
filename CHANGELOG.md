@@ -3,6 +3,14 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.10.1] — Corrección de paridad detectada por el gate de MS-32b
+### Corregido
+- `crear_hallazgo`: los campos identitarios (codigo/politica/sector/entidad)
+  se pasan CRUDOS como hace `make_finding` de producción — un `None` (p. ej.
+  entidad vacía en Resultados BTI) se conserva como `None`, no se coerciona a
+  `""`. Detectado por `comparar_alertas.py` (132 findings con `entidad: None`
+  en el corpus real). Test nuevo de identitarios crudos.
+
 ## [0.10.0] — MS-32a: capa 2 de la convergencia SISPP ↔ Alertas (validaciones + fórmulas)
 ### Añadido
 - **`extractor_pa/seguimiento/metricas.py`**: port PURO de las fórmulas en

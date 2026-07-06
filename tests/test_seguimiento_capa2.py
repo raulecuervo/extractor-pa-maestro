@@ -255,6 +255,16 @@ def test_crear_hallazgo_shape_exacto_make_finding():
     assert h.valor == "0.2 | " + "X" * 200
 
 
+def test_crear_hallazgo_identitarios_crudos_como_make_finding():
+    """make_finding NO coerciona codigo/politica/sector/entidad: None se
+    conserva (paridad byte a byte con la tabla alertas de producción)."""
+    h = crear_hallazgo("INFO_IND_NUEVO", codigo="1.1", politica="PP",
+                       sector=None, entidad=None, nombre="X", archivo="a.xlsb")
+    f = h.as_finding()
+    assert f["sector"] is None and f["entidad"] is None
+    assert h.codigo_ip == "1.1"     # la propiedad de compatibilidad sí tolera None
+
+
 # ─────────────────────────── validaciones: semántica de producción ───────────────────────────
 
 def test_avance_meta_sin_meta_omite_todo_el_chequeo():

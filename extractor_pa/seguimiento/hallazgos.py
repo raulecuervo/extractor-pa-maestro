@@ -126,16 +126,17 @@ def crear_hallazgo(tipo, *, codigo=None, politica=None, sector=None, entidad=Non
                    periodo=None, detalle=None, archivo=None) -> HallazgoSeguimiento:
     """Factory con la MISMA semántica de coerción/truncado de ``make_finding``.
 
-    Los campos identitarios (codigo/politica/sector/entidad) se pasan tal cual
-    (make_finding no los coerciona); ``nombre`` se trunca a 120 y los valores a
-    200; los opcionales vacíos quedan como ``""``."""
+    Los campos identitarios (codigo/politica/sector/entidad) se pasan CRUDOS —
+    make_finding no los coerciona, así que un ``None`` se conserva como ``None``
+    (paridad byte a byte verificada por el gate de MS-32b); ``nombre`` se trunca
+    a 120 y los valores a 200; los opcionales vacíos quedan como ``""``."""
     return HallazgoSeguimiento(
         tipo=tipo,
         severidad=SEVERIDAD[tipo],
-        codigo=codigo if codigo is not None else "",
-        politica=politica if politica is not None else "",
-        sector=sector if sector is not None else "",
-        entidad=entidad if entidad is not None else "",
+        codigo=codigo,
+        politica=politica,
+        sector=sector,
+        entidad=entidad,
         nombre=(nombre or "")[:120],
         campo=campo or "",
         val_base=str(val_base)[:200] if val_base is not None else "",
