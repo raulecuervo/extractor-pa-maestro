@@ -3,6 +3,45 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.10.0] — MS-32a: capa 2 de la convergencia SISPP ↔ Alertas (validaciones + fórmulas)
+### Añadido
+- **`extractor_pa/seguimiento/metricas.py`**: port PURO de las fórmulas en
+  producción de `alertas-seguimientos/db.py` — `calc_mes`, `calc_meta_periodo`
+  (§10.1), `calc_meta_acum` (§10.2), `calc_sum_metas_prev`,
+  `calc_pct_hasta_vig` (PHV §10.4), `calc_trayectoria_ideal`, `calc_paf`,
+  `calc_tid`, `calc_brecha` (§10.5), `calc_lb_ficticia_decreciente` +
+  `lb_de_indicador` (RN-CUA-009 de SISPP), `metricas_corte` (núcleo al corte,
+  ex `_calc_metricas_indicador`, ahora sin BD) y `anio_de_serial_excel`.
+  **CONVENCIÓN DE ESCALA:** la librería calcula y retorna FRACCIONES 0–1;
+  cada app convierte en su borde (SISPP ×100; Alertas usa la fracción).
+- **`extractor_pa/seguimiento/hallazgos.py`**: catálogo `TIPOS_HALLAZGO` /
+  `SEVERIDAD` (copia fiel de `validation/catalog.py` de Alertas) + dataclass
+  `HallazgoSeguimiento` con `as_finding()` que reproduce EXACTAMENTE el shape
+  de `make_finding` (truncados [:120]/[:200] incluidos) — contrato del gate de
+  paridad de MS-32b. Propiedades de compatibilidad con la `Alerta` v1
+  (`nivel`, `valor`, `codigo_ip`, `codigo_ir`).
+### Cambiado (BREAKING para consumidores del retorno de `validar_*`)
+- **`validacion_seg` v2**: `validar_archivo(res, *, anio_min=2018)` y
+  `validar_consistencia(base, nuevo, *, anio_min=2018)` retornan ahora
+  `list[HallazgoSeguimiento]` (antes `Alerta` genérica). Se ADOPTA LA
+  SEMÁNTICA DE PRODUCCIÓN de `validation/core.py` corrigiendo las
+  divergencias del port v1: (a) `avance_meta` con meta None/0 omite TODO el
+  chequeo (incluido pct_vigencia); (b) retroactividad salta valores base
+  vacíos; (c) año de inicio del acumulado desde `fecha_inicio` con fallback a
+  `anio_min` (no `min(metas)`); (d) comparaciones con `normalise` de
+  producción (conserva tildes; estabilidad compara en upper()); (e) numéricos
+  con `safe_float` estricto (no `a_float` tolerante); (f) etiquetas de campo
+  de producción; (g) textos de INFO_IND_NUEVO/FALTANTE de producción.
+- Nuevo adaptador `indicador_desde_dict(d)` (dicts de la BD de Alertas →
+  `IndicadorSeguimiento`; mapea `ind_esperado`, `tipo_anual`,
+  `metas['final']`). `a_porcentaje` ahora es público (alias `_a_porcentaje`
+  se conserva).
+### Validado
+- Tests nuevos `tests/test_seguimiento_capa2.py` (fórmulas contra los casos de
+  FORMULAS.md/§10.6 + semántica de producción de las validaciones + shape del
+  finding). Las apps siguen pineadas a v0.9.11 — este release no las toca
+  (MS-32b subirá el pin de Alertas con gate de paridad byte-idéntico).
+
 ## [0.9.13] — F2: decisiones humanas de entidad/sector (reaplicar correcciones)
 ### Añadido
 - **`extractor_pa/decisiones.py`**: persistencia de las decisiones humanas de
