@@ -191,6 +191,10 @@ _TIPOS = [
     # ── Familia: Seguimiento — consistencia del reporte (alertas-seguimientos) ──
     TipoAlerta("ERROR_ESTABILIDAD", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,
                "Campo inmutable del indicador modificado entre cargas."),
+    TipoAlerta("ERROR_PONDERACION_OBLIGATORIA", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Indicador vigente sin ponderación (debe ser mayor que 0)."),
+    TipoAlerta("ADVERTENCIA_SECTOR_ENTIDAD", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "El sector que trae el archivo no es el oficial de esa entidad."),
     TipoAlerta("ERROR_RETROACTIVO", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,
                "Valor histórico (periodo cerrado) modificado."),
     TipoAlerta("ERROR_NO_NUMERICO", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,

@@ -23,9 +23,11 @@ UMBRAL_AVANCE = 1.25  # 125%
 
 TIPOS_HALLAZGO = {
     "ERROR_ESTABILIDAD":           "Error – Campo inmutable modificado",
+    "ERROR_PONDERACION_OBLIGATORIA": "Error – Indicador vigente sin ponderación",
     "ERROR_RETROACTIVO":           "Error – Valor histórico modificado",
     "ERROR_NO_NUMERICO":           "Error – Reporte cuantitativo con valor no numérico",
     "ADVERTENCIA_AVANCE":          "Advertencia – Avance supera meta + 25%",
+    "ADVERTENCIA_SECTOR_ENTIDAD":  "Advertencia – El sector del archivo no es el oficial de la entidad",
     "ADVERTENCIA_CUAL":            "Advertencia – Cualitativo vacío (Vigente)",
     "ADVERTENCIA_ESCALA":          "Advertencia – Incoherencia de escala reporte vs meta",
     "ADVERTENCIA_LIMITE_VIG":      "Advertencia – Reporte/suma vigencia supera 125% meta programada",
@@ -41,6 +43,8 @@ TIPOS_HALLAZGO = {
 
 SEVERIDAD = {
     "ERROR_ESTABILIDAD":           "Error",
+    "ERROR_PONDERACION_OBLIGATORIA": "Error",
+    "ADVERTENCIA_SECTOR_ENTIDAD":  "Advertencia",
     "ERROR_RETROACTIVO":           "Error",
     "ERROR_NO_NUMERICO":           "Error",
     "ADVERTENCIA_AVANCE":          "Advertencia",

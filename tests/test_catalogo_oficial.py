@@ -57,3 +57,16 @@ def test_normalizacion_aplica():
     n = aplicar_normalizacion(res)
     assert n >= 1
     assert res.indicadores_resultado[0].sector_responsable == "Gestión Pública"
+
+
+def test_el_catalogo_entidad_sector_viaja_con_el_paquete():
+    """Regresión: el JSON curado se carga desde `extractor_pa/data/`. Si no se declara
+    en `package-data`, la librería funciona en el árbol de fuentes pero al INSTALARLA
+    el archivo no llega y la regla ADVERTENCIA_SECTOR_ENTIDAD se apaga en silencio."""
+    from extractor_pa.catalogo_oficial import ENTIDAD_SECTOR, sector_oficial_de
+
+    assert ENTIDAD_SECTOR, "el catálogo entidad→sector llegó vacío"
+    # Resuelve con y sin tildes (la clave se normaliza al cargar).
+    assert sector_oficial_de("Secretaría Distrital de Integración Social, SDIS")
+    assert (sector_oficial_de("SECRETARIA DISTRITAL DE INTEGRACION SOCIAL, SDIS")
+            == sector_oficial_de("Secretaría Distrital de Integración Social, SDIS"))

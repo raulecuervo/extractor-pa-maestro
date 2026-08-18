@@ -155,3 +155,30 @@ def aplicar_normalizacion(resultado, catalogo: Optional[CatalogoOficial] = None)
             setattr(obj, s["campo"], s["sugerido"])
             n += 1
     return n
+
+
+# ───────────────── entidad → sector oficial (curaduría compartida) ─────────────────
+# Una entidad pertenece a UN solo sector. El mapa lo curan las personas (no se deduce
+# de los archivos) y se versiona junto a la librería para que el Validador de Plan de
+# Acción, Alertas-Seguimientos y SISPP validen contra la misma fuente.
+# Alimenta la regla ADVERTENCIA_SECTOR_ENTIDAD de `seguimiento.validacion_seg`.
+
+def _cargar_entidad_sector() -> dict:
+    """{entidad normalizada con `_norm`: sector oficial}. Vacío si falta el archivo."""
+    import json
+    from pathlib import Path
+
+    ruta = Path(__file__).with_name("data") / "entidad_sector.json"
+    try:
+        crudo = json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {_norm(entidad): sector for entidad, sector in crudo.items()}
+
+
+ENTIDAD_SECTOR = _cargar_entidad_sector()
+
+
+def sector_oficial_de(entidad) -> Optional[str]:
+    """Sector al que pertenece una entidad, o None si no está en la curaduría."""
+    return ENTIDAD_SECTOR.get(_norm(entidad))

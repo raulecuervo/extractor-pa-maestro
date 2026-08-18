@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "extractor-pa"
-version = "0.10.1"
+version = "0.11.0"
 description = "Extractor maestro de planes de acción y seguimiento de política pública desde Excel (SDP/SDIS)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,6 +29,12 @@ extractor-pa = "extractor_pa.__main__:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["extractor_pa*"]
+
+# El catálogo curado entidad→sector viaja DENTRO del paquete: sin esto la librería
+# funciona en el árbol de fuentes pero al instalarla el archivo no llega, y la regla
+# ADVERTENCIA_SECTOR_ENTIDAD se apaga sin avisar.
+[tool.setuptools.package-data]
+extractor_pa = ["data/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not slow'"

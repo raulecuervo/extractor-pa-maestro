@@ -48,6 +48,7 @@ from .hallazgos import (  # noqa: F401  (re-export de UMBRAL_AVANCE)
     UMBRAL_AVANCE,
     crear_hallazgo,
 )
+from ..utilidades import _norm
 from .metricas import safe_float
 from .modelo import IndicadorSeguimiento
 
@@ -165,6 +166,69 @@ def _validar_estabilidad(base, nuevo, politica, archivo):
             out.append(_finding("ERROR_ESTABILIDAD", base, politica, archivo,
                                 campo=etiqueta, val_base=v_b, val_nuevo=v_n))
     return out
+
+
+# ── Reglas de vigencia (2026-08-15, portadas desde alertas-seguimientos) ──
+# Un indicador que pasa a «No Vigente» puede legítimamente cerrar antes: baja su
+# ponderación a 0 y ajusta su fecha de finalización. Marcarlo como campo inmutable
+# modificado era ruido — en el PA de Mujer copaba la lista de errores. A cambio, un
+# «Vigente» SIN ponderación sí es un defecto que antes pasaba inadvertido.
+
+_CAMPO_PONDERACION = "Ponderación (%)"
+_CAMPO_FECHA_FIN = "Fecha de Finalización"
+
+
+def _estado_es(ind, valor) -> bool:
+    return str(getattr(ind, "estado", "") or "").strip().lower() == valor
+
+
+def _cambio_permitido_por_no_vigente(hallazgo, nuevo) -> bool:
+    """¿El campo inmutable que cambió es uno que un No Vigente puede cambiar?"""
+    if not _estado_es(nuevo, "no vigente"):
+        return False
+    campo = hallazgo.get("campo") if isinstance(hallazgo, dict) else getattr(hallazgo, "campo", None)
+    if campo == _CAMPO_FECHA_FIN:
+        return True
+    if campo == _CAMPO_PONDERACION:
+        pond = safe_float(getattr(nuevo, "ponderacion", None))
+        return pond is None or pond == 0
+    return False
+
+
+def _validar_ponderacion_vigente(ind, politica, archivo):
+    """Todo indicador vigente debe tener ponderación mayor que 0."""
+    if not _estado_es(ind, "vigente"):
+        return []
+    pond = safe_float(getattr(ind, "ponderacion", None))
+    if pond is not None and pond != 0:
+        return []
+    crudo = getattr(ind, "ponderacion", None)
+    return [_finding("ERROR_PONDERACION_OBLIGATORIA", ind, politica, archivo,
+                     campo=_CAMPO_PONDERACION,
+                     val_nuevo="" if crudo in (None, "") else str(crudo),
+                     detalle="Todo indicador vigente debe tener ponderación mayor que 0.")]
+
+
+def _validar_sector_entidad(ind, politica, archivo, entidad_sector):
+    """El sector del archivo no coincide con el oficial de esa entidad.
+
+    Una entidad pertenece a UN solo sector. `entidad_sector` es el mapa curado que
+    inyecta la aplicación (normalizado por `normalise().upper()`); si no se inyecta,
+    la regla no corre y el comportamiento no cambia.
+    """
+    if not entidad_sector:
+        return []
+    ent = _norm(getattr(ind, "entidad", None))
+    sec = _norm(getattr(ind, "sector", None))
+    oficial = entidad_sector.get(ent)
+    if not ent or not sec or not oficial or _norm(oficial) == sec:
+        return []
+    return [_finding("ADVERTENCIA_SECTOR_ENTIDAD", ind, politica, archivo,
+                     campo="Sector Responsable", val_base=oficial,
+                     val_nuevo=getattr(ind, "sector", None),
+                     detalle=(f"La entidad «{getattr(ind, 'entidad', '')}» pertenece al sector "
+                              f"«{oficial}»; el archivo trae «{getattr(ind, 'sector', '')}». "
+                              "Se debe corregir en la fuente."))]
 
 
 def _validar_retroactividad(base, nuevo, politica, archivo, anio_min):
@@ -431,9 +495,9 @@ def _validar_discrepancia_pct(ind, politica, archivo):
     return out
 
 
-def _validaciones_un_archivo(ind, politica, archivo, anio_min):
-    """Las 8 validaciones de un solo archivo, en el ORDEN de producción
-    (run_all_validations)."""
+def _validaciones_un_archivo(ind, politica, archivo, anio_min, entidad_sector=None):
+    """Las validaciones de un solo archivo, en el ORDEN de producción
+    (run_all_validations). Las dos últimas son posteriores a MS-32b."""
     out = []
     out.extend(_validar_no_numerico(ind, politica, archivo))
     out.extend(_validar_escala(ind, politica, archivo))
@@ -443,22 +507,30 @@ def _validaciones_un_archivo(ind, politica, archivo, anio_min):
     out.extend(_validar_pct_hasta_vig(ind, politica, archivo))
     out.extend(_validar_cualitativo(ind, politica, archivo))
     out.extend(_validar_discrepancia_pct(ind, politica, archivo))
+    out.extend(_validar_ponderacion_vigente(ind, politica, archivo))
+    out.extend(_validar_sector_entidad(ind, politica, archivo, entidad_sector))
     return out
 
 
 # ─────────────────────────── orquestadores ───────────────────────────
 
-def validar_archivo(res_nuevo, *, anio_min: int = 2018) -> list:
-    """Validaciones de un solo archivo (sin base). → list[HallazgoSeguimiento]."""
+def validar_archivo(res_nuevo, *, anio_min: int = 2018, entidad_sector=None) -> list:
+    """Validaciones de un solo archivo (sin base). → list[HallazgoSeguimiento].
+
+    `entidad_sector`: mapa {entidad normalizada con `_norm`: sector oficial} para la
+    regla ADVERTENCIA_SECTOR_ENTIDAD. Opcional: sin él esa regla no corre.
+    """
     politica = res_nuevo.metadatos.nombre_politica or ""
     archivo = res_nuevo.metadatos.archivo_fuente
     alertas = []
     for ind in res_nuevo.indicadores:
-        alertas.extend(_validaciones_un_archivo(ind, politica, archivo, anio_min))
+        alertas.extend(_validaciones_un_archivo(ind, politica, archivo, anio_min,
+                                                entidad_sector))
     return alertas
 
 
-def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018) -> list:
+def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018,
+                         entidad_sector=None) -> list:
     """Base vs nuevo + validaciones del nuevo. → list[HallazgoSeguimiento].
     Orden y textos de ``run_all_validations`` de producción."""
     politica = res_nuevo.metadatos.nombre_politica or ""
@@ -483,9 +555,13 @@ def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018) -> list:
     for code, nuevo in new_map.items():
         base = base_map.get(code)
         if base is not None:
-            alertas.extend(_validar_estabilidad(base, nuevo, politica, archivo))
+            alertas.extend(
+                h for h in _validar_estabilidad(base, nuevo, politica, archivo)
+                if not _cambio_permitido_por_no_vigente(h, nuevo)
+            )
             alertas.extend(_validar_retroactividad(base, nuevo, politica, archivo, anio_min))
-        alertas.extend(_validaciones_un_archivo(nuevo, politica, archivo, anio_min))
+        alertas.extend(_validaciones_un_archivo(nuevo, politica, archivo, anio_min,
+                                                entidad_sector))
     return alertas
 
 

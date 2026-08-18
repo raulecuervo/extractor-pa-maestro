@@ -418,3 +418,70 @@ def test_indicador_desde_dict_mapea_claves_de_alertas():
     assert ind.avances == {"2026_Q1": 5}
     # el dict original no se muta
     assert d["metas"] == {"2026": 10, "final": 40}
+
+
+# ───────── reglas de vigencia y sector-entidad (posteriores a MS-32b) ─────────
+# Portadas desde las reglas locales de alertas-seguimientos (2026-08-15) para que las
+# dos aplicaciones validen igual desde la librería, en vez de duplicarlas.
+
+def test_no_vigente_puede_bajar_ponderacion_a_cero():
+    base = _ind(estado="Vigente", ponderacion=1.5)
+    nuevo = _ind(estado="No Vigente", ponderacion=0)
+    tipos = _tipos(validar_consistencia(_res(base), _res(nuevo)))
+    assert "ERROR_ESTABILIDAD" not in tipos
+
+
+def test_no_vigente_puede_adelantar_su_fecha_de_fin():
+    base = _ind(estado="Vigente", fecha_fin="31/12/2033", ponderacion=1.5)
+    nuevo = _ind(estado="No Vigente", fecha_fin="31/12/2026", ponderacion=1.5)
+    tipos = _tipos(validar_consistencia(_res(base), _res(nuevo)))
+    assert "ERROR_ESTABILIDAD" not in tipos
+
+
+def test_no_vigente_no_puede_cambiar_cualquier_campo():
+    """La excepción es acotada: cambiar el nombre sigue siendo un error."""
+    base = _ind(estado="Vigente", nombre="Nombre original", ponderacion=1.5)
+    nuevo = _ind(estado="No Vigente", nombre="Nombre distinto", ponderacion=1.5)
+    hallazgos = [h for h in validar_consistencia(_res(base), _res(nuevo))
+                 if h.tipo == "ERROR_ESTABILIDAD"]
+    assert [h.campo for h in hallazgos] == ["Nombre del Indicador"]
+
+
+def test_vigente_sin_ponderacion_es_error():
+    tipos = _tipos(validar_archivo(_res(_ind(estado="Vigente", ponderacion=0))))
+    assert "ERROR_PONDERACION_OBLIGATORIA" in tipos
+    tipos = _tipos(validar_archivo(_res(_ind(estado="Vigente", ponderacion=None))))
+    assert "ERROR_PONDERACION_OBLIGATORIA" in tipos
+
+
+def test_vigente_con_ponderacion_no_alerta():
+    tipos = _tipos(validar_archivo(_res(_ind(estado="Vigente", ponderacion=1.5))))
+    assert "ERROR_PONDERACION_OBLIGATORIA" not in tipos
+
+
+def test_no_vigente_sin_ponderacion_no_alerta():
+    tipos = _tipos(validar_archivo(_res(_ind(estado="No Vigente", ponderacion=0))))
+    assert "ERROR_PONDERACION_OBLIGATORIA" not in tipos
+
+
+def test_sector_que_no_corresponde_a_la_entidad():
+    mapa = {"secretaria distrital de integracion social": "Integración Social"}
+    ind = _ind(entidad="Secretaría Distrital de Integración Social", sector="Salud")
+    hallazgos = [h for h in validar_archivo(_res(ind), entidad_sector=mapa)
+                 if h.tipo == "ADVERTENCIA_SECTOR_ENTIDAD"]
+    assert len(hallazgos) == 1
+    assert hallazgos[0].val_base == "Integración Social"   # el oficial
+    assert hallazgos[0].val_nuevo == "Salud"               # lo que trae el archivo
+
+
+def test_sector_correcto_no_alerta_aunque_difiera_en_tildes():
+    mapa = {"secretaria distrital de integracion social": "Integración Social"}
+    ind = _ind(entidad="SECRETARIA DISTRITAL DE INTEGRACION SOCIAL", sector="INTEGRACION SOCIAL")
+    tipos = _tipos(validar_archivo(_res(ind), entidad_sector=mapa))
+    assert "ADVERTENCIA_SECTOR_ENTIDAD" not in tipos
+
+
+def test_sin_catalogo_la_regla_de_sector_no_corre():
+    """Es opt-in: quien no inyecte el catálogo no cambia de comportamiento."""
+    ind = _ind(entidad="Cualquiera", sector="Salud")
+    assert "ADVERTENCIA_SECTOR_ENTIDAD" not in _tipos(validar_archivo(_res(ind)))
