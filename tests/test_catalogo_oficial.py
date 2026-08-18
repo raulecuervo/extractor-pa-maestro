@@ -70,3 +70,18 @@ def test_el_catalogo_entidad_sector_viaja_con_el_paquete():
     assert sector_oficial_de("Secretaría Distrital de Integración Social, SDIS")
     assert (sector_oficial_de("SECRETARIA DISTRITAL DE INTEGRACION SOCIAL, SDIS")
             == sector_oficial_de("Secretaría Distrital de Integración Social, SDIS"))
+
+
+def test_norm_entidad_ignora_puntuacion_y_tildes():
+    """El catálogo lo administra Alertas-Seguimientos desde su interfaz y se inyecta a
+    la librería: si las dos normalizaciones no coinciden, el mapa no cruza y la regla
+    ADVERTENCIA_SECTOR_ENTIDAD se apaga en silencio. Réplica de `normalizar_texto`."""
+    from extractor_pa.catalogo_oficial import norm_entidad
+
+    esperado = "instituto de desarrollo urbano idu"
+    for grafia in ("Instituto de Desarrollo Urbano, IDU",
+                   "INSTITUTO DE DESARROLLO URBANO - IDU",
+                   "Instituto  de   Desarrollo Urbano   IDU"):
+        assert norm_entidad(grafia) == esperado
+    assert norm_entidad(None) == "" and norm_entidad("") == ""
+    assert norm_entidad("Agencia ATENEA, S.A.S.") == "agencia atenea s a s"

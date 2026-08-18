@@ -48,7 +48,7 @@ from .hallazgos import (  # noqa: F401  (re-export de UMBRAL_AVANCE)
     UMBRAL_AVANCE,
     crear_hallazgo,
 )
-from ..utilidades import _norm
+from ..catalogo_oficial import norm_entidad
 from .metricas import safe_float
 from .modelo import IndicadorSeguimiento
 
@@ -218,10 +218,10 @@ def _validar_sector_entidad(ind, politica, archivo, entidad_sector):
     """
     if not entidad_sector:
         return []
-    ent = _norm(getattr(ind, "entidad", None))
-    sec = _norm(getattr(ind, "sector", None))
+    ent = norm_entidad(getattr(ind, "entidad", None))
+    sec = norm_entidad(getattr(ind, "sector", None))
     oficial = entidad_sector.get(ent)
-    if not ent or not sec or not oficial or _norm(oficial) == sec:
+    if not ent or not sec or not oficial or norm_entidad(oficial) == sec:
         return []
     return [_finding("ADVERTENCIA_SECTOR_ENTIDAD", ind, politica, archivo,
                      campo="Sector Responsable", val_base=oficial,
@@ -517,7 +517,7 @@ def _validaciones_un_archivo(ind, politica, archivo, anio_min, entidad_sector=No
 def validar_archivo(res_nuevo, *, anio_min: int = 2018, entidad_sector=None) -> list:
     """Validaciones de un solo archivo (sin base). → list[HallazgoSeguimiento].
 
-    `entidad_sector`: mapa {entidad normalizada con `_norm`: sector oficial} para la
+    `entidad_sector`: mapa {entidad normalizada con `norm_entidad`: sector oficial} para la
     regla ADVERTENCIA_SECTOR_ENTIDAD. Opcional: sin él esa regla no corre.
     """
     politica = res_nuevo.metadatos.nombre_politica or ""

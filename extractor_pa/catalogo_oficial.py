@@ -163,8 +163,27 @@ def aplicar_normalizacion(resultado, catalogo: Optional[CatalogoOficial] = None)
 # Acción, Alertas-Seguimientos y SISPP validen contra la misma fuente.
 # Alimenta la regla ADVERTENCIA_SECTOR_ENTIDAD de `seguimiento.validacion_seg`.
 
+def norm_entidad(valor) -> str:
+    """Clave de comparación de nombres de entidad/sector.
+
+    Más agresiva que `_norm` (que solo baja a minúsculas, quita tildes y colapsa
+    espacios): aquí además se elimina la PUNTUACIÓN, porque los nombres oficiales
+    llegan escritos de todas las formas —«Instituto de Desarrollo Urbano - IDU»,
+    «Instituto de Desarrollo Urbano, IDU»— y deben resolver a la misma entidad.
+    Réplica de `normalizar_texto` de Alertas-Seguimientos, para que el catálogo que
+    esa aplicación administra desde su interfaz sea intercambiable con este.
+    """
+    import re
+    import unicodedata
+
+    if valor is None:
+        return ""
+    s = unicodedata.normalize("NFKD", str(valor)).encode("ascii", "ignore").decode()
+    return re.sub(r"\s+", " ", re.sub(r"[^a-zA-Z0-9]+", " ", s).lower()).strip()
+
+
 def _cargar_entidad_sector() -> dict:
-    """{entidad normalizada con `_norm`: sector oficial}. Vacío si falta el archivo."""
+    """{entidad normalizada con `norm_entidad`: sector oficial}. Vacío si falta el archivo."""
     import json
     from pathlib import Path
 
@@ -173,7 +192,7 @@ def _cargar_entidad_sector() -> dict:
         crudo = json.loads(ruta.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    return {_norm(entidad): sector for entidad, sector in crudo.items()}
+    return {norm_entidad(entidad): sector for entidad, sector in crudo.items()}
 
 
 ENTIDAD_SECTOR = _cargar_entidad_sector()
@@ -181,4 +200,4 @@ ENTIDAD_SECTOR = _cargar_entidad_sector()
 
 def sector_oficial_de(entidad) -> Optional[str]:
     """Sector al que pertenece una entidad, o None si no está en la curaduría."""
-    return ENTIDAD_SECTOR.get(_norm(entidad))
+    return ENTIDAD_SECTOR.get(norm_entidad(entidad))
