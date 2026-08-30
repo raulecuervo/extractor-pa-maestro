@@ -197,6 +197,13 @@ _TIPOS = [
                "El sector que trae el archivo no es el oficial de esa entidad."),
     TipoAlerta("ERROR_RETROACTIVO", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,
                "Valor histórico (periodo cerrado) modificado."),
+    TipoAlerta("ADVERTENCIA_CAMBIO_META", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Meta de una vigencia o meta final modificada entre cargas. "
+               "Suele ser un ajuste legítimo al plan de acción, pero cambia el "
+               "denominador de todos los porcentajes de avance: queda "
+               "registrado para que un analista lo verifique."),
+    TipoAlerta("INFO_CAMBIO_ESTADO", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
+               "El indicador cambió de estado (p. ej. Vigente → No Vigente)."),
     TipoAlerta("ERROR_NO_NUMERICO", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,
                "Reporte cuantitativo con valor no numérico."),
     TipoAlerta("ADVERTENCIA_ESCALA", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,

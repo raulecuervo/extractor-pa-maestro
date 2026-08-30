@@ -26,7 +26,8 @@ enriquece el retorno:
 
 Dos grupos:
 - **Base vs nuevo** (2 cargas): ERROR_ESTABILIDAD, ERROR_RETROACTIVO,
-  INFO_IND_NUEVO, INFO_IND_FALTANTE.
+  ADVERTENCIA_CAMBIO_META, INFO_CAMBIO_ESTADO, INFO_IND_NUEVO,
+  INFO_IND_FALTANTE.
 - **Un solo archivo**: ERROR_NO_NUMERICO, ADVERTENCIA_ESCALA,
   ADVERTENCIA_AVANCE, ADVERTENCIA_LIMITE_VIG, ADVERTENCIA_ACUM_META_VIG,
   ADVERTENCIA_ACUM_META_FIN, ADVERTENCIA_META_SIN_REP, ADVERTENCIA_REP_SIN_META,
@@ -49,7 +50,7 @@ from .hallazgos import (  # noqa: F401  (re-export de UMBRAL_AVANCE)
     crear_hallazgo,
 )
 from ..catalogo_oficial import norm_entidad
-from .metricas import safe_float
+from .metricas import calc_mes, calc_meta_periodo, lb_de_indicador, safe_float
 from .modelo import IndicadorSeguimiento
 
 UMBRAL_PCT_MIN = 0.50          # piso del % hasta la vigencia
@@ -166,6 +167,79 @@ def _validar_estabilidad(base, nuevo, politica, archivo):
             out.append(_finding("ERROR_ESTABILIDAD", base, politica, archivo,
                                 campo=etiqueta, val_base=v_b, val_nuevo=v_n))
     return out
+
+
+def _metas_comparables(ind) -> dict:
+    """Metas del indicador como ``{'2025': 10.0, ..., 'final': 30.0}``.
+
+    Se descartan las claves que no son un año ni ``final``, y los valores que
+    no son numéricos: un cambio de "" a "N/A" no es un cambio de meta.
+    """
+    out = {}
+    for clave, valor in (ind.metas or {}).items():
+        k = str(clave).strip().lower()
+        if not (k.isdigit() or k == "final"):
+            continue
+        v = safe_float(valor)
+        if v is not None:
+            out[k] = v
+    v_final = safe_float(getattr(ind, "meta_final", None))
+    if v_final is not None:
+        out.setdefault("final", v_final)
+    return out
+
+
+def _validar_cambio_metas(base, nuevo, politica, archivo):
+    """Metas que cambiaron entre la carga base y la nueva.
+
+    Suele ser un ajuste legítimo al plan de acción —una reformulación que
+    redefine las metas de una o varias vigencias— pero cambia el denominador de
+    todos los porcentajes de avance del indicador. No es un error: queda como
+    advertencia para que un analista lo verifique contra el acto administrativo
+    que respalda el ajuste.
+
+    Solo se reportan metas que existían antes y cambian de valor. Una meta que
+    aparece por primera vez (una vigencia nueva del plan) no es un cambio.
+    """
+    out = []
+    metas_base = _metas_comparables(base)
+    metas_nuevo = _metas_comparables(nuevo)
+    for clave in sorted(metas_base.keys() & metas_nuevo.keys(),
+                        key=lambda k: (k == "final", k)):
+        v_b, v_n = metas_base[clave], metas_nuevo[clave]
+        if v_b == v_n:
+            continue
+        etiqueta = "Meta final" if clave == "final" else f"Meta {clave}"
+        out.append(_finding(
+            "ADVERTENCIA_CAMBIO_META", base, politica, archivo,
+            campo=etiqueta,
+            val_base=f"{v_b:g}", val_nuevo=f"{v_n:g}",
+            periodo=None if clave == "final" else clave,
+            detalle=(f"La {etiqueta.lower()} pasó de {v_b:g} a {v_n:g}. "
+                     "Si corresponde a un ajuste del plan de acción, verificar "
+                     "que el acto administrativo lo respalde; los porcentajes "
+                     "de avance de este indicador se recalculan contra la meta "
+                     "nueva.")))
+    return out
+
+
+def _validar_cambio_estado(base, nuevo, politica, archivo):
+    """Cambio de estado del indicador (p. ej. Vigente → No Vigente).
+
+    Es informativo: un indicador que sale de vigencia deja de ponderar y de
+    contar para los cálculos, así que conviene que quede el registro de cuándo
+    ocurrió y contra qué archivo.
+    """
+    v_b = normalise(getattr(base, "estado", None))
+    v_n = normalise(getattr(nuevo, "estado", None))
+    if not v_b or not v_n or v_b.upper() == v_n.upper():
+        return []
+    return [_finding("INFO_CAMBIO_ESTADO", base, politica, archivo,
+                     campo="Estado", val_base=v_b, val_nuevo=v_n,
+                     detalle=(f"El indicador pasó de '{v_b}' a '{v_n}'. "
+                              "Un indicador que deja de estar vigente pierde su "
+                              "ponderación y no cuenta para los cálculos de "
+                              "seguimiento."))]
 
 
 # ── Reglas de vigencia (2026-08-15, portadas desde alertas-seguimientos) ──
@@ -351,9 +425,9 @@ def _validar_avance_meta(ind, politica, archivo, umbral=UMBRAL_AVANCE):
                 out.append(_finding("ADVERTENCIA_LIMITE_VIG", ind, politica, archivo,
                                     campo=f"Suma avances vigencia {year}",
                                     val_base=f"Meta={meta_f}",
-                                    val_nuevo=f"Suma={total:.4g}",
+                                    val_nuevo=f"Suma={total:g}",
                                     periodo=str(year),
-                                    detalle=(f"Tipo 'Suma': suma de reportes ({total:.4g}) "
+                                    detalle=(f"Tipo 'Suma': suma de reportes ({total:g}) "
                                              f"supera {umbral:.0%} de la meta ({meta_f})")))
 
     pct = safe_float(ind.pct_vigencia.get(str(year)))
@@ -395,11 +469,11 @@ def _validar_acumulado(ind, politica, archivo, anio_min):
     if meta_sum > 0 and acum_rep > meta_sum:
         out.append(_finding("ADVERTENCIA_ACUM_META_VIG", ind, politica, archivo,
                             campo=f"Acumulado {year}",
-                            val_base=f"Meta acumulada hasta {year}={meta_sum:.4g}",
+                            val_base=f"Meta acumulada hasta {year}={meta_sum:g}",
                             val_nuevo=f"Acumulado={acum_rep}",
                             periodo=str(year),
                             detalle=(f"El acumulado ({acum_rep}) supera la suma de metas "
-                                     f"hasta {year} ({meta_sum:.4g})")))
+                                     f"hasta {year} ({meta_sum:g})")))
     return out
 
 
@@ -470,28 +544,83 @@ def _validar_cualitativo(ind, politica, archivo):
 
 
 def _validar_discrepancia_pct(ind, politica, archivo):
+    """Contrasta el % de avance de la vigencia del archivo contra el calculado.
+
+    El cálculo replica el de la aplicación y depende del tipo de anualización.
+    El denominador es la META DEL PERÍODO (MP), no la meta anual completa: MP
+    ya prorratea en SUMA, deja el nivel intacto en CONSTANTE e interpola la
+    rampa en CRECIENTE/DECRECIENTE, así que cada tipo se compara contra lo que
+    le corresponde al corte.
+
+    Antes se dividía el acumulado multianual entre la meta de un solo año, sin
+    mirar el tipo: magnitudes de distinto alcance.
+    """
     out = []
-    year, _ = parse_period(ind.corte, ind.anio_reporte)
-    if year is None:
+    year, q = parse_period(ind.corte, ind.anio_reporte)
+    if year is None or q is None:
         return out
 
-    acum_rep = safe_float(ind.acumulados.get(str(year)))
     meta_anual = safe_float(ind.metas.get(str(year)))
     pct_rep = safe_float(ind.pct_vigencia.get(str(year)))
-
-    if acum_rep is None or meta_anual is None or meta_anual == 0 or pct_rep is None:
+    if meta_anual is None or meta_anual == 0 or pct_rep is None:
         return out
 
-    pct_calc = acum_rep / meta_anual
+    t = (ind.tipo_anualizacion or "").lower()
+    lb = lb_de_indicador(ind.linea_base, ind.tipo_anualizacion,
+                         ind.metas, ind.meta_final)
+
+    # Meta del año anterior, con el mismo respaldo que usa metricas_corte.
+    meta_prev = safe_float(ind.metas.get(str(year - 1)))
+    if t != "suma" and meta_prev in (None, 0):
+        anteriores = [(int(k), safe_float(v)) for k, v in ind.metas.items()
+                      if str(k).isdigit() and int(k) < year
+                      and safe_float(v) not in (None, 0)]
+        meta_prev = max(anteriores)[1] if anteriores else (
+            meta_anual if t == "constante" else lb)
+
+    mes = calc_mes(q, ind.periodicidad)
+    mp = calc_meta_periodo(ind.tipo_anualizacion, meta_anual, meta_prev, mes)
+    if mp in (None, 0):
+        return out
+
+    if t == "suma":
+        vals = _avances_trimestrales_vigencia(ind, year, hasta_q=q)
+        if not vals:
+            return out
+        base_num = sum(vals)
+        pct_calc = base_num / mp
+        etiqueta = "suma de reportes"
+    else:
+        base_num = None
+        for qq in range(q, 0, -1):
+            v = safe_float(ind.avances.get(f"{year}_Q{qq}"))
+            if v is not None:
+                base_num = v
+                break
+        if base_num is None:
+            # Sin reporte en la vigencia no hay nada que contrastar: no se
+            # arrastra el valor de un año anterior para inventar una brecha.
+            return out
+        if t in ("creciente", "decreciente"):
+            den = mp - lb
+            if den == 0:
+                return out
+            pct_calc = (base_num - lb) / den
+        else:
+            pct_calc = base_num / mp
+        etiqueta = "avance"
+
     if round(pct_rep, 3) != round(pct_calc, 3):
         out.append(_finding("ADVERTENCIA_DISCREPANCIA_PCT", ind, politica, archivo,
                             campo=f"% Avance Vigencia {year}",
-                            val_base=f"Calculado={round(pct_calc, 3):.3f} (acum={acum_rep}/meta={meta_anual})",
+                            val_base=f"Calculado={round(pct_calc, 3):.3f} "
+                                     f"({etiqueta}={base_num:g}/meta del periodo={mp:g})",
                             val_nuevo=f"Reportado={round(pct_rep, 3):.3f}",
                             periodo=str(year),
                             detalle=(f"El % avance reportado en el archivo ({round(pct_rep, 3):.3f}) "
-                                     f"difiere del calculado acumulado/meta ({round(pct_calc, 3):.3f}) "
-                                     f"para la vigencia {year}")))
+                                     f"difiere del calculado para el tipo "
+                                     f"'{ind.tipo_anualizacion}' ({round(pct_calc, 3):.3f}) "
+                                     f"en la vigencia {year}")))
     return out
 
 
@@ -559,6 +688,8 @@ def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018,
                 h for h in _validar_estabilidad(base, nuevo, politica, archivo)
                 if not _cambio_permitido_por_no_vigente(h, nuevo)
             )
+            alertas.extend(_validar_cambio_metas(base, nuevo, politica, archivo))
+            alertas.extend(_validar_cambio_estado(base, nuevo, politica, archivo))
             alertas.extend(_validar_retroactividad(base, nuevo, politica, archivo, anio_min))
         alertas.extend(_validaciones_un_archivo(nuevo, politica, archivo, anio_min,
                                                 entidad_sector))

@@ -37,6 +37,8 @@ TIPOS_HALLAZGO = {
     "ADVERTENCIA_REP_SIN_META":    "Advertencia – Existe reporte pero la meta es 0 o no existe",
     "ADVERTENCIA_PCT_HASTA_VIG":   "Advertencia – % Avance hasta la vigencia fuera de rango (< 50% o > 125%)",
     "ADVERTENCIA_DISCREPANCIA_PCT": "Advertencia – % Avance vigencia reportado difiere del calculado (acumulado / meta anual)",
+    "ADVERTENCIA_CAMBIO_META":      "Advertencia – Meta modificada entre cargas (ajuste al plan de acción)",
+    "INFO_CAMBIO_ESTADO":           "Info – El indicador cambió de estado entre cargas",
     "INFO_IND_NUEVO":              "Info – Indicador nuevo (no existía en el archivo base cargado, se creará automáticamente)",
     "INFO_IND_FALTANTE":           "Info – Indicador faltante (existía en base pero no aparece en este archivo)",
 }
@@ -57,6 +59,8 @@ SEVERIDAD = {
     "ADVERTENCIA_REP_SIN_META":    "Advertencia",
     "ADVERTENCIA_PCT_HASTA_VIG":   "Advertencia",
     "ADVERTENCIA_DISCREPANCIA_PCT": "Advertencia",
+    "ADVERTENCIA_CAMBIO_META":     "Advertencia",
+    "INFO_CAMBIO_ESTADO":          "Info",
     "INFO_IND_NUEVO":              "Info",
     "INFO_IND_FALTANTE":           "Info",
 }

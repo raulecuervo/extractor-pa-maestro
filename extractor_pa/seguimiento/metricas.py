@@ -68,14 +68,22 @@ def _tipo(tipo: Any) -> str:
 
 # ─────────────────────────── fórmulas §10.1–§10.4 ───────────────────────────
 
-def calc_mes(trimestre: int, periodicidad: Any) -> int:
-    """Trimestre → mes de corte según periodicidad (§10.1; = JS getMes)."""
-    p = (str(periodicidad) if periodicidad is not None else "").lower()
-    if "anual" in p:
+def calc_mes(trimestre: int, periodicidad: Any = None) -> int:
+    """Trimestre → mes de corte: Q1→3, Q2/S1→6, Q3→9, Q4/S2→12.
+
+    El mes lo define el CORTE del reporte, no la periodicidad de medición. Un
+    archivo S1 se guarda en los trimestres [1, 2]; antes, para un indicador
+    semestral o anual, esto devolvía 12 en el trimestre 2 y evaluaba un reporte
+    de junio como si el corte fuera diciembre.
+
+    ``periodicidad`` se conserva en la firma por compatibilidad con las
+    llamadas existentes, aunque ya no se use.
+    """
+    try:
+        t = int(trimestre)
+    except (TypeError, ValueError):
         return 12
-    if "semest" in p:
-        return min(trimestre * 6, 12)
-    return min(trimestre * 3, 12)   # trimestral (default)
+    return min(max(t, 1) * 3, 12)
 
 
 def calc_meta_periodo(tipo, meta_anual, meta_prev, mes) -> Optional[float]:
@@ -299,6 +307,20 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
          if s["anio"] == anio - 1 and s.get("meta_anual") not in (None, 0)), None)
     if meta_anual is None and t != "SUMA":
         meta_anual = meta_prev
+
+    # Sin meta en el año contiguo, MP se interpolaría desde 0 y marcaría como
+    # sobre-ejecución a un indicador que solo sostiene su nivel. Se toma la
+    # última meta conocida; si el indicador no tiene historia (primer reporte
+    # de su vida), el piso depende del tipo:
+    #   CONSTANTE             -> la meta ES el nivel: MP = MV, sin prorrateo.
+    #   CRECIENTE/DECRECIENTE -> se parte de la línea base.
+    # SUMA no usa meta_prev (su MP es MV × mes/12).
+    if t != "SUMA" and meta_prev in (None, 0):
+        meta_prev = next(
+            (s["meta_anual"] for s in reversed(segs_todos)
+             if s["anio"] < anio and s.get("meta_anual") not in (None, 0)), None)
+        if meta_prev is None:
+            meta_prev = meta_anual if t == "CONSTANTE" else lb
 
     if t == "SUMA":
         sum_metas_prev = _suma_metas_prev_suma(

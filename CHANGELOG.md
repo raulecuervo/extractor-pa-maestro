@@ -3,6 +3,91 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.12.0] — Correcciones de fórmulas A, B y C
+
+> **Cambia resultados de cálculo.** No es un parche menor: 45 de 3.323
+> indicadores cambian de color de semáforo. Para volver atrás, ver
+> `docs/REVERSA_v0.12.0.md`.
+
+Las tres correcciones van **juntas y en este orden**. Aplicar **A** sin **C**
+marcaría 135 indicadores como sobre-ejecutados de forma espuria, porque su meta
+se prorratearía desde cero. Y **B** depende de **A**: sin el mes corregido, la
+meta del período es igual a la meta anual y el prorrateo nunca ocurre.
+
+### Corregido
+
+- **C · `metricas.py::metricas_corte`** — la meta del período ya no se
+  interpola desde cero. Cuando el año contiguo no tiene meta cargada,
+  `meta_prev` quedaba en `None` → `0.0` y un indicador que solo sostiene su
+  nivel aparecía sobre-ejecutado. Ahora se busca la última meta conocida; si el
+  indicador no tiene historia (primer reporte de su vida), el piso depende del
+  tipo: `CONSTANTE` toma su propia meta (la meta *es* el nivel, no hay
+  prorrateo) y `CRECIENTE`/`DECRECIENTE` parten de la línea base. `SUMA` no usa
+  `meta_prev`.
+
+  La línea base no sirve como piso en `CONSTANTE`: en `Trabajo Decente 4.1.4`
+  la línea base son 12 talleres históricos y la meta son 2 talleres al año — no
+  son magnitudes comparables, y usarla daría `MP = 7` a junio cuando la meta de
+  todo el año es 2.
+
+- **A · `metricas.py::calc_mes`** — el mes de corte lo define el reporte, no la
+  periodicidad de medición: `Q1→3`, `Q2/S1→6`, `Q3→9`, `Q4/S2→12`. Un archivo
+  S1 se guarda en los trimestres `[1, 2]`; para un indicador semestral o anual
+  la función devolvía 12 en el trimestre 2 y evaluaba un reporte de junio como
+  si el corte fuera diciembre. El parámetro `periodicidad` se conserva en la
+  firma por compatibilidad, aunque ya no se use.
+
+  | Periodicidad | Antes (T1–T4) | Después |
+  |---|---|---|
+  | Trimestral | 3, 6, 9, 12 | 3, 6, 9, 12 |
+  | Semestral | 6, **12**, **12**, 12 | 3, **6**, **9**, 12 |
+  | Anual | **12**, **12**, **12**, 12 | **3**, **6**, **9**, 12 |
+
+- **B · `validacion_seg.py::_validar_discrepancia_pct`** — el validador ahora
+  usa las mismas fórmulas que la aplicación. Su código no mencionaba
+  `tipo_anualizacion` en ninguna línea: aplicaba `acumulado_multianual /
+  meta_anual` a todos los tipos, dividiendo el acumulado de varias vigencias
+  entre la meta de una sola. El denominador pasa a ser la **meta del período**
+  (MP), que ya prorratea en `SUMA`, deja el nivel intacto en `CONSTANTE` e
+  interpola la rampa en `CRECIENTE`/`DECRECIENTE`.
+
+  En Trabajo Decente 2026 S1 las alertas de discrepancia bajan de **20 a 3**, y
+  las tres que sobreviven son diferencias reales que vale la pena revisar con
+  la entidad.
+
+- **Formato de cifras** — `:.4g` → `:g` en `validacion_seg.py`. El `.4g`
+  recortaba a cuatro cifras significativas y `50899` se emitía como `5.09e+04`.
+
+- **`__version__`** quedaba en `0.9.13` mientras `pyproject.toml` ya iba en
+  `0.11.1`. Ahora ambos se declaran en `0.12.0`.
+
+### Impacto medido
+
+Sobre la base de Alertas-Seguimientos, corte 2026 S1, 3.323 indicadores
+vigentes con dato. 45 cambian de color (1,4 %), y el sentido dominante es la
+corrección de falsos positivos:
+
+| Movimiento | Indicadores |
+|---|---|
+| naranja → verde | 38 |
+| amarillo → verde | 4 |
+| rojo → naranja | 1 |
+| verde → naranja | 1 |
+| rojo → amarillo | 1 |
+
+### Tests
+
+`test_calc_mes_por_periodicidad` se reemplaza por `test_calc_mes_lo_define_el_corte`
+y `test_periodicidad_no_altera_el_mes`. `test_metricas_corte_creciente_con_lb` y
+`test_discrepancia_pct` codificaban el comportamiento anterior y se actualizan
+con la explicación del cambio. Nuevo `test_discrepancia_pct_no_usa_notacion_cientifica`.
+
+### Pendiente de contraste
+
+El denominador `MP` reproduce lo que reportan las entidades en 16 de 19 casos
+`SUMA` revisados. Conviene contrastarlo con la Guía de seguimiento de políticas
+públicas de la SDP, que fija la metodología oficial.
+
 ## [0.10.1] — Corrección de paridad detectada por el gate de MS-32b
 ### Corregido
 - `crear_hallazgo`: los campos identitarios (codigo/politica/sector/entidad)

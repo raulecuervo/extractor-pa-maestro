@@ -95,11 +95,26 @@ def test_meta_periodo_interpolada_no_suma():
     assert calc_meta_periodo("SUMA", 100, 40, 6) == pytest.approx(50)
 
 
-def test_calc_mes_por_periodicidad():
-    assert calc_mes(2, "Anual") == 12
-    assert calc_mes(2, "Semestral") == 12
-    assert calc_mes(1, "Semestral") == 6
-    assert calc_mes(3, "Trimestral") == 9
+def test_calc_mes_lo_define_el_corte():
+    """El mes sale del trimestre del reporte, no de la periodicidad.
+
+    Un archivo S1 se guarda en los trimestres [1, 2]; antes un indicador
+    semestral o anual devolvía 12 en el trimestre 2 y se evaluaba como si el
+    corte fuera diciembre.
+    """
+    assert calc_mes(1) == 3
+    assert calc_mes(2) == 6
+    assert calc_mes(3) == 9
+    assert calc_mes(4) == 12
+    assert calc_mes(5) == 12          # se topa en diciembre
+    assert calc_mes(0) == 3           # trimestre inválido bajo → Q1
+    assert calc_mes(None) == 12       # sin trimestre, corte de cierre
+
+
+def test_periodicidad_no_altera_el_mes():
+    for periodicidad in ("Anual", "Semestral", "Trimestral", "Mensual", None):
+        assert calc_mes(2, periodicidad) == 6
+        assert calc_mes(4, periodicidad) == 12
 
 
 def test_phv_con_linea_base():
@@ -212,16 +227,23 @@ def test_metricas_corte_suma_sin_acumulado_reconstruye():
 
 
 def test_metricas_corte_creciente_con_lb():
+    """Sin meta previa, un CRECIENTE interpola desde su línea base, no desde 0.
+
+    Antes ``meta_prev`` quedaba en None → 0 y MP salía 100×6/12 = 50, que es la
+    propia línea base: la trayectoria pedía avance nulo y el indicador aparecía
+    sobre-ejecutado. Ahora el piso es LB = 50, así que a mitad de año se espera
+    la mitad del camino entre 50 y 100.
+    """
     segs = [
         dict(anio=2026, trimestre=2, meta_anual=100, meta_final=200,
              acumulado=None, valor_avance=87.5),
     ]
     m = metricas_corte("Creciente", "Trimestral", 50.0, segs, segs, 2026, 2)
-    # MP interpola sin meta previa: 100×6/12=50 → MA=MP=50 → PHV=(87.5−50)/(50−50)=None
-    assert m["ma"] == pytest.approx(50)
-    assert m["phv"] is None
+    # MP = (100−50)×6/12 + 50 = 75 → MA = 75
+    assert m["ma"] == pytest.approx(75)
+    assert m["phv"] == pytest.approx((87.5 - 50) / (75 - 50))
     assert m["paf"] == pytest.approx((87.5 - 50) / (200 - 50))
-    assert m["tid"] == pytest.approx((50 - 50) / (200 - 50))
+    assert m["tid"] == pytest.approx((75 - 50) / (200 - 50))
 
 
 # ─────────────────────────── hallazgos: shape make_finding ───────────────────────────
@@ -375,13 +397,76 @@ def test_cualitativo_solo_vigentes_y_periodicidad():
 
 
 def test_discrepancia_pct():
+    """El denominador es la meta DEL PERÍODO, no la meta anual completa.
+
+    El indicador es Suma con corte Q2: a junio le corresponde la mitad de la
+    meta del año (100×6/12 = 50), y lleva 50 reportados → 100 %. Antes se
+    dividía el acumulado entre la meta anual entera (50/100 = 50 %), sin mirar
+    el tipo de anualización ni el corte.
+    """
     ind = _ind(metas={"2026": 100}, acumulados={"2026": 50},
                pct_vigencia={"2026": 0.60}, avances={"2026_Q1": 50})
     disc = [a for a in validar_archivo(_res(ind))
             if a.tipo == "ADVERTENCIA_DISCREPANCIA_PCT"]
     assert len(disc) == 1
-    assert disc[0].val_base.startswith("Calculado=0.500")
+    assert disc[0].val_base == "Calculado=1.000 (suma de reportes=50/meta del periodo=50)"
     assert disc[0].val_nuevo == "Reportado=0.600"
+
+
+def test_discrepancia_pct_no_usa_notacion_cientifica():
+    """Las cifras grandes deben leerse: 50899 y no 5.09e+04."""
+    ind = _ind(metas={"2026": 101798}, acumulados={"2026": 50899},
+               pct_vigencia={"2026": 0.10}, avances={"2026_Q1": 50899})
+    disc = [a for a in validar_archivo(_res(ind))
+            if a.tipo == "ADVERTENCIA_DISCREPANCIA_PCT"]
+    assert len(disc) == 1
+    assert "50899" in disc[0].val_base
+    assert "e+" not in disc[0].val_base
+
+
+def test_cambio_de_meta_genera_advertencia():
+    """Un ajuste al plan cambia el denominador de todos los porcentajes."""
+    base = _res(_ind(metas={"2025": 10, "2026": 10, "final": 30}), archivo="base.xlsb")
+    nuevo = _res(_ind(metas={"2025": 10, "2026": 15, "final": 45}))
+    camb = [a for a in validar_consistencia(base, nuevo)
+            if a.tipo == "ADVERTENCIA_CAMBIO_META"]
+    assert [c.campo for c in camb] == ["Meta 2026", "Meta final"]
+    assert camb[0].val_base == "10" and camb[0].val_nuevo == "15"
+    assert camb[0].periodo == "2026"
+    assert camb[1].periodo == ""      # la meta final no cuelga de una vigencia
+    assert camb[0].severidad == "Advertencia"
+
+
+def test_meta_nueva_o_igual_no_genera_advertencia():
+    """Una vigencia que aparece por primera vez no es un cambio de meta."""
+    base = _res(_ind(metas={"2025": 10, "final": 30}), archivo="base.xlsb")
+    nuevo = _res(_ind(metas={"2025": 10, "2027": 12, "final": 30}))
+    assert not [a for a in validar_consistencia(base, nuevo)
+                if a.tipo == "ADVERTENCIA_CAMBIO_META"]
+
+
+def test_meta_no_numerica_no_genera_advertencia():
+    """Pasar de vacío a texto no es un cambio de meta."""
+    base = _res(_ind(metas={"2026": "", "final": 30}), archivo="base.xlsb")
+    nuevo = _res(_ind(metas={"2026": "N/A", "final": 30}))
+    assert not [a for a in validar_consistencia(base, nuevo)
+                if a.tipo == "ADVERTENCIA_CAMBIO_META"]
+
+
+def test_cambio_de_estado_queda_registrado():
+    base = _res(_ind(estado="Vigente"), archivo="base.xlsb")
+    nuevo = _res(_ind(estado="No Vigente", ponderacion=0))
+    est = [a for a in validar_consistencia(base, nuevo)
+           if a.tipo == "INFO_CAMBIO_ESTADO"]
+    assert len(est) == 1
+    assert est[0].val_base == "Vigente" and est[0].val_nuevo == "No Vigente"
+    assert est[0].severidad == "Info"
+
+
+def test_estado_igual_no_genera_alerta():
+    base = _res(_ind(estado="Vigente"), archivo="base.xlsb")
+    assert not [a for a in validar_consistencia(base, _res(_ind(estado="vigente")))
+                if a.tipo == "INFO_CAMBIO_ESTADO"]
 
 
 def test_info_nuevo_faltante_textos_de_produccion():
