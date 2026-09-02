@@ -3,6 +3,31 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.12.1] — El «rango usado» de Excel no dice dónde acaban los datos
+
+### Corregido
+
+- **`lector_filas.py::leer_filas`** — la lectura iteraba hasta `ws.max_row`, que en
+  Excel incluye toda fila que alguna vez tuvo formato, no solo las que tienen datos.
+  El PA de Mujer (v6-26) declara **1.048.520 filas** en su hoja principal para 207
+  reales: extraerlo tardaba **667 s y consumía ~15 GB**. Ahora la lectura se detiene
+  tras `FILAS_VACIAS_FIN` (200) filas vacías consecutivas — el bloque de datos del PA
+  es contiguo, así que un hueco de ese tamaño significa el final. El mismo archivo
+  pasa a **51 s y 50 MiB**, con los mismos 222 indicadores.
+
+  En producción esto mataba el contenedor de la API por memoria (OOM) y la carga del
+  plan fallaba con «Error de conexión con el servidor».
+
+> **No cambia ningún resultado**: el corpus dorado pasa sin modificaciones. Es la
+> diferencia con 0.12.0, que sí altera cálculos.
+
+### Descartado durante el arreglo
+
+- Un tope de 130 columnas, añadido «por si acaso» junto al de filas: el formato
+  antiguo usa **183 columnas** de verdad (plan CTI v4-25) y el tope truncaba el bloque
+  financiero, 342 → 290 filas. Lo detectó el corpus dorado. El ancho lo manda el
+  archivo; solo las filas necesitaban acotarse, que es donde había evidencia.
+
 ## [0.12.0] — Correcciones de fórmulas A, B y C
 
 > **Cambia resultados de cálculo.** No es un parche menor: 45 de 3.323

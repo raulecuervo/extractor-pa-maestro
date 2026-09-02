@@ -21,14 +21,32 @@ from __future__ import annotations
 from .utilidades import extraer_codigo, limpiar
 
 
+# Filas vacías consecutivas tras las cuales se da por terminada la tabla. Excel arrastra
+# en el «rango usado» las filas que alguna vez tuvieron formato, así que `ws.max_row` no
+# dice dónde acaban los datos: el PA de Mujer declara 1.048.520 filas para 207 de datos.
+# Iterarlas todas costaba minutos y >1,5 GB, y mataba el contenedor de la API por memoria.
+# El bloque de datos del PA es contiguo, así que un hueco de este tamaño significa el final.
+FILAS_VACIAS_FIN = 200
+
+# NO se topa el número de columnas: el formato antiguo del PA usa 183 en su hoja principal
+# (plan CTI v4-25), así que un límite «defensivo» de 130 truncaba el bloque financiero
+# —52 filas perdidas, lo cazó el corpus dorado—. El ancho viene del archivo, no de nosotros.
+
+
 def leer_filas(ws, fila_datos: int) -> list[tuple[int, list]]:
     """Devuelve [(indice_absoluto, valores)] de las filas no vacías, padded."""
     max_col = ws.max_column or 130
     filas: list[tuple[int, list]] = []
+    vacias_seguidas = 0
     for i, row in enumerate(ws.iter_rows(min_row=fila_datos, max_col=max_col,
                                          values_only=True)):
         if any(c is not None for c in row):
             filas.append((fila_datos + i, list(row)))
+            vacias_seguidas = 0
+        else:
+            vacias_seguidas += 1
+            if vacias_seguidas >= FILAS_VACIAS_FIN:
+                break
     if not filas:
         return []
     ancho = max(len(f) for _, f in filas)
