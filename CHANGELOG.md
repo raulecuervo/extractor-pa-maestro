@@ -3,6 +3,20 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.11.2] — El «rango usado» de Excel no dice dónde acaban los datos
+
+Parche de mantenimiento sobre la línea 0.11.x, para SISPP, que aún no ha adoptado
+0.12.0 (aquella **cambia resultados de cálculo** y exige su propio gate de paridad).
+Este parche **no cambia ningún resultado**: el corpus dorado pasa sin modificaciones.
+
+### Corregido
+
+- **`lector_filas.py::leer_filas`** — iteraba hasta `ws.max_row`, que en Excel incluye
+  toda fila que alguna vez tuvo formato. El PA de Mujer (v6-26) declara **1.048.520
+  filas** para 207 reales: extraerlo tardaba **667 s y ~15 GB**. Ahora la lectura se
+  detiene tras 200 filas vacías consecutivas: **51 s y 50 MiB**, mismos 222 indicadores.
+  En producción esto mataba el contenedor de la API por memoria.
+
 ## [0.10.1] — Corrección de paridad detectada por el gate de MS-32b
 ### Corregido
 - `crear_hallazgo`: los campos identitarios (codigo/politica/sector/entidad)
