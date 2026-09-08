@@ -137,7 +137,12 @@ def crear_hallazgo(tipo, *, codigo=None, politica=None, sector=None, entidad=Non
     Los campos identitarios (codigo/politica/sector/entidad) se pasan CRUDOS —
     make_finding no los coerciona, así que un ``None`` se conserva como ``None``
     (paridad byte a byte verificada por el gate de MS-32b); ``nombre`` se trunca
-    a 120 y los valores a 200; los opcionales vacíos quedan como ``""``."""
+    a 120 y los valores a 200; los opcionales vacíos quedan como ``""``.
+
+    El ``str()`` sobre ``nombre``/``campo``/``periodo``/``detalle`` es una
+    defensa: para un texto es la identidad (la paridad se conserva) y evita el
+    ``TypeError`` si un ``.xlsb`` cuela un número donde va texto. La corrección
+    de origen está en ``utilidades.limpiar_texto``."""
     return HallazgoSeguimiento(
         tipo=tipo,
         severidad=SEVERIDAD[tipo],
@@ -145,11 +150,11 @@ def crear_hallazgo(tipo, *, codigo=None, politica=None, sector=None, entidad=Non
         politica=politica,
         sector=sector,
         entidad=entidad,
-        nombre=(nombre or "")[:120],
-        campo=campo or "",
+        nombre=str(nombre or "")[:120],
+        campo=str(campo or ""),
         val_base=str(val_base)[:200] if val_base is not None else "",
         val_nuevo=str(val_nuevo)[:200] if val_nuevo is not None else "",
-        periodo=periodo or "",
-        detalle=detalle or "",
+        periodo=str(periodo or ""),
+        detalle=str(detalle or ""),
         archivo=archivo or "",
     )

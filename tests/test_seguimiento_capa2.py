@@ -6,6 +6,7 @@ PRODUCCIÓN de `validacion_seg` v2 (las divergencias corregidas del port v1).
 """
 import pytest
 
+from extractor_pa.utilidades import limpiar, limpiar_texto
 from extractor_pa.seguimiento import (
     IndicadorSeguimiento,
     MetadatosSeguimiento,
@@ -570,3 +571,50 @@ def test_sin_catalogo_la_regla_de_sector_no_corre():
     """Es opt-in: quien no inyecte el catálogo no cambia de comportamiento."""
     ind = _ind(entidad="Cualquiera", sector="Salud")
     assert "ADVERTENCIA_SECTOR_ENTIDAD" not in _tipos(validar_archivo(_res(ind)))
+
+
+# ──────────────────── columnas de texto con valores numéricos ────────────────
+#
+# Regresión: la PP de Educación S1-2026 trae el nombre del indicador 3.1.1 como
+# el float 0.0057, y `crear_hallazgo` reventaba con
+# `TypeError: 'float' object is not subscriptable`. La corrección de origen es
+# `utilidades.limpiar_texto`, que el extractor usa en las columnas que el
+# modelo declara `Optional[str]`; `crear_hallazgo` queda además defendido.
+
+def test_limpiar_texto_coerciona_numeros_a_str():
+    assert limpiar_texto(0.0057) == "0.0057"
+    assert limpiar_texto(2026) == "2026"
+    assert limpiar_texto("  Indicador   demo ") == "Indicador demo"
+    assert limpiar_texto(None) is None
+    assert limpiar_texto("N/A") is None          # los nulos siguen siendo None
+    assert limpiar_texto("-") is None
+
+
+def test_limpiar_conserva_los_numeros_donde_si_importan():
+    """`limpiar` no cambia: Ponderación y Línea Base siguen llegando numéricas."""
+    assert limpiar(0.0057) == 0.0057
+    assert isinstance(limpiar(0.0057), float)
+
+
+def test_crear_hallazgo_no_revienta_con_nombre_numerico():
+    h = crear_hallazgo("ADVERTENCIA_ESCALA", codigo="3.1.1", nombre=0.0057)
+    assert h.nombre == "0.0057"
+
+
+def test_crear_hallazgo_mantiene_la_paridad_con_textos():
+    """Para un str el `str()` defensivo es la identidad."""
+    largo = "x" * 200
+    h = crear_hallazgo("ADVERTENCIA_ESCALA", codigo="1.1.1", nombre=largo,
+                       campo="Avance 2026 Q2", periodo="2026 Q2", detalle="d")
+    assert h.nombre == largo[:120]
+    assert (h.campo, h.periodo, h.detalle) == ("Avance 2026 Q2", "2026 Q2", "d")
+    vacio = crear_hallazgo("ADVERTENCIA_ESCALA", codigo="1.1.1")
+    assert (vacio.nombre, vacio.campo, vacio.periodo, vacio.detalle) == ("", "", "", "")
+
+
+def test_validar_archivo_con_campos_de_texto_numericos():
+    """Un indicador con texto numérico no debe tumbar la validación."""
+    ind = _ind(nombre=0.0057, sector=123, entidad=456,
+               avances={"2026_Q1": 0.5}, metas={"2026": 15.0})
+    alertas = validar_archivo(_res(ind))
+    assert all(isinstance(a.nombre, str) for a in alertas)

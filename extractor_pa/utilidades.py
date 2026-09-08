@@ -51,6 +51,28 @@ def limpiar(valor: Any) -> Any:
     return valor
 
 
+def limpiar_texto(valor: Any) -> Optional[str]:
+    """`limpiar` para columnas que SIEMPRE son texto. Coerciona a str.
+
+    ``limpiar`` preserva a propósito los tipos numéricos y de fecha, para que
+    el parser de escala o de fecha decida después. Eso está bien en columnas
+    como Ponderación o Línea Base, pero no en Nombre, Sector, Entidad, Estado,
+    Tipo de anualización, Periodicidad o Corte: el modelo las declara
+    ``Optional[str]`` y todos los consumidores hacen ``(x or "").lower()``, que
+    revienta con un float.
+
+    Pasa de verdad: en el seguimiento de la PP de Educación S1-2026 el nombre
+    del indicador 3.1.1 llega como ``0.0057`` y tumbaba ``crear_hallazgo``.
+    """
+    v = limpiar(valor)
+    if v is None:
+        return None
+    if isinstance(v, str):
+        return v
+    s = re.sub(r"\s+", " ", str(v)).strip()
+    return None if _norm(s) in NULOS else s
+
+
 def a_float(valor: Any) -> Optional[float]:
     """Convierte a float de forma tolerante.
 
