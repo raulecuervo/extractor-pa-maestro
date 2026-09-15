@@ -24,6 +24,14 @@ Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
   byte con `make_finding` se conserva; los campos identitarios
   (`codigo`/`politica`/`sector`/`entidad`) se siguen pasando crudos.
 
+- **`tablero.py::clave_politica`** — sacaba el nombre del archivo con
+  `os.path.basename`, que solo reconoce el separador del sistema. En Linux —el
+  runner del CI, y Render— una ruta con barras invertidas de Windows se tomaba
+  como un nombre de archivo entero y la clave de la política salía mal. Por eso
+  `test_emparejar_une_plan_y_seguimiento` pasaba en Windows y fallaba en el CI,
+  y por esa sola prueba `main` estaba en rojo desde v0.11.0.
+  Ahora usa `ntpath`, que reconoce los dos separadores en cualquier sistema.
+
 ### Pruebas
 
 - 5 casos en `test_seguimiento_capa2.py`: `limpiar_texto` coerciona y respeta los

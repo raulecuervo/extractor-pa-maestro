@@ -14,6 +14,7 @@ política): p. ej. `PA_BTI_V4-26_DP.xlsx` ↔ `BTI.xlsb`.
 from __future__ import annotations
 
 import glob
+import ntpath
 import os
 import re
 import unicodedata
@@ -39,11 +40,23 @@ _STOP = {"a", "la", "el", "de", "del", "los", "las", "y", "e", "en", "para",
          "con", "pp", "distrital", "politica", "publica"}
 
 
+def _nombre_archivo(ruta) -> str:
+    """Nombre de archivo de una ruta, con barras normales o invertidas.
+
+    ``os.path.basename`` solo reconoce el separador del sistema. En Linux
+    (el runner del CI, y Render) una ruta escrita con barras invertidas de
+    Windows se toma como un nombre de archivo entero, y la clave de la
+    politica sale mal. ``ntpath`` reconoce los dos separadores en cualquier
+    sistema.
+    """
+    return ntpath.basename(str(ruta))
+
+
 def clave_politica(nombre) -> str:
     """Clave normalizada (sigla) a partir del nombre de archivo, para emparejar:
     sin acentos, sin prefijos (PA_, Plan Acción PP_), sin sufijo de versión, sin
     dígitos ni palabras vacías. Tokeniza para no depender del orden de separadores."""
-    s = os.path.splitext(os.path.basename(str(nombre)))[0].lower()
+    s = os.path.splitext(_nombre_archivo(nombre))[0].lower()
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     s = re.sub(r"^(pa[_ ]|plan ?accion ?pp[_ ]|plan_accion_pp_)", "", s)
     s = re.sub(r"[_ ]v\d.*$", "", s)          # quita sufijo de versión/fecha
@@ -93,8 +106,8 @@ def _semaforo_seguimiento(res_seg, anio):
 def resumen_politica(clave, ruta_plan, ruta_seg, anio=ANIO_DEFECTO,
                      periodo=PERIODO_DEFECTO) -> dict:
     """KPIs de una política (uno o ambos archivos pueden faltar)."""
-    d = {"clave": clave, "politica": clave, "archivo_plan": os.path.basename(ruta_plan) if ruta_plan else None,
-         "archivo_seg": os.path.basename(ruta_seg) if ruta_seg else None,
+    d = {"clave": clave, "politica": clave, "archivo_plan": _nombre_archivo(ruta_plan) if ruta_plan else None,
+         "archivo_seg": _nombre_archivo(ruta_seg) if ruta_seg else None,
          "n_ir": 0, "n_ip": 0, "n_seg": 0, "n_asociados": 0, "n_error": 0,
          "n_advertencia": 0, "pct_promedio": None,
          "semaforo": {k: 0 for k in _ORDEN_SEM}}
@@ -133,9 +146,9 @@ def construir_tablero(planes_dir, seg_dir, anio=ANIO_DEFECTO,
                       periodo=PERIODO_DEFECTO, progreso=None) -> list:
     """Construye el tablero (lista de resúmenes por política) desde dos carpetas."""
     planes = [p for p in sorted(glob.glob(os.path.join(planes_dir, "*.xlsx")))
-              if not os.path.basename(p).startswith("~$")]
+              if not _nombre_archivo(p).startswith("~$")]
     segs = [s for s in sorted(glob.glob(os.path.join(seg_dir, "*.xlsb")))
-            if not os.path.basename(s).startswith("~$")]
+            if not _nombre_archivo(s).startswith("~$")]
     filas = []
     for clave, rp, rs in emparejar(planes, segs):
         if progreso:
