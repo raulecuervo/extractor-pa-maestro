@@ -32,6 +32,13 @@ def test_emparejar_une_plan_y_seguimiento():
     assert by["mujer"][0] is None and by["mujer"][1]  # seguimiento sin plan
 
 
+
+def test_clave_politica_igual_con_barras_de_windows_o_de_linux():
+    """El CI y Render corren en Linux, y las rutas suelen venir de Windows."""
+    assert clave_politica(r"d\PA_BTI_V4-26_DP.xlsx") == "bti"
+    assert clave_politica("d/PA_BTI_V4-26_DP.xlsx") == "bti"
+
+
 def test_render_html_basico():
     fila = {"clave": "bti", "politica": "PP BTI", "archivo_plan": "PA_BTI.xlsx",
             "archivo_seg": "BTI.xlsb", "n_ir": 7, "n_ip": 46, "n_seg": 38,

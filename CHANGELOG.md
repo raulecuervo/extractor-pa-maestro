@@ -3,6 +3,46 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.12.2] — Un número donde va el nombre del indicador tumbaba la validación
+
+### Corregido
+
+- **`utilidades.py::limpiar_texto`** (nueva) — `limpiar` preserva a propósito los
+  tipos numéricos y de fecha, para que el parser de escala o de fecha decida
+  después. Eso está bien en Ponderación o Línea Base, pero el extractor la usaba
+  también en columnas que el modelo declara `Optional[str]` — Nombre, Sector,
+  Entidad, Estado, Tipo de anualización, Periodicidad, Corte e Indicador
+  esperado — y todos los consumidores hacen `(x or "").lower()`.
+
+  En el seguimiento de la PP de Educación S1-2026 el nombre del indicador 3.1.1
+  llega como el float `0.0057`, y `validar_archivo` moría con
+  `TypeError: 'float' object is not subscriptable` en `crear_hallazgo`. En
+  Alertas-Seguimientos eso tumba el cargue completo del archivo.
+
+- **`hallazgos.py::crear_hallazgo`** — `str()` defensivo sobre `nombre`, `campo`,
+  `periodo` y `detalle`. Para un texto es la identidad, así que la paridad byte a
+  byte con `make_finding` se conserva; los campos identitarios
+  (`codigo`/`politica`/`sector`/`entidad`) se siguen pasando crudos.
+
+- **`tablero.py::clave_politica`** — sacaba el nombre del archivo con
+  `os.path.basename`, que solo reconoce el separador del sistema. En Linux —el
+  runner del CI, y Render— una ruta con barras invertidas de Windows se tomaba
+  como un nombre de archivo entero y la clave de la política salía mal. Por eso
+  `test_emparejar_une_plan_y_seguimiento` pasaba en Windows y fallaba en el CI,
+  y por esa sola prueba `main` estaba en rojo desde v0.11.0.
+  Ahora usa `ntpath`, que reconoce los dos separadores en cualquier sistema.
+
+### Pruebas
+
+- 5 casos en `test_seguimiento_capa2.py`: `limpiar_texto` coerciona y respeta los
+  nulos, `limpiar` sigue devolviendo números donde sí importan, `crear_hallazgo`
+  no revienta con nombre numérico y mantiene la identidad con textos, y
+  `validar_archivo` sobrevive a un indicador con varios campos de texto
+  numéricos.
+
+> **No cambia ningún resultado**: 276 pruebas verdes y el gate de paridad
+> `comparar_alertas.py` produce una salida byte-idéntica a la de 0.12.1.
+
 ## [0.12.1] — El «rango usado» de Excel no dice dónde acaban los datos
 
 ### Corregido

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..alertas import crear_alerta
-from ..utilidades import a_int, extraer_codigo, limpiar
+from ..utilidades import a_int, extraer_codigo, limpiar, limpiar_texto
 from . import loader, metadatos as meta_mod, resolutor as R
 from .modelo import IndicadorSeguimiento, MetadatosSeguimiento, ResultadoSeguimiento
 
@@ -64,7 +64,7 @@ def _leer_cuantitativo(mapa, meta, alertas):
     sin_codigo = 0
     for fn in sorted(f for f in mapa if f >= R.FILA_DATOS):
         fila = mapa[fn]
-        ind_esp = limpiar(fila.get(R.COL_CODIGO))
+        ind_esp = limpiar_texto(fila.get(R.COL_CODIGO))
         if not ind_esp:
             continue
         codigo = extraer_codigo(ind_esp)
@@ -73,20 +73,20 @@ def _leer_cuantitativo(mapa, meta, alertas):
         ind = IndicadorSeguimiento(
             codigo=codigo,
             indicador_esperado=ind_esp,
-            nombre=limpiar(fila.get(R.COL_NOMBRE)),
-            sector=limpiar(fila.get(R.COL_SECTOR)),
-            entidad=limpiar(fila.get(R.COL_ENTIDAD)),
+            nombre=limpiar_texto(fila.get(R.COL_NOMBRE)),
+            sector=limpiar_texto(fila.get(R.COL_SECTOR)),
+            entidad=limpiar_texto(fila.get(R.COL_ENTIDAD)),
             tipo_archivo=meta.tipo_archivo,
             ind_no=fila.get(0),
             meta_final=_series(fila, col_meta_final),
-            estado=limpiar(fila.get(R.COL_ESTADO)),
+            estado=limpiar_texto(fila.get(R.COL_ESTADO)),
             ponderacion=_series(fila, R.COL_PONDERACION),
             linea_base=_series(fila, R.COL_LINEA_BASE),
-            tipo_anualizacion=limpiar(fila.get(R.COL_TIPO_ANUAL)),
-            periodicidad=limpiar(fila.get(R.COL_PERIODICIDAD)),
+            tipo_anualizacion=limpiar_texto(fila.get(R.COL_TIPO_ANUAL)),
+            periodicidad=limpiar_texto(fila.get(R.COL_PERIODICIDAD)),
             fecha_inicio=_fecha(fila.get(R.COL_FECHA_INI)),
             fecha_fin=_fecha(fila.get(R.COL_FECHA_FIN)),
-            corte=limpiar(fila.get(R.COL_CORTE)),
+            corte=limpiar_texto(fila.get(R.COL_CORTE)),
             anio_reporte=_series(fila, R.COL_ANIO_REPORTE),
         )
         for anio in anios:
@@ -135,7 +135,7 @@ def _leer_cualitativo(mapa_cual, indice, meta):
         return
     for fn in sorted(f for f in mapa_cual if f >= R.FILA_DATOS):
         fila = mapa_cual[fn]
-        ind_esp = limpiar(fila.get(R.COL_CODIGO))
+        ind_esp = limpiar_texto(fila.get(R.COL_CODIGO))
         if not ind_esp:
             continue
         codigo = extraer_codigo(ind_esp)
