@@ -3,6 +3,65 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.13.0] — La trayectoria ideal respeta cuándo le toca reportar a cada indicador
+
+### Cambiado
+
+- **`metricas.py::calc_mes`** — la meta del año del corte se prorratea hasta
+  `trimestre_efectivo`: el más reciente entre el último trimestre **reportado** en
+  el año y el último que **exige** la periodicidad de medición. Es la regla del
+  formato oficial de seguimiento (columnas «Acumulada» de `Metas_Productos`), con
+  la exigencia por periodicidad añadida:
+
+  | Caso (corte S1) | v0.12 | v0.13 |
+  |---|---|---|
+  | Anual sin reporte a junio | meta × 6/12 | meta acumulada al año anterior |
+  | Anual que reportó en Q2 | meta × 6/12 | meta × 6/12 |
+  | Trimestral que reportó Q1 y no Q2 | meta × 6/12 | meta × 6/12 (le tocaba Q2) |
+  | Semestral sin reporte | meta × 6/12 | meta × 6/12 (le tocaba Q2) |
+
+  En la PP DDHH S1-2026 esta regla explicaba 1,26 puntos de la diferencia de
+  trayectoria contra el Excel oficial: el 1.2.1 (Suma anual, 2.000/año, meta final
+  32.000) pedía 15.000 a junio en vez de 14.000. Sin periodicidad, `calc_mes(t)`
+  devuelve el mes del corte, como en v0.12.
+
+- **`metricas.py::metricas_corte`** — usa la regla nueva con los trimestres que el
+  indicador reportó (las filas `sintetico` no cuentan como reporte). Devuelve
+  además `trimestre_efectivo` y, si se pasa `fecha_inicio`, `sin_iniciar`.
+
+- **`validacion_seg.py` · `ADVERTENCIA_META_SIN_REP`** — solo se señala cuando la
+  periodicidad exigía reportar, y dice en qué trimestres falta
+  (`val_nuevo="Sin reporte en Q2"`, `periodo="2026 Q2"`). Antes marcaba a todo
+  indicador anual en S1, y no marcaba a un trimestral que reportó Q1 pero no Q2.
+  Respeta las fechas de inicio y fin del indicador.
+
+- **`validacion_seg.py` · `ADVERTENCIA_CAMBIO_META`** — además de los cambios de
+  valor, registra la meta **retirada** (tenía valor y el archivo nuevo, que cubre
+  ese año, la deja vacía) y la meta **agregada** en una vigencia que el archivo
+  anterior ya cubría. Una meta corregida de año (PP DDHH 5.6.5: de 2019 a 2020)
+  produce las dos. La cobertura sale de `metadatos.anios_detectados`, con respaldo
+  en los años con meta.
+
+- **`validacion_seg.py` · `ADVERTENCIA_DISCREPANCIA_PCT`** — prorratea con la
+  misma regla.
+
+### Añadido
+
+- `trimestre_exigible`, `trimestre_efectivo`, `trimestres_reportados`,
+  `sin_iniciar_al_corte` (un indicador no entra en los cálculos hasta su primer
+  reporte exigible, salvo que ya haya reportado) y `periodo_de_fecha` (serial de
+  Excel, ISO o `date`; un año suelto como `"2021"` ya no se lee como serial de 1905).
+- `MESES_POR_PERIODICIDAD` con las periodicidades de la hoja «Listas» del formato.
+
+### Pruebas
+
+- 13 casos en `test_seguimiento_capa2.py` para la regla, `sin_iniciar_al_corte`,
+  las fechas y las alertas. `test_periodicidad_no_altera_el_mes` se reemplaza: fijaba
+  la regla de v0.12.
+
+> **Cambia resultados** para los indicadores de periodicidad semestral o mayor en
+> cortes intermedios. `comparar_alertas.py` no da byte-idéntico: es esperado.
+
 ## [0.12.2] — Un número donde va el nombre del indicador tumbaba la validación
 
 ### Corregido

@@ -26,7 +26,8 @@ rompería el gate de paridad con Alertas-Seguimientos.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+import unicodedata
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 
@@ -62,28 +63,161 @@ def anio_de_serial_excel(serial: Any) -> Optional[int]:
         return None
 
 
+def periodo_de_fecha(raw: Any) -> Optional[tuple]:
+    """``(año, trimestre)`` de una fecha: serial de Excel, ``'YYYY-MM-DD'`` o
+    ``datetime``/``date``. ``None`` si no se reconoce.
+
+    El extractor maestro entrega las fechas como texto ISO; los archivos
+    legados, como serial. Leer solo el serial dejaba sin fecha de inicio a
+    todo lo cargado con el maestro."""
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, (datetime, date)):
+        return raw.year, (raw.month - 1) // 3 + 1
+    try:
+        s = float(raw)
+    except (TypeError, ValueError):
+        s = None
+    if s is not None:
+        if s <= 0:
+            return None
+        if s.is_integer() and 1900 <= s <= 2100:
+            return int(s), 1      # un año suelto, no un serial de 1905
+        d = datetime(1899, 12, 30) + timedelta(days=s)
+        return d.year, (d.month - 1) // 3 + 1
+    txt = str(raw).strip()
+    try:
+        d = datetime.strptime(txt[:10], "%Y-%m-%d")
+        return d.year, (d.month - 1) // 3 + 1
+    except ValueError:
+        pass
+    if len(txt) >= 4 and txt[:4].isdigit():
+        return int(txt[:4]), 1
+    return None
+
+
 def _tipo(tipo: Any) -> str:
     return (str(tipo) if tipo is not None else "").upper().strip()
 
 
-# ─────────────────────────── fórmulas §10.1–§10.4 ───────────────────────────
+# ─────────────────────────── periodicidad y corte ───────────────────────────
 
-def calc_mes(trimestre: int, periodicidad: Any = None) -> int:
-    """Trimestre → mes de corte: Q1→3, Q2/S1→6, Q3→9, Q4/S2→12.
+# Meses que abarca cada periodicidad de medición (hoja "Listas" del formato
+# oficial de seguimiento).
+MESES_POR_PERIODICIDAD = {
+    "mensual": 1, "bimestral": 2, "trimestral": 3, "semestral": 6, "anual": 12,
+    "bienal": 24, "trienal": 36, "cuatrienal": 48, "quinquenal": 60,
+}
 
-    El mes lo define el CORTE del reporte, no la periodicidad de medición. Un
-    archivo S1 se guarda en los trimestres [1, 2]; antes, para un indicador
-    semestral o anual, esto devolvía 12 en el trimestre 2 y evaluaba un reporte
-    de junio como si el corte fuera diciembre.
 
-    ``periodicidad`` se conserva en la firma por compatibilidad con las
-    llamadas existentes, aunque ya no se use.
-    """
+def _meses_periodicidad(periodicidad: Any) -> Optional[int]:
+    p = unicodedata.normalize("NFKD", str(periodicidad or ""))
+    p = p.encode("ascii", "ignore").decode().strip().lower()
+    return MESES_POR_PERIODICIDAD.get(p)
+
+
+def _trimestre_valido(trimestre: Any) -> int:
     try:
         t = int(trimestre)
     except (TypeError, ValueError):
-        return 12
-    return min(max(t, 1) * 3, 12)
+        return 4          # sin trimestre: corte de cierre
+    return min(max(t, 1), 4)
+
+
+def trimestre_exigible(trimestre: Any, periodicidad: Any = None) -> int:
+    """Último trimestre del año, hasta el corte, en que la periodicidad obliga
+    a haber reportado. 0 = todavía no le toca reportar ese año.
+
+    Mensual, bimestral y trimestral reportan en cada corte; semestral en Q2 y
+    Q4; anual —y las plurianuales, cuyo reporte cae al cierre del año— solo en
+    Q4. Sin periodicidad reconocible se toma el corte."""
+    t = _trimestre_valido(trimestre)
+    meses = _meses_periodicidad(periodicidad)
+    if meses is None or meses <= 3:
+        return t
+    if meses < 12:
+        return (3 * t // meses) * meses // 3
+    return 4 if t == 4 else 0
+
+
+def trimestre_efectivo(trimestre: Any, periodicidad: Any = None,
+                       reportados=()) -> int:
+    """Trimestre hasta el que se prorratea la meta del año del corte.
+
+    Es el más reciente entre el último trimestre REPORTADO en el año (hasta el
+    corte) y el último en que la periodicidad EXIGÍA reportar. Así:
+
+    - un indicador anual sin reporte a junio se evalúa contra la meta
+      acumulada al año anterior (todavía no le toca reportar);
+    - si reportó antes de lo que exige su periodicidad, cuenta ese reporte;
+    - si le tocaba reportar y no lo hizo, igual se le exige el prorrateo.
+
+    Es la regla del formato oficial de seguimiento (columnas "Acumulada" de la
+    tabla Metas_Productos), con la exigencia por periodicidad añadida."""
+    t = _trimestre_valido(trimestre)
+    ultimo = 0
+    for q in reportados or ():
+        try:
+            q = int(q)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= q <= t and q > ultimo:
+            ultimo = q
+    return max(ultimo, trimestre_exigible(t, periodicidad))
+
+
+def trimestres_reportados(segs, anio: int, hasta_trimestre: int = 4) -> set:
+    """Trimestres de ``anio`` (hasta ``hasta_trimestre``) con un reporte real.
+
+    Las filas sintéticas no son reportes: son puntos de corte que inventa la
+    aplicación para el tablero."""
+    out = set()
+    for s in segs or ():
+        if s.get("sintetico") or s.get("valor_avance") is None:
+            continue
+        try:
+            y, q = int(s["anio"]), int(s["trimestre"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if y == int(anio) and 1 <= q <= hasta_trimestre:
+            out.add(q)
+    return out
+
+
+def sin_iniciar_al_corte(fecha_inicio: Any, periodicidad: Any, anio: int,
+                         trimestre: int, reportado: bool = False) -> bool:
+    """¿El indicador todavía no debe entrar en los cálculos del corte?
+
+    No entra mientras no haya llegado su primer reporte exigible: arranca
+    después del corte, o arrancó este año y su periodicidad aún no le pide
+    reportar (un anual que inicia en enero no reporta hasta Q4). Un indicador
+    que ya reportó siempre entra, aunque se haya adelantado."""
+    if reportado:
+        return False
+    ini = periodo_de_fecha(fecha_inicio)
+    if ini is None:
+        return False
+    anio_ini, q_ini = ini
+    t = _trimestre_valido(trimestre)
+    if (anio_ini, q_ini) > (int(anio), t):
+        return True
+    if anio_ini < int(anio):
+        return False
+    return trimestre_exigible(t, periodicidad) < q_ini
+
+
+# ─────────────────────────── fórmulas §10.1–§10.4 ───────────────────────────
+
+def calc_mes(trimestre: Any, periodicidad: Any = None, reportados=None) -> int:
+    """Mes hasta el que se prorratea la meta del año: 3 × :func:`trimestre_efectivo`.
+
+    Puede ser 0: un indicador al que todavía no le toca reportar ese año se
+    evalúa contra lo acumulado al año anterior. Sin periodicidad devuelve el
+    mes del corte (Q1→3 … Q4→12), el comportamiento de v0.12.
+
+    ``reportados``: trimestres del año con reporte real (ver
+    :func:`trimestres_reportados`)."""
+    return 3 * trimestre_efectivo(trimestre, periodicidad, reportados or ())
 
 
 def calc_meta_periodo(tipo, meta_anual, meta_prev, mes) -> Optional[float]:
@@ -271,19 +405,26 @@ def _suma_metas_prev_suma(segs_al_corte, segs_todos, anio: int,
 
 def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
                    anio: int, trimestre: int,
-                   metas_plan: Optional[dict] = None) -> dict:
+                   metas_plan: Optional[dict] = None,
+                   fecha_inicio: Any = None) -> dict:
     """Núcleo de métricas de un indicador al corte (año, trimestre). Port de
     ``db._calc_metricas_indicador`` de Alertas-Seguimientos.
 
     ``segs_al_corte`` / ``segs_todos``: listas de dicts con las claves
-    ``anio, trimestre, meta_anual, meta_final, acumulado, valor_avance``,
-    ordenadas por (anio, trimestre); la primera filtrada al período ≤ corte,
-    la segunda con toda la historia. ``metas_plan``: metas por año del plan
-    base (solo se usa en SUMA).
+    ``anio, trimestre, meta_anual, meta_final, acumulado, valor_avance``
+    (y opcionalmente ``sintetico``), ordenadas por (anio, trimestre); la
+    primera filtrada al período ≤ corte, la segunda con toda la historia.
+    ``metas_plan``: metas por año del plan base (solo se usa en SUMA).
+
+    La meta del año se prorratea hasta :func:`trimestre_efectivo`, que mira la
+    periodicidad y los trimestres efectivamente reportados.
 
     Retorna dict con ``av_acum, meta_anual, meta_prev, meta_final, mp, ma,
-    sum_metas_prev, phv, tray, paf, tid, brecha, periodo_str`` — porcentajes
-    en FRACCIÓN 0–1."""
+    sum_metas_prev, phv, tray, paf, tid, brecha, periodo_str,
+    trimestre_efectivo, sin_iniciar`` — porcentajes en FRACCIÓN 0–1.
+    ``sin_iniciar`` solo se evalúa si se pasa ``fecha_inicio``: el indicador
+    aún no debe entrar en los cálculos del corte (ver
+    :func:`sin_iniciar_al_corte`)."""
     t = _tipo(tipo)
 
     # meta_final: del seguimiento más reciente que la tenga (toda la historia)
@@ -353,7 +494,13 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
             (s["valor_avance"] for s in reversed(segs_al_corte)
              if s.get("valor_avance") is not None), lb)
 
-    mes = calc_mes(trimestre, periodicidad)
+    reportados = trimestres_reportados(segs_al_corte, anio, trimestre)
+    q_ef = trimestre_efectivo(trimestre, periodicidad, reportados)
+    mes = 3 * q_ef
+    sin_iniciar = fecha_inicio is not None and sin_iniciar_al_corte(
+        fecha_inicio, periodicidad, anio, trimestre,
+        reportado=any(not s.get("sintetico") and s.get("valor_avance") is not None
+                      for s in segs_al_corte))
     # SUMA sin meta anual en el año seleccionado: MP=0, MA=sum_metas_prev
     # (el indicador sigue participando con su acumulado y sus metas previas).
     meta_anual_mp = meta_anual if meta_anual is not None else (0.0 if t == "SUMA" else None)
@@ -369,4 +516,5 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         mp=mp, ma=ma, sum_metas_prev=sum_metas_prev,
         phv=phv, tray=tray, paf=paf, tid=tid, brecha=calc_brecha(paf, tid),
         periodo_str=f"{anio} Q{trimestre}",
+        trimestre_efectivo=q_ef, sin_iniciar=sin_iniciar,
     )

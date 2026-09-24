@@ -45,6 +45,11 @@ from .metricas import (
     lb_de_indicador,
     metricas_corte,
     anio_de_serial_excel,
+    periodo_de_fecha,
+    trimestre_exigible,
+    trimestre_efectivo,
+    trimestres_reportados,
+    sin_iniciar_al_corte,
 )
 from .exportadores_seg import (
     tablas_seguimiento,
@@ -93,6 +98,11 @@ __all__ = [
     "lb_de_indicador",
     "metricas_corte",
     "anio_de_serial_excel",
+    "periodo_de_fecha",
+    "trimestre_exigible",
+    "trimestre_efectivo",
+    "trimestres_reportados",
+    "sin_iniciar_al_corte",
     "tablas_seguimiento",
     "tablas_seguimiento_consolidadas",
     "tabla_consolidado",

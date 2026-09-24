@@ -27,6 +27,11 @@ from extractor_pa.seguimiento import (
     indicador_desde_dict,
     lb_de_indicador,
     metricas_corte,
+    periodo_de_fecha,
+    sin_iniciar_al_corte,
+    trimestre_efectivo,
+    trimestre_exigible,
+    trimestres_reportados,
     validar_archivo,
     validar_consistencia,
 )
@@ -112,10 +117,72 @@ def test_calc_mes_lo_define_el_corte():
     assert calc_mes(None) == 12       # sin trimestre, corte de cierre
 
 
-def test_periodicidad_no_altera_el_mes():
-    for periodicidad in ("Anual", "Semestral", "Trimestral", "Mensual", None):
-        assert calc_mes(2, periodicidad) == 6
-        assert calc_mes(4, periodicidad) == 12
+def test_trimestre_exigible_segun_periodicidad():
+    """Hasta qué trimestre del año la periodicidad obliga a haber reportado."""
+    for per in ("Mensual", "Bimestral", "Trimestral", None, "Desconocida"):
+        assert [trimestre_exigible(t, per) for t in (1, 2, 3, 4)] == [1, 2, 3, 4]
+    assert [trimestre_exigible(t, "Semestral") for t in (1, 2, 3, 4)] == [0, 2, 2, 4]
+    for per in ("Anual", "anual", "Bienal", "Trienal", "Cuatrienal", "Quinquenal"):
+        assert [trimestre_exigible(t, per) for t in (1, 2, 3, 4)] == [0, 0, 0, 4]
+
+
+def test_calc_mes_regla_del_formato_oficial():
+    """La meta del año se prorratea hasta el trimestre más reciente entre el
+    último reportado y el último que exige la periodicidad."""
+    # Anual a junio sin reporte: todavía no le toca → meta acumulada al año anterior
+    assert calc_mes(2, "Anual", set()) == 0
+    # Anual que se adelantó y reportó en Q2 → cuenta ese reporte
+    assert calc_mes(2, "Anual", {2}) == 6
+    # Trimestral que reportó Q1 y no Q2: le tocaba Q2 → se exige el prorrateo a Q2
+    assert calc_mes(2, "Trimestral", {1}) == 6
+    # Trimestral que solo reportó Q2, visto al corte Q1 → prorrateo a Q1
+    assert calc_mes(1, "Trimestral", {2}) == 3
+    # Semestral sin reporte en S1 → le tocaba Q2
+    assert calc_mes(2, "Semestral", set()) == 6
+    assert calc_mes(1, "Semestral", set()) == 0
+    # Al cierre del año todos deben haber reportado
+    assert calc_mes(4, "Anual", set()) == 12
+    # Sin periodicidad se conserva el mes del corte (v0.12)
+    assert calc_mes(2) == 6
+    assert trimestre_efectivo(2, "Anual", {"2", None, "x"}) == 2
+
+
+def test_periodo_de_fecha_serial_iso_y_datetime():
+    from datetime import date
+    assert periodo_de_fecha(46023) == (2026, 1)            # 2026-01-01
+    assert periodo_de_fecha("46023.0") == (2026, 1)
+    assert periodo_de_fecha("2026-04-15") == (2026, 2)
+    assert periodo_de_fecha(date(2025, 12, 31)) == (2025, 4)
+    assert periodo_de_fecha("2021") == (2021, 1)
+    assert periodo_de_fecha("") is None
+    assert periodo_de_fecha("sin fecha") is None
+
+
+def test_sin_iniciar_hasta_su_primer_reporte_exigible():
+    # Anual que inicia en enero de 2026: a junio aún no reporta → fuera del cálculo
+    assert sin_iniciar_al_corte("2026-01-01", "Anual", 2026, 2)
+    assert not sin_iniciar_al_corte("2026-01-01", "Anual", 2026, 4)
+    # Si ya reportó, entra aunque se haya adelantado
+    assert not sin_iniciar_al_corte("2026-01-01", "Anual", 2026, 2, reportado=True)
+    # Trimestral que inicia en enero: en Q1 ya le toca
+    assert not sin_iniciar_al_corte("2026-01-01", "Trimestral", 2026, 1)
+    # Semestral que inicia en abril: le toca en Q2
+    assert not sin_iniciar_al_corte("2026-04-01", "Semestral", 2026, 2)
+    assert sin_iniciar_al_corte("2026-07-01", "Semestral", 2026, 2)     # arranca después
+    # Arrancó en un año anterior: ya pasó su primer punto de medición
+    assert not sin_iniciar_al_corte(45658, "Anual", 2026, 2)            # 2025-01-01
+    assert not sin_iniciar_al_corte(None, "Anual", 2026, 2)             # sin fecha: entra
+
+
+def test_trimestres_reportados_ignora_sinteticas_y_vacios():
+    segs = [
+        dict(anio=2026, trimestre=1, valor_avance=0.0),                 # un 0 es reporte
+        dict(anio=2026, trimestre=2, valor_avance=None),
+        dict(anio=2025, trimestre=4, valor_avance=10),
+        dict(anio=2026, trimestre=3, valor_avance=5, sintetico=1),
+        dict(anio=2026, trimestre=4, valor_avance=5),
+    ]
+    assert trimestres_reportados(segs, 2026, 3) == {1}
 
 
 def test_phv_con_linea_base():
@@ -245,6 +312,54 @@ def test_metricas_corte_creciente_con_lb():
     assert m["phv"] == pytest.approx((87.5 - 50) / (75 - 50))
     assert m["paf"] == pytest.approx((87.5 - 50) / (200 - 50))
     assert m["tid"] == pytest.approx((75 - 50) / (200 - 50))
+
+
+def _segs_anual_suma():
+    """PP DDHH 1.2.1: Suma anual, 2.000 por año 2019-2026, meta final 32.000.
+    Acumulado 18.107 a 2025; en el archivo S1-2026 no reporta todavía."""
+    segs = [dict(anio=y, trimestre=4, meta_anual=2000, meta_final=32000,
+                 acumulado=None, valor_avance=None) for y in range(2019, 2026)]
+    segs[-1].update(acumulado=18107, valor_avance=2479)
+    segs += [dict(anio=2026, trimestre=q, meta_anual=2000, meta_final=32000,
+                  acumulado=18107, valor_avance=None) for q in (1, 2)]
+    return segs
+
+
+def test_metricas_corte_anual_sin_reporte_a_junio():
+    """Como el formato oficial: la trayectoria se queda en lo acumulado a 2025
+    (14.000/32.000 = 43,75 %) y no suma medio 2026 que aún no se debe."""
+    segs = _segs_anual_suma()
+    m = metricas_corte("Suma", "Anual", 0.0, segs, segs, 2026, 2)
+    assert m["trimestre_efectivo"] == 0
+    assert m["ma"] == pytest.approx(14000)
+    assert m["tid"] == pytest.approx(0.4375)
+    assert m["paf"] == pytest.approx(18107 / 32000)
+
+
+def test_metricas_corte_anual_que_reporta_en_junio():
+    segs = _segs_anual_suma()
+    segs[-1]["valor_avance"] = 900                       # reporta en Q2
+    m = metricas_corte("Suma", "Anual", 0.0, segs, segs, 2026, 2)
+    assert m["trimestre_efectivo"] == 2
+    assert m["ma"] == pytest.approx(15000)               # 14.000 + 2.000 × 6/12
+
+
+def test_metricas_corte_creciente_anual_sin_reporte_usa_meta_anterior():
+    segs = [dict(anio=2025, trimestre=4, meta_anual=0.4, meta_final=1.0,
+                 acumulado=None, valor_avance=0.45),
+            dict(anio=2026, trimestre=2, meta_anual=0.5, meta_final=1.0,
+                 acumulado=None, valor_avance=None)]
+    m = metricas_corte("Creciente", "Anual", 0.0, segs, segs, 2026, 2)
+    assert m["mp"] == pytest.approx(0.4)                 # nivel de 2025, sin prorrateo
+    assert m["tid"] == pytest.approx(0.4)
+
+
+def test_metricas_corte_sin_iniciar_solo_con_fecha_inicio():
+    segs = [dict(anio=2026, trimestre=2, meta_anual=2, meta_final=18,
+                 acumulado=None, valor_avance=None)]
+    assert metricas_corte("Suma", "Anual", 0.0, segs, segs, 2026, 2,
+                          fecha_inicio="2026-01-01")["sin_iniciar"]
+    assert not metricas_corte("Suma", "Anual", 0.0, segs, segs, 2026, 2)["sin_iniciar"]
 
 
 # ─────────────────────────── hallazgos: shape make_finding ───────────────────────────
@@ -444,6 +559,68 @@ def test_meta_nueva_o_igual_no_genera_advertencia():
     nuevo = _res(_ind(metas={"2025": 10, "2027": 12, "final": 30}))
     assert not [a for a in validar_consistencia(base, nuevo)
                 if a.tipo == "ADVERTENCIA_CAMBIO_META"]
+
+
+def test_meta_retirada_y_movida_de_anio():
+    """PP DDHH 5.6.5: el archivo 2025 dejó la meta 27 en 2019 y el de 2026 la
+    corrigió a 2020. PP DDHH 4.6.2: el plan 2026 retiró la meta 2020."""
+    base = _res(_ind(codigo="5.6.5", metas={"2019": 27, "2021": 26, "2025": 28}),
+                _ind(codigo="4.6.2", metas={"2020": 1, "2021": 1, "2025": 1}),
+                archivo="base.xlsb")
+    nuevo = _res(_ind(codigo="5.6.5", metas={"2020": 27, "2021": 26, "2025": 28, "2026": 27}),
+                 _ind(codigo="4.6.2", metas={"2021": 1, "2025": 1, "2026": 1}))
+    nuevo.metadatos.anios_detectados = list(range(2018, 2027))   # la plantilla cubre 2019
+    camb = [(a.codigo, a.campo, a.val_base, a.val_nuevo)
+            for a in validar_consistencia(base, nuevo)
+            if a.tipo == "ADVERTENCIA_CAMBIO_META"]
+    assert camb == [
+        ("5.6.5", "Meta 2019", "27", "vacía"),
+        ("5.6.5", "Meta 2020", "vacía", "27"),
+        ("4.6.2", "Meta 2020", "1", "vacía"),
+    ]   # la meta 2026 es una vigencia nueva: no es un cambio
+
+
+def test_meta_fuera_de_la_plantilla_no_se_da_por_retirada():
+    """Si el archivo nuevo ya no trae la columna 2018, esa meta no se retiró."""
+    base = _res(_ind(metas={"2018": 5, "2019": 5}), archivo="base.xlsb")
+    nuevo = _res(_ind(metas={"2019": 5, "2020": 5}))
+    assert not [a for a in validar_consistencia(base, nuevo)
+                if a.tipo == "ADVERTENCIA_CAMBIO_META"]
+
+
+def test_meta_sin_reporte_respeta_la_periodicidad():
+    """Solo se exige el reporte que la periodicidad pide al corte."""
+    def sin_rep(**kw):
+        ind = _ind(metas={"2026": 10}, fecha_inicio="2019-01-01", **kw)
+        return [a for a in validar_archivo(_res(ind))
+                if a.tipo == "ADVERTENCIA_META_SIN_REP"]
+
+    # Anual a junio: todavía no le toca
+    assert sin_rep(periodicidad="Anual", avances={}) == []
+    # Anual al cierre sin reporte: sí
+    assert [a.val_nuevo for a in sin_rep(periodicidad="Anual", corte="Q4", avances={})] \
+        == ["Sin reporte en Q4"]
+    # Trimestral que reportó Q1 pero no Q2
+    alerta = sin_rep(periodicidad="Trimestral", avances={"2026_Q1": 3})
+    assert [a.val_nuevo for a in alerta] == ["Sin reporte en Q2"]
+    assert alerta[0].periodo == "2026 Q2"
+    assert "prorrateada" in alerta[0].detalle
+    # Semestral sin reporte en S1
+    assert [a.val_nuevo for a in sin_rep(periodicidad="Semestral", avances={})] \
+        == ["Sin reporte en Q2"]
+    # Trimestral completo: nada
+    assert sin_rep(periodicidad="Trimestral", avances={"2026_Q1": 3, "2026_Q2": 0}) == []
+
+
+def test_meta_sin_reporte_respeta_inicio_y_fin():
+    def sin_rep(**kw):
+        ind = _ind(metas={"2026": 10}, periodicidad="Trimestral", avances={}, **kw)
+        return [a.val_nuevo for a in validar_archivo(_res(ind))
+                if a.tipo == "ADVERTENCIA_META_SIN_REP"]
+
+    assert sin_rep(fecha_inicio="2026-04-01") == ["Sin reporte en Q2"]   # Q1 no aplica
+    assert sin_rep(fecha_inicio="2026-01-01", fecha_fin="2026-03-31") == ["Sin reporte en Q1"]
+    assert sin_rep(fecha_inicio="2026-07-01") == []
 
 
 def test_meta_no_numerica_no_genera_advertencia():
