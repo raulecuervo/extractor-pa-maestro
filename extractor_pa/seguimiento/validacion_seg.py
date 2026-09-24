@@ -41,6 +41,7 @@ convierte explícitamente (ver README de escala en ``metricas.py``).
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 from .hallazgos import (  # noqa: F401  (re-export de UMBRAL_AVANCE)
     HallazgoSeguimiento,
@@ -50,7 +51,8 @@ from .hallazgos import (  # noqa: F401  (re-export de UMBRAL_AVANCE)
     crear_hallazgo,
 )
 from ..catalogo_oficial import norm_entidad
-from .metricas import calc_mes, calc_meta_periodo, lb_de_indicador, safe_float
+from .metricas import (calc_mes, calc_meta_periodo, lb_de_indicador,
+                       periodo_de_fecha, safe_float, trimestre_exigible)
 from .modelo import IndicadorSeguimiento
 
 UMBRAL_PCT_MIN = 0.50          # piso del % hasta la vigencia
@@ -189,7 +191,23 @@ def _metas_comparables(ind) -> dict:
     return out
 
 
-def _validar_cambio_metas(base, nuevo, politica, archivo):
+def _ventana_de_anios(res) -> Optional[tuple]:
+    """``(primer, último)`` año que cubre la plantilla del archivo.
+
+    Un año fuera de la ventana no estaba en el archivo, así que no puede
+    haberse retirado ni agregado. Se toman las columnas de año que detectó el
+    extractor; sin ellas (resultados armados desde dicts) se aproxima con los
+    años que tienen alguna meta."""
+    anios = [int(a) for a in (res.metadatos.anios_detectados or [])
+             if str(a).strip().isdigit()]
+    if not anios:
+        anios = [int(k) for i in res.indicadores for k in (i.metas or {})
+                 if str(k).strip().isdigit()]
+    return (min(anios), max(anios)) if anios else None
+
+
+def _validar_cambio_metas(base, nuevo, politica, archivo,
+                          ventana_base=None, ventana_nuevo=None):
     """Metas que cambiaron entre la carga base y la nueva.
 
     Suele ser un ajuste legítimo al plan de acción —una reformulación que
@@ -198,24 +216,53 @@ def _validar_cambio_metas(base, nuevo, politica, archivo):
     advertencia para que un analista lo verifique contra el acto administrativo
     que respalda el ajuste.
 
-    Solo se reportan metas que existían antes y cambian de valor. Una meta que
-    aparece por primera vez (una vigencia nueva del plan) no es un cambio.
+    Se reportan tres casos:
+
+    - la meta cambia de valor;
+    - la meta se retira: tenía valor y el archivo nuevo, que sí cubre ese año
+      (``ventana_nuevo``), la deja vacía;
+    - la meta aparece en un año que el archivo anterior ya cubría
+      (``ventana_base``) y dejó vacío. Suele ir de la mano de una retirada:
+      una meta que se corrige de año.
+
+    Una meta que aparece en una vigencia nueva, que el plan anterior aún no
+    cubría, no es un cambio. Sin ventanas solo se comparan los años presentes
+    en ambos archivos.
     """
+    def _en(ventana, clave):
+        if clave == "final":
+            return True
+        return ventana is not None and ventana[0] <= int(clave) <= ventana[1]
+
     out = []
     metas_base = _metas_comparables(base)
     metas_nuevo = _metas_comparables(nuevo)
-    for clave in sorted(metas_base.keys() & metas_nuevo.keys(),
-                        key=lambda k: (k == "final", k)):
-        v_b, v_n = metas_base[clave], metas_nuevo[clave]
-        if v_b == v_n:
-            continue
+    claves = set(metas_base) | set(metas_nuevo)
+    for clave in sorted(claves, key=lambda k: (k == "final", k)):
+        v_b, v_n = metas_base.get(clave), metas_nuevo.get(clave)
         etiqueta = "Meta final" if clave == "final" else f"Meta {clave}"
+        if v_b is not None and v_n is not None:
+            if v_b == v_n:
+                continue
+            txt_b, txt_n = f"{v_b:g}", f"{v_n:g}"
+            detalle = f"La {etiqueta.lower()} pasó de {v_b:g} a {v_n:g}. "
+        elif v_b is not None:
+            if not _en(ventana_nuevo, clave):
+                continue
+            txt_b, txt_n = f"{v_b:g}", "vacía"
+            detalle = (f"La {etiqueta.lower()} ({v_b:g}) quedó vacía: el plan de "
+                       "acción ya no la contempla. ")
+        else:
+            if not _en(ventana_base, clave):
+                continue
+            txt_b, txt_n = "vacía", f"{v_n:g}"
+            detalle = (f"La {etiqueta.lower()} pasó de vacía a {v_n:g} en una "
+                       "vigencia que el archivo anterior ya cubría. ")
         out.append(_finding(
             "ADVERTENCIA_CAMBIO_META", base, politica, archivo,
-            campo=etiqueta,
-            val_base=f"{v_b:g}", val_nuevo=f"{v_n:g}",
+            campo=etiqueta, val_base=txt_b, val_nuevo=txt_n,
             periodo=None if clave == "final" else clave,
-            detalle=(f"La {etiqueta.lower()} pasó de {v_b:g} a {v_n:g}. "
+            detalle=(detalle +
                      "Si corresponde a un ajuste del plan de acción, verificar "
                      "que el acto administrativo lo respalde; los porcentajes "
                      "de avance de este indicador se recalculan contra la meta "
@@ -477,7 +524,34 @@ def _validar_acumulado(ind, politica, archivo, anio_min):
     return out
 
 
+def _reportados_ind(ind, year, q):
+    """Trimestres de ``year`` hasta ``q`` con algún valor reportado."""
+    return {qq for qq in range(1, q + 1)
+            if ind.avances.get(f"{year}_Q{qq}") not in (None, "")}
+
+
+def _trimestres_obligatorios(ind, year, q):
+    """Trimestres de ``year`` hasta ``q`` en que la periodicidad obliga a
+    reportar, dentro de la vida del indicador (entre su inicio y su fin)."""
+    # Un trimestre es punto de medición si en él la periodicidad exige reporte:
+    # todos para trimestral, Q2 y Q4 para semestral, Q4 para anual.
+    candidatos = [qq for qq in range(1, q + 1)
+                  if trimestre_exigible(qq, ind.periodicidad) == qq]
+    ini = periodo_de_fecha(ind.fecha_inicio)
+    fin = periodo_de_fecha(ind.fecha_fin)
+    return [qq for qq in candidatos
+            if (ini is None or (year, qq) >= ini)
+            and (fin is None or (year, qq) <= fin)]
+
+
 def _validar_meta_reporte(ind, politica, archivo):
+    """Meta sin reporte y reporte sin meta en la vigencia del corte.
+
+    La meta sin reporte solo se señala cuando la periodicidad de medición
+    obligaba a reportar: un indicador anual no debe reportar a junio, pero uno
+    trimestral o semestral sí. Para esos trimestres faltantes la trayectoria
+    ideal asume el prorrateo de la meta (ver ``metricas.trimestre_efectivo``).
+    """
     out = []
     year, q = parse_period(ind.corte, ind.anio_reporte)
     if year is None or q is None:
@@ -487,12 +561,22 @@ def _validar_meta_reporte(ind, politica, archivo):
     avances_vig = [ind.avances.get(f"{year}_Q{qq}") for qq in range(1, q + 1)]
     tiene_reporte = any(v is not None and v != "" for v in avances_vig)
 
-    if meta_f is not None and meta_f != 0 and not tiene_reporte:
-        out.append(_finding("ADVERTENCIA_META_SIN_REP", ind, politica, archivo,
-                            campo=f"Avances {year}",
-                            val_base=f"Meta={meta_f}", val_nuevo="Sin reporte",
-                            periodo=str(year),
-                            detalle=f"Existe meta ({meta_f}) para {year} pero no hay ningún reporte hasta Q{q}"))
+    if meta_f is not None and meta_f != 0:
+        reportados = _reportados_ind(ind, year, q)
+        faltantes = [qq for qq in _trimestres_obligatorios(ind, year, q)
+                     if qq not in reportados]
+        if faltantes:
+            trimestres = ", ".join(f"Q{qq}" for qq in faltantes)
+            per = normalise(ind.periodicidad) or "sin periodicidad"
+            out.append(_finding(
+                "ADVERTENCIA_META_SIN_REP", ind, politica, archivo,
+                campo=f"Avances {year}",
+                val_base=f"Meta={meta_f}", val_nuevo=f"Sin reporte en {trimestres}",
+                periodo=f"{year} {trimestres}",
+                detalle=(f"Existe meta ({meta_f}) para {year} y la periodicidad "
+                         f"'{per}' exigía reporte en {trimestres}, pero no lo hay. "
+                         f"La trayectoria ideal se calcula con la meta prorrateada "
+                         f"a ese período.")))
 
     if (meta_f is None or meta_f == 0) and tiene_reporte:
         rep_vals = [v for v in avances_vig if v is not None and v != ""]
@@ -578,7 +662,7 @@ def _validar_discrepancia_pct(ind, politica, archivo):
         meta_prev = max(anteriores)[1] if anteriores else (
             meta_anual if t == "constante" else lb)
 
-    mes = calc_mes(q, ind.periodicidad)
+    mes = calc_mes(q, ind.periodicidad, _reportados_ind(ind, year, q))
     mp = calc_meta_periodo(ind.tipo_anualizacion, meta_anual, meta_prev, mes)
     if mp in (None, 0):
         return out
@@ -666,6 +750,8 @@ def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018,
     archivo = res_nuevo.metadatos.archivo_fuente
     base_map = {i.codigo: i for i in res_base.indicadores if i.codigo}
     new_map = {i.codigo: i for i in res_nuevo.indicadores if i.codigo}
+    ventana_base = _ventana_de_anios(res_base)
+    ventana_nuevo = _ventana_de_anios(res_nuevo)
     alertas = []
 
     for code, ind in new_map.items():
@@ -688,7 +774,8 @@ def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018,
                 h for h in _validar_estabilidad(base, nuevo, politica, archivo)
                 if not _cambio_permitido_por_no_vigente(h, nuevo)
             )
-            alertas.extend(_validar_cambio_metas(base, nuevo, politica, archivo))
+            alertas.extend(_validar_cambio_metas(base, nuevo, politica, archivo,
+                                                 ventana_base, ventana_nuevo))
             alertas.extend(_validar_cambio_estado(base, nuevo, politica, archivo))
             alertas.extend(_validar_retroactividad(base, nuevo, politica, archivo, anio_min))
         alertas.extend(_validaciones_un_archivo(nuevo, politica, archivo, anio_min,
