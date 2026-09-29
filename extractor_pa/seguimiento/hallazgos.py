@@ -19,23 +19,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-UMBRAL_AVANCE = 1.25  # 125%
+UMBRAL_AVANCE = 1.25  # 125 %: techo de sobre ejecución si quien valida no pasa umbrales
 
 TIPOS_HALLAZGO = {
     "ERROR_ESTABILIDAD":           "Error – Campo inmutable modificado",
     "ERROR_PONDERACION_OBLIGATORIA": "Error – Indicador vigente sin ponderación",
     "ERROR_RETROACTIVO":           "Error – Valor histórico modificado",
     "ERROR_NO_NUMERICO":           "Error – Reporte cuantitativo con valor no numérico",
-    "ADVERTENCIA_AVANCE":          "Advertencia – Avance supera meta + 25%",
+    "ADVERTENCIA_AVANCE":          "Advertencia – Avance supera el umbral de sobre ejecución de la meta",
     "ADVERTENCIA_SECTOR_ENTIDAD":  "Advertencia – El sector del archivo no es el oficial de la entidad",
     "ADVERTENCIA_CUAL":            "Advertencia – Cualitativo vacío (Vigente)",
     "ADVERTENCIA_ESCALA":          "Advertencia – Incoherencia de escala reporte vs meta",
-    "ADVERTENCIA_LIMITE_VIG":      "Advertencia – Reporte/suma vigencia supera 125% meta programada",
+    "ADVERTENCIA_LIMITE_VIG":      "Advertencia – Reporte/suma vigencia supera el umbral de sobre ejecución de la meta programada",
     "ADVERTENCIA_ACUM_META_VIG":   "Advertencia – Acumulado supera meta acumulada de la vigencia",
     "ADVERTENCIA_ACUM_META_FIN":   "Advertencia – Acumulado supera meta final",
     "ADVERTENCIA_META_SIN_REP":    "Advertencia – Existe meta para la vigencia pero no hay reporte",
     "ADVERTENCIA_REP_SIN_META":    "Advertencia – Existe reporte pero la meta es 0 o no existe",
-    "ADVERTENCIA_PCT_HASTA_VIG":   "Advertencia – % Avance hasta la vigencia fuera de rango (< 50% o > 125%)",
+    "ADVERTENCIA_PCT_HASTA_VIG":   "Advertencia – % Avance hasta la vigencia fuera del rango del semáforo (bajo el umbral rojo o sobre el naranja)",
     "ADVERTENCIA_DISCREPANCIA_PCT": "Advertencia – % Avance vigencia reportado difiere del calculado (acumulado / meta anual)",
     "ADVERTENCIA_CAMBIO_META":      "Advertencia – Meta modificada entre cargas (ajuste al plan de acción)",
     "INFO_CAMBIO_ESTADO":           "Info – El indicador cambió de estado entre cargas",

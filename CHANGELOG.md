@@ -3,6 +3,23 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.15.0] — Las alertas de sobre ejecución y de rango usan el semáforo de quien valida
+
+### Cambiado
+
+- **`validacion_seg.py::validar_archivo` / `validar_consistencia`** — nuevo
+  parámetro `umbrales={"rojo", "amarillo", "naranja"}` (en %), el semáforo del
+  aplicativo que valida. El rojo es el piso de `ADVERTENCIA_PCT_HASTA_VIG` y el
+  naranja el techo de `ADVERTENCIA_AVANCE`, `ADVERTENCIA_LIMITE_VIG` y
+  `ADVERTENCIA_PCT_HASTA_VIG`. Alertas y Seguimiento pasa los de su
+  Parametrización: con rojo 40 y naranja 110 alerta a partir de 110 % y no por
+  debajo de 50 %. Sin `umbrales`, los de siempre (50 % y 125 %).
+- El detalle de cada alerta dice el umbral usado («supera el 110%»). Las
+  etiquetas del catálogo (`TIPOS_HALLAZGO`) ya no fijan el número: «supera el
+  umbral de sobre ejecución», «fuera del rango del semáforo».
+- **`limites_de_semaforo`** (nuevo): `(piso, techo)` en fracción a partir de los
+  umbrales en %.
+
 ## [0.14.0] — Un año sin meta sostiene el nivel anterior y un decreciente puede llegar a cero
 
 ### Cambiado

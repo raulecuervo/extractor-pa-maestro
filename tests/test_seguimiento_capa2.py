@@ -634,6 +634,32 @@ def test_pct_hasta_vig_fuera_de_rango_y_etiqueta():
     assert "inferior al 50%" in bajos[0].detalle
 
 
+def test_alertas_con_los_umbrales_de_quien_valida():
+    """Con el semáforo del aplicativo (rojo 40, naranja 110) cambian el piso y
+    el techo de las alertas, y el texto dice el umbral usado."""
+    u = {"rojo": 40, "amarillo": 60, "naranja": 110}
+    ind = _ind(metas={"2026": 100}, pct_vigencia={"2026": 0.45},
+               avances={"2026_Q1": 45}, acumulados={"2026": 45})
+    assert "ADVERTENCIA_PCT_HASTA_VIG" in _tipos(validar_archivo(_res(ind)))       # < 50 %
+    assert "ADVERTENCIA_PCT_HASTA_VIG" not in _tipos(validar_archivo(_res(ind), umbrales=u))
+    alto = _ind(metas={"2026": 100}, pct_vigencia={"2026": 1.15},
+                avances={"2026_Q1": 60, "2026_Q2": 55}, acumulados={"2026": 115})
+    assert "ADVERTENCIA_AVANCE" not in _tipos(validar_archivo(_res(alto)))          # ≤ 125 %
+    con_u = validar_archivo(_res(alto), umbrales=u)
+    assert {"ADVERTENCIA_AVANCE", "ADVERTENCIA_LIMITE_VIG", "ADVERTENCIA_PCT_HASTA_VIG"} <= set(_tipos(con_u))
+    assert any("supera el 110%" in a.detalle for a in con_u)
+    assert any("supera 110% de la meta" in a.detalle for a in con_u)
+    base = _res(alto, archivo="base.xlsb")
+    assert "ADVERTENCIA_AVANCE" in _tipos(validar_consistencia(base, _res(alto), umbrales=u))
+
+
+def test_limites_de_semaforo():
+    from extractor_pa.seguimiento.validacion_seg import limites_de_semaforo
+    assert limites_de_semaforo() == (0.5, 1.25)
+    assert limites_de_semaforo({"rojo": 40, "amarillo": 60, "naranja": 110}) == (0.4, 1.1)
+    assert limites_de_semaforo({"rojo": 62.5}) == (0.625, 1.25)
+
+
 def test_cualitativo_solo_vigentes_y_periodicidad():
     ind = _ind(estado="Vigente", periodicidad="Trimestral", corte="Q2",
                cualitativos={"2026_Q1": "texto"})       # falta Q2
