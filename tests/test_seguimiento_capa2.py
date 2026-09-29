@@ -24,6 +24,7 @@ from extractor_pa.seguimiento import (
     calc_tid,
     calc_trayectoria_ideal,
     crear_hallazgo,
+    hay_meta,
     indicador_desde_dict,
     lb_de_indicador,
     metricas_corte,
@@ -286,12 +287,39 @@ def test_metricas_corte_suma_sin_acumulado_reconstruye():
              acumulado=None, valor_avance=20),
     ]
     m = metricas_corte("SUMA", "Trimestral", 0.0, segs, segs, 2026, 2)
-    # producción prioriza el acumulado explícito más reciente ≤ corte (2025 → 100)
-    assert m["av_acum"] == pytest.approx(100)
+    # 2026 no trae acumulado: el del cierre de 2025 (100) + lo reportado en 2026
+    assert m["av_acum"] == pytest.approx(130)
     segs_sin_acum = [dict(s, acumulado=None) for s in segs]
     m2 = metricas_corte("SUMA", "Trimestral", 0.0, segs_sin_acum, segs_sin_acum, 2026, 2)
-    # sin ningún acumulado: acum año previo (0) + reportes de la vigencia
-    assert m2["av_acum"] == pytest.approx(30)
+    # sin ningún acumulado: la suma de todos los reportes hasta el corte
+    assert m2["av_acum"] == pytest.approx(60)
+
+
+def test_suma_corte_intermedio_no_toma_el_acumulado_del_anio_completo():
+    """DDHH 1.2.1 (Suma anual): el archivo trae «Acumulado 2022» = 6.804 en
+    todas las filas de 2022, pero el reporte de 2022 (3.100) es de Q4. A 2022
+    Q1 el avance es lo del cierre de 2021."""
+    segs = [dict(anio=2021, trimestre=4, meta_anual=2000, meta_final=32000,
+                 acumulado=3704, valor_avance=2000)]
+    segs += [dict(anio=2022, trimestre=q, meta_anual=2000, meta_final=32000,
+                  acumulado=6804, valor_avance=3100 if q == 4 else None) for q in (1, 2, 3, 4)]
+    al_q1 = [s for s in segs if (s["anio"], s["trimestre"]) <= (2022, 1)]
+    assert metricas_corte("Suma", "Anual", 0.0, al_q1, segs, 2022, 1)["av_acum"] == 3704
+    # Al cierre del año el acumulado del archivo vale tal cual
+    assert metricas_corte("Suma", "Anual", 0.0, segs, segs, 2022, 4)["av_acum"] == 6804
+
+
+def test_suma_ignora_el_acumulado_de_una_fila_sintetica():
+    """AFRO 1.3.10 (Suma trimestral, 2025): reporta Q1 a Q3 (acumulado 0,191) y
+    el Q4 es sintético. El acumulado sintético (0,111, solo lo del año) no cuenta."""
+    segs = [dict(anio=2024, trimestre=4, meta_anual=0.1, meta_final=1,
+                 acumulado=0.08, valor_avance=0.02)]
+    segs += [dict(anio=2025, trimestre=q, meta_anual=0.1, meta_final=1,
+                  acumulado=0.191, valor_avance=0.037) for q in (1, 2, 3)]
+    segs.append(dict(anio=2025, trimestre=4, meta_anual=0.1, meta_final=1,
+                     acumulado=0.111, valor_avance=0.0, sintetico=1))
+    m = metricas_corte("Suma", "Trimestral", 0.0, segs, segs, 2025, 4)
+    assert m["av_acum"] == pytest.approx(0.191)
 
 
 def test_metricas_corte_creciente_con_lb():
@@ -360,6 +388,114 @@ def test_metricas_corte_sin_iniciar_solo_con_fecha_inicio():
     assert metricas_corte("Suma", "Anual", 0.0, segs, segs, 2026, 2,
                           fecha_inicio="2026-01-01")["sin_iniciar"]
     assert not metricas_corte("Suma", "Anual", 0.0, segs, segs, 2026, 2)["sin_iniciar"]
+
+
+def _segs_nivel(metas, meta_final, avances):
+    """Una fila Q4 por año con meta (None = año sin programar) y su avance."""
+    return [dict(anio=y, trimestre=4, meta_anual=mv, meta_final=meta_final,
+                 acumulado=None, valor_avance=avances.get(y))
+            for y, mv in sorted(metas.items())]
+
+
+def test_hay_meta():
+    assert hay_meta(5, "Creciente")
+    assert not hay_meta(None, "Creciente")
+    assert not hay_meta(0, "Creciente", 5)          # 0 de relleno
+    assert not hay_meta(0, "Decreciente", 3)        # bajo la meta final: relleno
+    assert hay_meta(0, "Decreciente", 0)            # busca llegar a cero
+    assert hay_meta("0", "DECRECIENTE", 0.0)
+
+
+def test_anio_sin_meta_sostiene_el_ultimo_nivel_programado():
+    """Mujer 10.1.9 (DECRECIENTE): el plan no programa 2022 ni 2023. En 2022 se
+    exige el nivel de 2021 (0,25), no la meta de 2024 (0,15), que daba una
+    trayectoria del 100 % dos años antes de tiempo."""
+    segs = _segs_nivel({2020: 0.2586, 2021: 0.25, 2022: None, 2023: None, 2024: 0.15},
+                       0.15, {2020: 0.30, 2021: 0.27, 2022: 0.26})
+    al_corte = [s for s in segs if s["anio"] <= 2022]
+    m = metricas_corte("Decreciente", "Anual", 0.3, al_corte, segs, 2022, 4)
+    assert m["meta_anual"] == pytest.approx(0.25)
+    assert m["ma"] == pytest.approx(0.25)
+    assert m["tid"] == pytest.approx((0.25 - 0.3) / (0.15 - 0.3))
+
+
+def test_creciente_sin_meta_en_el_anio_no_mira_el_futuro():
+    """Cultura Ciudadana 2.2.5: metas 2021=20, 2023=25, 2025=40. En 2024 el nivel
+    exigido es 25, el último programado; antes se tomaba el 40 de 2025."""
+    segs = _segs_nivel({2021: 20, 2023: 25, 2024: None, 2025: 40}, 90, {2024: 32})
+    al_corte = [s for s in segs if s["anio"] <= 2024]
+    m = metricas_corte("Creciente", "Anual", 0.0, al_corte, segs, 2024, 4)
+    assert m["ma"] == pytest.approx(25)
+    assert m["phv"] == pytest.approx(32 / 25)
+    assert m["tid"] == pytest.approx(25 / 90)
+
+
+def test_antes_de_su_primera_meta_no_se_exige_avance():
+    """Salud Mental 2.2.2: inicia en 2024 y su primera meta es la de 2025. En
+    2024 el plan no le pide nada: MA = LB y trayectoria 0 %; lo que avance es
+    adelanto. Antes se le exigía ya la meta de 2025."""
+    segs = _segs_nivel({2024: None, 2025: 6}, 20, {2024: 2})
+    m = metricas_corte("Creciente", "Semestral", 0.0, segs[:1], segs, 2024, 4)
+    assert m["ma"] == pytest.approx(0.0)
+    assert m["tid"] == pytest.approx(0.0)
+    assert m["paf"] == pytest.approx(2 / 20)
+    # CONSTANTE: el punto de partida es 0
+    k = metricas_corte("Constante", "Anual", 0.0, segs[:1], segs, 2024, 4)
+    assert k["ma"] == pytest.approx(0.0) and k["tid"] == pytest.approx(0.0)
+    # La meta futura puede venir solo del plan (sin fila de ese año)
+    p = metricas_corte("Creciente", "Anual", 5.0, segs[:1], segs[:1], 2024, 4,
+                       metas_plan={"2025": 6, "final": 20})
+    assert p["ma"] == pytest.approx(5.0) and p["tid"] == pytest.approx(0.0)
+
+
+def test_sin_metas_anuales_en_el_plan_no_hay_trayectoria():
+    segs = _segs_nivel({2024: None, 2025: None}, 1, {2024: 1})
+    m = metricas_corte("Constante", "Anual", 0.0, segs, segs, 2025, 4)
+    assert m["ma"] is None and m["tid"] is None and m["phv"] is None
+
+
+def test_ceros_de_relleno_siguen_sin_contar_como_meta():
+    """CTI 3.1.1 (CRECIENTE, LB 3): metas 4 y 5 y luego 0 en los años sin
+    programar. El 0 no es meta: el nivel exigido sigue en 5."""
+    segs = _segs_nivel({2019: 4, 2020: 5, 2021: 0, 2022: 0, 2023: 0}, 5, {2022: 5})
+    al_corte = [s for s in segs if s["anio"] <= 2022]
+    m = metricas_corte("Creciente", "Anual", 3.0, al_corte, segs, 2022, 4)
+    assert m["ma"] == pytest.approx(5)
+    assert m["phv"] == pytest.approx(1.0)
+    assert m["tid"] == pytest.approx(1.0)
+
+
+def test_decreciente_con_meta_final_cero():
+    """LB 20 → meta final 0 (metas 2025=10, 2026=0), avance 4 al cierre de 2026.
+    Antes: PAF y TID vacíos (pesaba 0 en la política), PHV 160 % y trayectoria 50 %."""
+    segs = _segs_nivel({2025: 10, 2026: 0}, 0, {2025: 12, 2026: 4})
+    m = metricas_corte("Decreciente", "Anual", 20.0, segs, segs, 2026, 4)
+    assert m["meta_anual"] == 0
+    assert m["ma"] == pytest.approx(0)
+    assert m["phv"] == pytest.approx((4 - 20) / (0 - 20))      # 80 %
+    assert m["paf"] == pytest.approx(0.8)
+    assert m["tid"] == pytest.approx(1.0)
+    assert m["tray"] == pytest.approx(1.0)
+    assert m["brecha"] == pytest.approx(-0.2)
+    # A mitad de camino (2025): MA 10 → trayectoria 50 %
+    m25 = metricas_corte("Decreciente", "Anual", 20.0, segs[:1], segs, 2025, 4)
+    assert m25["tid"] == pytest.approx(0.5)
+
+
+def test_meta_final_cero_con_linea_base():
+    assert calc_paf("DECRECIENTE", 4, 0, 20) == pytest.approx(0.8)
+    assert calc_tid("DECRECIENTE", 0, 0, 20) == pytest.approx(1.0)
+    assert calc_trayectoria_ideal("DECRECIENTE", 10, 10, 0, 20) == pytest.approx(0.5)
+    # Sin línea base que la separe, una meta final 0 no se puede leer
+    assert calc_paf("DECRECIENTE", 4, 0, 0) is None
+    assert calc_paf("CONSTANTE", 4, 0, 0) is None
+    assert calc_tid("SUMA", 4, 0, 0) is None
+
+
+def test_trayectoria_ideal_es_tid():
+    for tipo, mp, ma, mf, lb in [("SUMA", 25, 175, 500, 0), ("CONSTANTE", 95, 95, 95, 0),
+                                 ("CRECIENTE", 40, 40, 50, 10), ("DECRECIENTE", 10, 10, 0, 20)]:
+        assert calc_trayectoria_ideal(tipo, mp, ma, mf, lb) == calc_tid(tipo, ma, mf, lb)
 
 
 # ─────────────────────────── hallazgos: shape make_finding ───────────────────────────

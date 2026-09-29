@@ -100,6 +100,22 @@ def _tipo(tipo: Any) -> str:
     return (str(tipo) if tipo is not None else "").upper().strip()
 
 
+def hay_meta(meta_anual: Any, tipo: Any = None, meta_final: Any = None) -> bool:
+    """¿La meta anual de un año cuenta como programada?
+
+    Vacía no cuenta, y 0 tampoco: los planes escriben 0 en los años que el
+    indicador no programa (CTI 3.1.1 es CRECIENTE con 4 y 5 y luego 0, 0, 0;
+    leer esos ceros como meta derrumbaría su trayectoria). La excepción es un
+    DECRECIENTE cuya meta final es 0: busca llegar a cero, así que un 0 en
+    sus metas anuales es una meta real."""
+    v = safe_float(meta_anual)
+    if v is None:
+        return False
+    if v != 0:
+        return True
+    return _tipo(tipo) == "DECRECIENTE" and safe_float(meta_final) == 0
+
+
 # ─────────────────────────── periodicidad y corte ───────────────────────────
 
 # Meses que abarca cada periodicidad de medición (hoja "Listas" del formato
@@ -262,38 +278,39 @@ def calc_pct_hasta_vig(tipo, av_acum, ma, lb) -> Optional[float]:
 
 # ─────────────────────────── fórmulas §10.5 ───────────────────────────
 
-def calc_trayectoria_ideal(tipo, mp, ma, meta_final, lb) -> Optional[float]:
-    """Trayectoria ideal del período vs meta final (fracción 0–1).
-    CRECIENTE/DECRECIENTE: (MP − LB)/(meta_final − LB) · CONSTANTE/SUMA: MA/meta_final."""
-    if mp is None or meta_final is None:
+def _contra_meta_final(tipo, valor, meta_final, lb) -> Optional[float]:
+    """``valor`` expresado contra la meta final (fracción 0–1).
+
+    CRECIENTE/DECRECIENTE: (valor − LB)/(meta_final − LB) · CONSTANTE/SUMA:
+    valor/meta_final. En los tipos con línea base el único denominador
+    imposible es meta_final = LB: una meta final 0 es legítima en un
+    DECRECIENTE que busca llegar a cero (LB 20 → meta 0)."""
+    if meta_final is None or valor is None:
         return None
     if _tipo(tipo) in ("CRECIENTE", "DECRECIENTE"):
         den = meta_final - lb
-        return None if den == 0 else (mp - lb) / den
-    eff_ma = ma if ma is not None else mp
-    return None if meta_final == 0 else eff_ma / meta_final
+        return None if den == 0 else (valor - lb) / den
+    return None if meta_final == 0 else valor / meta_final
+
+
+def calc_trayectoria_ideal(tipo, mp, ma, meta_final, lb) -> Optional[float]:
+    """Trayectoria ideal vs meta final (fracción 0–1). Es la misma cantidad que
+    :func:`calc_tid`: en los tipos de nivel MA = MP, y en SUMA la trayectoria es
+    la meta acumulada. Se conserva la firma por compatibilidad; si no llega MA
+    se usa MP."""
+    return calc_tid(tipo, ma if ma is not None else mp, meta_final, lb)
 
 
 def calc_paf(tipo, av_acum, meta_final, lb) -> Optional[float]:
     """PAF — % de avance acumulado vs meta final (§10.5, fracción 0–1).
     CRECIENTE/DECRECIENTE: (AV − LB)/(meta_final − LB) · CONSTANTE/SUMA: AV/meta_final."""
-    if meta_final in (None, 0) or av_acum is None:
-        return None
-    if _tipo(tipo) in ("CRECIENTE", "DECRECIENTE"):
-        den = meta_final - lb
-        return None if den == 0 else (av_acum - lb) / den
-    return av_acum / meta_final
+    return _contra_meta_final(tipo, av_acum, meta_final, lb)
 
 
 def calc_tid(tipo, ma, meta_final, lb) -> Optional[float]:
     """TID — trayectoria ideal vs meta final (§10.5, fracción 0–1).
     CRECIENTE/DECRECIENTE: (MA − LB)/(meta_final − LB) · CONSTANTE/SUMA: MA/meta_final."""
-    if meta_final in (None, 0) or ma is None:
-        return None
-    if _tipo(tipo) in ("CRECIENTE", "DECRECIENTE"):
-        den = meta_final - lb
-        return None if den == 0 else (ma - lb) / den
-    return ma / meta_final
+    return _contra_meta_final(tipo, ma, meta_final, lb)
 
 
 def calc_brecha(paf, tid) -> Optional[float]:
@@ -403,6 +420,50 @@ def _suma_metas_prev_suma(segs_al_corte, segs_todos, anio: int,
     return total
 
 
+def avance_acumulado_suma(segs_al_corte, segs_todos, anio: int, trimestre: int) -> float:
+    """AV de un indicador SUMA al corte (año, trimestre).
+
+    El «Acumulado {año}» del archivo es el total de lo que el archivo trae de
+    ese año. Sirve tal cual cuando el corte cubre todos los reportes del año;
+    si el año tiene reportes posteriores al corte (un corte intermedio leído de
+    un archivo que ya trae el año completo), el avance al corte es el acumulado
+    al cierre del año anterior más lo reportado en el año hasta el trimestre
+    del corte. DDHH 1.2.1 (Suma anual, reporta en Q4): a 2022 Q1 lleva 3.704,
+    lo del cierre de 2021, no los 6.804 del cierre de 2022.
+
+    Las filas sintéticas no cuentan: son puntos de corte que inventa la
+    aplicación, y su «acumulado» no sale del archivo (en años sin reporte de
+    Q4 guardaba solo lo del año: AFRO 1.3.10 quedaba en 0,111 con 0,191
+    acumulado). Sin ningún acumulado explícito se suman los reportes."""
+    reales = [s for s in segs_al_corte if not s.get("sintetico")]
+
+    def _valor(s):
+        return safe_float(s.get("valor_avance"))
+
+    def _ultimo_acumulado(filas):
+        return next(((s["anio"], safe_float(s["acumulado"])) for s in reversed(filas)
+                     if safe_float(s.get("acumulado")) is not None), None)
+
+    reporta_despues = any(
+        not s.get("sintetico") and _valor(s) is not None
+        and s["anio"] == anio and s["trimestre"] > trimestre
+        for s in segs_todos or ())
+    if not reporta_despues:
+        del_anio = _ultimo_acumulado([s for s in reales if s["anio"] == anio])
+        if del_anio is not None:
+            return del_anio[1]
+
+    base = _ultimo_acumulado([s for s in reales if s["anio"] < anio])
+    desde, total = (base[0], base[1]) if base else (None, 0.0)
+    for s in reales:
+        v = _valor(s)
+        if v is None or (desde is not None and s["anio"] <= desde):
+            continue
+        if s["anio"] < anio or s["trimestre"] <= trimestre:
+            total += v
+    return total
+
+
 def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
                    anio: int, trimestre: int,
                    metas_plan: Optional[dict] = None,
@@ -432,22 +493,27 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         (s["meta_final"] for s in reversed(segs_todos)
          if s.get("meta_final") is not None), None)
 
-    # meta_anual: del año seleccionado; fallback al más reciente disponible.
-    # Para SUMA no hay fallback: la meta anual es un incremento, no un nivel.
+    def _programada(s):
+        return hay_meta(s.get("meta_anual"), t, meta_final)
+
+    # meta_anual: la del año seleccionado. Si el plan no programó ese año, el
+    # indicador sostiene el nivel del último año anterior que sí tiene meta;
+    # nunca se le exige la de un año posterior al corte (Mujer 10.1.9, sin
+    # meta en 2022, quedaba contra la meta final de 2024 y con trayectoria del
+    # 100 % en 2022). Para SUMA no hay respaldo: la meta anual es un
+    # incremento, no un nivel.
     meta_anual = next(
         (s["meta_anual"] for s in segs_todos
-         if s["anio"] == anio and s.get("meta_anual") not in (None, 0)), None)
+         if s["anio"] == anio and _programada(s)), None)
     if meta_anual is None and t != "SUMA":
         meta_anual = next(
             (s["meta_anual"] for s in reversed(segs_todos)
-             if s.get("meta_anual") not in (None, 0)), None)
+             if s["anio"] < anio and _programada(s)), None)
 
     # meta_prev: meta anual del año anterior al seleccionado
     meta_prev = next(
         (s["meta_anual"] for s in reversed(segs_todos)
-         if s["anio"] == anio - 1 and s.get("meta_anual") not in (None, 0)), None)
-    if meta_anual is None and t != "SUMA":
-        meta_anual = meta_prev
+         if s["anio"] == anio - 1 and _programada(s)), None)
 
     # Sin meta en el año contiguo, MP se interpolaría desde 0 y marcaría como
     # sobre-ejecución a un indicador que solo sostiene su nivel. Se toma la
@@ -456,38 +522,30 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     #   CONSTANTE             -> la meta ES el nivel: MP = MV, sin prorrateo.
     #   CRECIENTE/DECRECIENTE -> se parte de la línea base.
     # SUMA no usa meta_prev (su MP es MV × mes/12).
-    if t != "SUMA" and meta_prev in (None, 0):
+    if t != "SUMA" and meta_prev is None:
         meta_prev = next(
             (s["meta_anual"] for s in reversed(segs_todos)
-             if s["anio"] < anio and s.get("meta_anual") not in (None, 0)), None)
+             if s["anio"] < anio and _programada(s)), None)
         if meta_prev is None:
             meta_prev = meta_anual if t == "CONSTANTE" else lb
+
+    # Antes de su primera meta programada el plan todavía no le exige avance:
+    # el nivel exigido es el punto de partida (LB en CRECIENTE/DECRECIENTE, 0 en
+    # CONSTANTE) y la trayectoria ideal queda en 0 %. Un indicador sin ninguna
+    # meta anual en el plan sigue sin trayectoria: el plan está incompleto.
+    nivel_inicial = None
+    if t != "SUMA" and meta_anual is None:
+        despues = any(s["anio"] > anio and _programada(s) for s in segs_todos) or any(
+            str(k).isdigit() and int(k) > anio and hay_meta(v, t, meta_final)
+            for k, v in (metas_plan or {}).items())
+        if despues:
+            nivel_inicial = lb if t in ("CRECIENTE", "DECRECIENTE") else 0.0
+            meta_prev = nivel_inicial
 
     if t == "SUMA":
         sum_metas_prev = _suma_metas_prev_suma(
             segs_al_corte, segs_todos, anio, metas_plan)
-        # Priorizar el acumulado explícito más reciente al corte; si no existe
-        # (datos legacy), reconstruir con acumulado del año previo + reportes.
-        acum_sel = next(
-            (
-                s["acumulado"] for s in reversed(segs_al_corte)
-                if s.get("acumulado") is not None
-                and (s["anio"] < anio or (s["anio"] == anio and s["trimestre"] <= trimestre))
-            ),
-            None,
-        )
-        if acum_sel is not None:
-            av_acum = float(acum_sel)
-        else:
-            acum_prev = next(
-                (s["acumulado"] for s in reversed(segs_al_corte)
-                 if s["anio"] == anio - 1 and s.get("acumulado") is not None),
-                0.0) or 0.0
-            running_av = sum(
-                (s["valor_avance"] or 0.0) for s in segs_al_corte
-                if s["anio"] == anio and s["trimestre"] <= trimestre
-                and s.get("valor_avance") is not None)
-            av_acum = acum_prev + running_av
+        av_acum = avance_acumulado_suma(segs_al_corte, segs_todos, anio, trimestre)
     else:
         sum_metas_prev = 0.0
         av_acum = next(
@@ -503,7 +561,8 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
                       for s in segs_al_corte))
     # SUMA sin meta anual en el año seleccionado: MP=0, MA=sum_metas_prev
     # (el indicador sigue participando con su acumulado y sus metas previas).
-    meta_anual_mp = meta_anual if meta_anual is not None else (0.0 if t == "SUMA" else None)
+    meta_anual_mp = meta_anual if meta_anual is not None else (
+        0.0 if t == "SUMA" else nivel_inicial)
     mp = calc_meta_periodo(t, meta_anual_mp, meta_prev, mes)
     ma = calc_meta_acum(t, mp, sum_metas_prev)
     phv = calc_pct_hasta_vig(t, av_acum, ma, lb)

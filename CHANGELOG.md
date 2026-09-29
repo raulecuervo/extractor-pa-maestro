@@ -3,6 +3,48 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.14.0] — Un año sin meta sostiene el nivel anterior y un decreciente puede llegar a cero
+
+### Cambiado
+
+- **`metricas.py::metricas_corte`** — si el plan no programa meta para el año del
+  corte, un indicador CONSTANTE, CRECIENTE o DECRECIENTE sostiene la meta del
+  último año **anterior** que sí la tiene. Antes se tomaba la meta más reciente de
+  toda la historia, que podía ser de un año posterior al corte:
+
+  | Indicador (corte Q4) | Metas del plan | v0.13 (MV / TID) | v0.14 (MV / TID) |
+  |---|---|---|---|
+  | Mujer 10.1.9, DECRECIENTE, 2022 | 2021: 0,25 · 2024: 0,15 (MF 0,15) | 0,15 / 100 % | 0,25 / 23,27 % |
+  | Cultura Ciudadana 2.2.5, CRECIENTE, 2024 | 2023: 25 · 2025: 40 (MF 90) | 40 / 44,44 % | 25 / 27,78 % |
+
+  Antes de su primera meta programada (inicia en 2024 y su primera meta es la
+  de 2025) el plan aún no le exige avance: el nivel exigido es el punto de
+  partida (LB en CRECIENTE/DECRECIENTE, 0 en CONSTANTE) y la trayectoria ideal es
+  0 %. Un indicador sin ninguna meta anual en el plan sigue sin trayectoria.
+
+- **`metricas.py::avance_acumulado_suma`** (nuevo, lo usa `metricas_corte`) — el
+  avance acumulado de un SUMA:
+  - no toma el «acumulado» de las filas sintéticas, que en años sin reporte de
+    Q4 guardaban solo lo del año (AFRO 1.3.10 a 2025 Q4: 0,111 → 0,191);
+  - en un corte intermedio de un año que el archivo ya trae completo, suma lo
+    del cierre del año anterior más lo reportado hasta el corte, en vez del
+    «Acumulado {año}» completo (DDHH 1.2.1 a 2022 Q1: 6.804 → 3.704);
+  - sin acumulado del año, el del cierre anterior más los reportes del año; sin
+    ningún acumulado, la suma de los reportes.
+
+- **`metricas.py::calc_paf` / `calc_tid`** — en CRECIENTE y DECRECIENTE el único
+  denominador imposible es `meta_final = LB`. Un DECRECIENTE con meta final 0
+  (LB 20 → 0) ya no queda con PAF y TID vacíos. En SUMA y CONSTANTE una meta
+  final 0 sigue sin poder leerse.
+
+- **`metricas.py::hay_meta`** (nuevo) — una meta anual 0 no cuenta como meta
+  programada (los planes escriben 0 en los años sin programar), salvo en un
+  DECRECIENTE cuya meta final es 0. `metricas_corte` la usa para MV y MV₋₁.
+
+- **`metricas.py::calc_trayectoria_ideal`** — es `calc_tid` (misma cantidad en
+  todos los tipos; antes solo se separaban con meta final 0). Se conserva la
+  firma.
+
 ## [0.13.0] — La trayectoria ideal respeta cuándo le toca reportar a cada indicador
 
 ### Cambiado
