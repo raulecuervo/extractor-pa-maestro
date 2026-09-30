@@ -57,8 +57,9 @@ from .hallazgos import (  # noqa: F401  (re-export de UMBRAL_AVANCE)
     crear_hallazgo,
 )
 from ..catalogo_oficial import norm_entidad
-from .metricas import (calc_mes, calc_meta_periodo, lb_de_indicador,
-                       periodo_de_fecha, safe_float, trimestre_exigible)
+from .metricas import (calc_mes, calc_meta_periodo, calc_pct_vigencia, hay_meta,
+                       lb_de_indicador, periodo_de_fecha, safe_float,
+                       trimestre_exigible)
 from .modelo import IndicadorSeguimiento
 
 UMBRAL_PCT_MIN = 0.50          # piso del % hasta la vigencia (si no pasan umbrales)
@@ -470,33 +471,33 @@ def _validar_avance_meta(ind, politica, archivo, umbral=UMBRAL_AVANCE):
         # chequeo — tampoco el pct_vigencia (divergencia v1 corregida).
         return out
 
-    if tipo in ("creciente", "decreciente", "constante"):
-        ultimo = None
-        for qq in range(q, 0, -1):
-            v = safe_float(ind.avances.get(f"{year}_Q{qq}"))
-            if v is not None:
-                ultimo = v
-                break
-        if ultimo is not None and ultimo > meta_f * umbral:
+    # Es la contraparte calculada de ADVERTENCIA_AVANCE: el avance en la
+    # vigencia contra la meta del período, la misma cuenta que hace el archivo
+    # en su columna de % de la vigencia. Antes se comparaba el reporte con la
+    # meta del año completo: a mitad de año no saltaba aunque el archivo
+    # mostrara el doble de lo programado, y en DECRECIENTE saltaba al quedarse
+    # por encima de la meta, que es ir atrasado.
+    if tipo in ("creciente", "decreciente", "constante", "suma"):
+        reportes = _avances_trimestrales_vigencia(ind, year, hasta_q=q)
+        periodo = _meta_del_periodo(ind, year, q)
+        pav = (calc_pct_vigencia(ind.tipo_anualizacion, periodo[0], periodo[1], reportes)
+               if periodo else None)
+        if pav is not None and round(pav, 6) > umbral:
+            mp = periodo[0]
+            es_suma = tipo == "suma"
+            valor = sum(reportes) if es_suma else reportes[-1]
+            sujeto = "suma de reportes" if es_suma else "último reporte"
             out.append(_finding("ADVERTENCIA_LIMITE_VIG", ind, politica, archivo,
-                                campo=f"Último avance vigencia {year}",
-                                val_base=f"Meta={meta_f}",
-                                val_nuevo=f"Último reporte={ultimo}",
+                                campo=(f"Suma avances vigencia {year}" if es_suma
+                                       else f"Último avance vigencia {year}"),
+                                val_base=f"Meta del periodo={mp:g}",
+                                val_nuevo=(f"{'Suma' if es_suma else 'Último reporte'}"
+                                           f"={valor:g} ({pav:.1%})"),
                                 periodo=str(year),
-                                detalle=(f"Tipo '{ind.tipo_anualizacion}': último reporte ({ultimo}) "
-                                         f"supera {_pct(umbral)} de la meta ({meta_f})")))
-    elif tipo == "suma":
-        vals = _avances_trimestrales_vigencia(ind, year, hasta_q=q)
-        if vals:
-            total = sum(vals)
-            if total > meta_f * umbral:
-                out.append(_finding("ADVERTENCIA_LIMITE_VIG", ind, politica, archivo,
-                                    campo=f"Suma avances vigencia {year}",
-                                    val_base=f"Meta={meta_f}",
-                                    val_nuevo=f"Suma={total:g}",
-                                    periodo=str(year),
-                                    detalle=(f"Tipo 'Suma': suma de reportes ({total:g}) "
-                                             f"supera {_pct(umbral)} de la meta ({meta_f})")))
+                                detalle=(f"Tipo '{ind.tipo_anualizacion}': el avance en la "
+                                         f"vigencia ({pav:.1%}, {sujeto} {valor:g} contra la "
+                                         f"meta del periodo {mp:g}) supera {_pct(umbral)} "
+                                         f"de la meta")))
 
     pct = safe_float(ind.pct_vigencia.get(str(year)))
     if pct is not None and pct > umbral:
@@ -648,6 +649,30 @@ def _validar_cualitativo(ind, politica, archivo):
     return out
 
 
+def _meta_del_periodo(ind, year, q):
+    """``(MP, LB)`` del indicador al corte ``year`` Q``q``; ``None`` sin meta del año.
+
+    MP es la meta del año prorrateada hasta el corte según el tipo de
+    anualización y la periodicidad (:func:`calc_meta_periodo`). La meta del año
+    anterior tiene el mismo respaldo que en ``metricas_corte``: la última meta
+    programada o, sin historia, el punto de partida del tipo."""
+    t = (ind.tipo_anualizacion or "").lower()
+    meta_anual = safe_float(ind.metas.get(str(year)))
+    if not hay_meta(meta_anual, ind.tipo_anualizacion, ind.meta_final):
+        return None
+    lb = lb_de_indicador(ind.linea_base, ind.tipo_anualizacion,
+                         ind.metas, ind.meta_final)
+    meta_prev = safe_float(ind.metas.get(str(year - 1)))
+    if t != "suma" and not hay_meta(meta_prev, ind.tipo_anualizacion, ind.meta_final):
+        anteriores = [(int(k), safe_float(v)) for k, v in ind.metas.items()
+                      if str(k).isdigit() and int(k) < year
+                      and hay_meta(v, ind.tipo_anualizacion, ind.meta_final)]
+        meta_prev = max(anteriores)[1] if anteriores else (
+            meta_anual if t == "constante" else lb)
+    mes = calc_mes(q, ind.periodicidad, _reportados_ind(ind, year, q))
+    return calc_meta_periodo(ind.tipo_anualizacion, meta_anual, meta_prev, mes), lb
+
+
 def _validar_discrepancia_pct(ind, politica, archivo):
     """Contrasta el % de avance de la vigencia del archivo contra el calculado.
 
@@ -665,55 +690,22 @@ def _validar_discrepancia_pct(ind, politica, archivo):
     if year is None or q is None:
         return out
 
-    meta_anual = safe_float(ind.metas.get(str(year)))
     pct_rep = safe_float(ind.pct_vigencia.get(str(year)))
-    if meta_anual is None or meta_anual == 0 or pct_rep is None:
+    periodo = _meta_del_periodo(ind, year, q)
+    if pct_rep is None or periodo is None:
         return out
+    mp, lb = periodo
 
-    t = (ind.tipo_anualizacion or "").lower()
-    lb = lb_de_indicador(ind.linea_base, ind.tipo_anualizacion,
-                         ind.metas, ind.meta_final)
-
-    # Meta del año anterior, con el mismo respaldo que usa metricas_corte.
-    meta_prev = safe_float(ind.metas.get(str(year - 1)))
-    if t != "suma" and meta_prev in (None, 0):
-        anteriores = [(int(k), safe_float(v)) for k, v in ind.metas.items()
-                      if str(k).isdigit() and int(k) < year
-                      and safe_float(v) not in (None, 0)]
-        meta_prev = max(anteriores)[1] if anteriores else (
-            meta_anual if t == "constante" else lb)
-
-    mes = calc_mes(q, ind.periodicidad, _reportados_ind(ind, year, q))
-    mp = calc_meta_periodo(ind.tipo_anualizacion, meta_anual, meta_prev, mes)
-    if mp in (None, 0):
+    # Sin reporte en la vigencia no hay nada que contrastar: no se arrastra el
+    # valor de un año anterior para inventar una brecha.
+    reportes = _avances_trimestrales_vigencia(ind, year, hasta_q=q)
+    pct_calc = calc_pct_vigencia(ind.tipo_anualizacion, mp, lb, reportes)
+    if pct_calc is None:
         return out
-
-    if t == "suma":
-        vals = _avances_trimestrales_vigencia(ind, year, hasta_q=q)
-        if not vals:
-            return out
-        base_num = sum(vals)
-        pct_calc = base_num / mp
-        etiqueta = "suma de reportes"
+    if (ind.tipo_anualizacion or "").lower() == "suma":
+        base_num, etiqueta = sum(reportes), "suma de reportes"
     else:
-        base_num = None
-        for qq in range(q, 0, -1):
-            v = safe_float(ind.avances.get(f"{year}_Q{qq}"))
-            if v is not None:
-                base_num = v
-                break
-        if base_num is None:
-            # Sin reporte en la vigencia no hay nada que contrastar: no se
-            # arrastra el valor de un año anterior para inventar una brecha.
-            return out
-        if t in ("creciente", "decreciente"):
-            den = mp - lb
-            if den == 0:
-                return out
-            pct_calc = (base_num - lb) / den
-        else:
-            pct_calc = base_num / mp
-        etiqueta = "avance"
+        base_num, etiqueta = reportes[-1], "avance"
 
     if round(pct_rep, 3) != round(pct_calc, 3):
         out.append(_finding("ADVERTENCIA_DISCREPANCIA_PCT", ind, politica, archivo,
