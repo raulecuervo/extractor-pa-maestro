@@ -3,6 +3,43 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.16.0] — El % de avance en la vigencia se mide contra la meta prorrateada al corte
+
+### Agregado
+
+- **`metricas.py::calc_pct_vigencia`** — % de avance en la vigencia (PAV): lo
+  logrado en el año contra la **meta del período (MP)**, la meta del año
+  prorrateada hasta el corte según el tipo de anualización y la periodicidad.
+  Es la cuenta de la columna «Porcentaje de Avance en la Vigencia» del Excel del
+  SDP:
+
+  | Tipo | PAV |
+  |---|---|
+  | SUMA | Σ reportes del año hasta el corte / MP |
+  | CONSTANTE | último reporte del año / MP |
+  | CRECIENTE, DECRECIENTE | (último reporte del año − LB) / (MP − LB) |
+
+  Sin reportes en el año no hay PAV. Antes Alertas y Seguimiento dividía por la
+  meta anual completa y a mitad de año daba la mitad de lo que muestra el Excel
+  (DDHH S1-26: 2.5.3 Suma trimestral 193,4 % y no 96,7 %; 4.5.4 semestral 25 %
+  y no 12,5 %; 2.11.5 Creciente 191,7 % y no 95,8 %).
+- **`metricas.py::reportes_vigencia`** — valores reportados en un año hasta un
+  trimestre, en orden y sin filas sintéticas.
+- **`metricas_corte`** devuelve también `pav`.
+
+### Cambiado
+
+- **`ADVERTENCIA_DISCREPANCIA_PCT`** calcula con `calc_pct_vigencia` (ya dividía
+  por MP; ahora es la misma función que usa el aplicativo).
+- **`ADVERTENCIA_LIMITE_VIG`** compara el PAV con el techo del semáforo, igual
+  que `ADVERTENCIA_AVANCE` hace con el PAV del archivo. Antes comparaba el
+  reporte con la meta del año entero: a mitad de año no saltaba aunque el
+  archivo mostrara el doble de lo programado (Suma trimestral, 70 de 100 a Q2 →
+  140 % de MP 50), y en DECRECIENTE saltaba cuando el indicador seguía por
+  encima de su meta, que es ir atrasado.
+- Una meta anual 0 cuenta como meta en las dos alertas solo en un DECRECIENTE
+  con meta final 0 (`hay_meta`), como en `metricas_corte`.
+
 ## [0.15.0] — Las alertas de sobre ejecución y de rango usan el semáforo de quien valida
 
 ### Cambiado

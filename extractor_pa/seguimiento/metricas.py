@@ -276,6 +276,49 @@ def calc_pct_hasta_vig(tipo, av_acum, ma, lb) -> Optional[float]:
     return None if ma == 0 else av_acum / ma
 
 
+def reportes_vigencia(segs, anio: int, hasta_trimestre: int = 4) -> list:
+    """Valores reportados en ``anio`` hasta ``hasta_trimestre``, en orden.
+
+    ``segs``: filas de seguimiento, una por período, con las claves ``anio,
+    trimestre, valor_avance`` (y opcionalmente ``sintetico``). Las filas
+    sintéticas no son reportes."""
+    filas = sorted(
+        (s for s in segs or ()
+         if not s.get("sintetico") and s.get("anio") == anio
+         and (s.get("trimestre") or 0) <= hasta_trimestre),
+        key=lambda s: s.get("trimestre") or 0)
+    return [v for s in filas if (v := safe_float(s.get("valor_avance"))) is not None]
+
+
+def calc_pct_vigencia(tipo, mp, lb, reportes) -> Optional[float]:
+    """PAV — % de avance en la vigencia, FRACCIÓN 0–1.
+
+    Lo logrado en el año contra la meta del período (MP): la meta del año
+    prorrateada hasta el corte según el tipo de anualización y la periodicidad
+    (:func:`calc_meta_periodo`, :func:`trimestre_efectivo`). Es el cálculo de la
+    columna «Porcentaje de Avance en la Vigencia» del Excel del SDP.
+
+    SUMA: Σ reportes / MP · CONSTANTE: último reporte / MP ·
+    CRECIENTE/DECRECIENTE: (último reporte − LB)/(MP − LB).
+
+    ``reportes``: valores reportados en el año hasta el corte (ver
+    :func:`reportes_vigencia`). Sin reportes en el año no hay PAV: no se
+    arrastra el valor de otra vigencia. En SUMA solo cuenta lo del año; en los
+    demás tipos el reporte es un nivel y sumarlo lo duplicaría."""
+    vals = [v for v in (safe_float(r) for r in reportes or ()) if v is not None]
+    mp = safe_float(mp)
+    if not vals or mp is None:
+        return None
+    t = _tipo(tipo)
+    if t in ("CRECIENTE", "DECRECIENTE"):
+        base = safe_float(lb) or 0.0
+        den = mp - base
+        return None if den == 0 else (vals[-1] - base) / den
+    if mp == 0:
+        return None
+    return (sum(vals) if t == "SUMA" else vals[-1]) / mp
+
+
 # ─────────────────────────── fórmulas §10.5 ───────────────────────────
 
 def _contra_meta_final(tipo, valor, meta_final, lb) -> Optional[float]:
@@ -481,7 +524,7 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     periodicidad y los trimestres efectivamente reportados.
 
     Retorna dict con ``av_acum, meta_anual, meta_prev, meta_final, mp, ma,
-    sum_metas_prev, phv, tray, paf, tid, brecha, periodo_str,
+    sum_metas_prev, pav, phv, tray, paf, tid, brecha, periodo_str,
     trimestre_efectivo, sin_iniciar`` — porcentajes en FRACCIÓN 0–1.
     ``sin_iniciar`` solo se evalúa si se pasa ``fecha_inicio``: el indicador
     aún no debe entrar en los cálculos del corte (ver
@@ -569,11 +612,12 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     tray = calc_trayectoria_ideal(t, mp, ma, meta_final, lb)
     paf = calc_paf(t, av_acum, meta_final, lb)
     tid = calc_tid(t, ma, meta_final, lb)
+    pav = calc_pct_vigencia(t, mp, lb, reportes_vigencia(segs_al_corte, anio, trimestre))
 
     return dict(
         av_acum=av_acum, meta_anual=meta_anual, meta_prev=meta_prev, meta_final=meta_final,
         mp=mp, ma=ma, sum_metas_prev=sum_metas_prev,
-        phv=phv, tray=tray, paf=paf, tid=tid, brecha=calc_brecha(paf, tid),
+        pav=pav, phv=phv, tray=tray, paf=paf, tid=tid, brecha=calc_brecha(paf, tid),
         periodo_str=f"{anio} Q{trimestre}",
         trimestre_efectivo=q_ef, sin_iniciar=sin_iniciar,
     )

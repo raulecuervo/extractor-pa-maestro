@@ -20,6 +20,7 @@ from extractor_pa.seguimiento import (
     calc_mes,
     calc_paf,
     calc_pct_hasta_vig,
+    calc_pct_vigencia,
     calc_sum_metas_prev,
     calc_tid,
     calc_trayectoria_ideal,
@@ -29,6 +30,7 @@ from extractor_pa.seguimiento import (
     lb_de_indicador,
     metricas_corte,
     periodo_de_fecha,
+    reportes_vigencia,
     sin_iniciar_al_corte,
     trimestre_efectivo,
     trimestre_exigible,
@@ -700,6 +702,90 @@ def test_discrepancia_pct_no_usa_notacion_cientifica():
     assert len(disc) == 1
     assert "50899" in disc[0].val_base
     assert "e+" not in disc[0].val_base
+
+
+# ─────────────────────────── % de avance en la vigencia (PAV) ───────────────────────────
+
+def test_pct_vigencia_contra_la_meta_del_periodo():
+    """PAV divide por la meta del período (MP), no por la meta del año entero.
+
+    Es la cuenta de la columna «Porcentaje de Avance en la Vigencia» del Excel
+    del SDP: DDHH 2.5.3 (Suma trimestral) da 193,4 % a S1-26 y con la meta
+    anual completa quedaba en 96,7 %."""
+    # SUMA: Σ reportes del año / MP (a Q2 de un trimestral, MP = MV·6/12)
+    assert calc_pct_vigencia("Suma", 50, 0, [30, 20]) == pytest.approx(1.0)
+    # CONSTANTE: último reporte / MP
+    assert calc_pct_vigencia("Constante", 95, 0, [80, 90]) == pytest.approx(90 / 95)
+    # CRECIENTE: (último − LB)/(MP − LB); MP = 30 + (50 − 30)·6/12 = 40
+    assert calc_pct_vigencia("Creciente", 40, 10, [38]) == pytest.approx(28 / 30)
+    # DECRECIENTE: (último − LB)/(MP − LB), también con meta 0
+    assert calc_pct_vigencia("Decreciente", 15, 20, [12]) == pytest.approx(1.6)
+    assert calc_pct_vigencia("Decreciente", 0, 20, [5]) == pytest.approx(0.75)
+
+
+def test_pct_vigencia_vacio():
+    assert calc_pct_vigencia("Suma", 50, 0, []) is None             # no reportó en el año
+    assert calc_pct_vigencia("Constante", 95, 0, [None]) is None
+    assert calc_pct_vigencia("Suma", None, 0, [5]) is None          # sin meta
+    assert calc_pct_vigencia("Suma", 0, 0, [5]) is None
+    assert calc_pct_vigencia("Constante", 0, 0, [5]) is None
+    assert calc_pct_vigencia("Creciente", 10, 10, [12]) is None     # MP = LB
+
+
+def test_reportes_vigencia():
+    segs = [dict(anio=2025, trimestre=4, valor_avance=9),
+            dict(anio=2026, trimestre=2, valor_avance=4),
+            dict(anio=2026, trimestre=1, valor_avance=3),
+            dict(anio=2026, trimestre=3, valor_avance=None),
+            dict(anio=2026, trimestre=4, valor_avance=0, sintetico=1)]
+    assert reportes_vigencia(segs, 2026, 1) == [3]
+    assert reportes_vigencia(segs, 2026) == [3, 4]      # en orden; la sintética no es reporte
+    assert reportes_vigencia(segs, 2024) == []
+
+
+def test_metricas_corte_trae_pav():
+    segs = [dict(anio=2026, trimestre=q, meta_anual=100, meta_final=400,
+                 acumulado=None, valor_avance=v) for q, v in ((1, 30), (2, 20))]
+    m = metricas_corte("Suma", "Trimestral", 0.0, segs, segs, 2026, 2)
+    assert m["mp"] == pytest.approx(50)
+    assert m["pav"] == pytest.approx(1.0)
+    # Sin reportes en el año no hay PAV, aunque sí % hasta la vigencia.
+    nivel = _segs_nivel({2025: 10, 2026: 20}, 20, {2025: 10})
+    m = metricas_corte("Creciente", "Anual", 0.0, nivel, nivel, 2026, 4)
+    assert m["pav"] is None and m["phv"] is not None
+
+
+def test_pct_vigencia_inicio_a_mitad_de_anio():
+    """Un semestral que inicia en septiembre reporta en Q4 (S2): a ese corte la
+    meta del período es la del año completo."""
+    segs = [dict(anio=2025, trimestre=4, meta_anual=10, meta_final=30,
+                 acumulado=5, valor_avance=5)]
+    m = metricas_corte("Suma", "Semestral", 0.0, segs, segs, 2025, 4,
+                       fecha_inicio="2025-09-15")
+    assert not m["sin_iniciar"]
+    assert m["trimestre_efectivo"] == 4 and m["mp"] == pytest.approx(10)
+    assert m["pav"] == pytest.approx(0.5)
+
+
+def test_limite_vigencia_contra_la_meta_del_periodo():
+    """ADVERTENCIA_LIMITE_VIG es la contraparte calculada de ADVERTENCIA_AVANCE:
+    compara el avance en la vigencia (contra MP) con el techo del semáforo."""
+    # Suma trimestral a Q2: 70 reportados contra MP 50 → 140 % (con la meta del
+    # año entera eran 70 % y no saltaba).
+    ind = _ind(metas={"2026": 100}, avances={"2026_Q1": 40, "2026_Q2": 30})
+    lim = [a for a in validar_archivo(_res(ind)) if a.tipo == "ADVERTENCIA_LIMITE_VIG"]
+    assert len(lim) == 1
+    assert lim[0].val_base == "Meta del periodo=50"
+    assert lim[0].val_nuevo == "Suma=70 (140.0%)"
+    assert "supera 125% de la meta" in lim[0].detalle
+    # Decreciente por encima de su meta va atrasado, no sobre ejecutado:
+    # LB 20, MP 12,5 a Q2 y reporta 14 → 80 %.
+    dec = dict(tipo_anualizacion="Decreciente", linea_base="20", meta_final=10,
+               metas={"2025": 15, "2026": 10})
+    atrasado = _ind(avances={"2026_Q1": 14}, **dec)
+    assert "ADVERTENCIA_LIMITE_VIG" not in _tipos(validar_archivo(_res(atrasado)))
+    adelantado = _ind(avances={"2026_Q1": 5}, **dec)        # (5 − 20)/(12,5 − 20) = 200 %
+    assert "ADVERTENCIA_LIMITE_VIG" in _tipos(validar_archivo(_res(adelantado)))
 
 
 def test_cambio_de_meta_genera_advertencia():
