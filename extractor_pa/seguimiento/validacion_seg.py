@@ -33,9 +33,15 @@ Dos grupos:
   ADVERTENCIA_ACUM_META_FIN, ADVERTENCIA_META_SIN_REP, ADVERTENCIA_REP_SIN_META,
   ADVERTENCIA_PCT_HASTA_VIG, ADVERTENCIA_DISCREPANCIA_PCT, ADVERTENCIA_CUAL.
 
-ESCALA: ``pct_vigencia`` viene como FRACCIÓN 0–1 del ``.xlsb``; el umbral de
-avance es 1.25 (125 %). ``UMBRALES_SEMAFORO`` está en 0–100 y ``a_porcentaje``
-convierte explícitamente (ver README de escala en ``metricas.py``).
+ESCALA: ``pct_vigencia`` viene como FRACCIÓN 0–1 del ``.xlsb``; los umbrales
+de semáforo están en 0–100 y ``a_porcentaje`` convierte explícitamente (ver
+README de escala en ``metricas.py``).
+
+UMBRALES: las alertas de sobre ejecución (ADVERTENCIA_AVANCE,
+ADVERTENCIA_LIMITE_VIG) y de rango (ADVERTENCIA_PCT_HASTA_VIG) usan el semáforo
+que pase quien valida (``umbrales={"rojo", "amarillo", "naranja"}`` en %): el
+rojo es el piso del % hasta la vigencia y el naranja el techo de sobre
+ejecución. Sin ``umbrales`` rigen los de la librería (50 % y 125 %).
 """
 
 from __future__ import annotations
@@ -55,10 +61,25 @@ from .metricas import (calc_mes, calc_meta_periodo, lb_de_indicador,
                        periodo_de_fecha, safe_float, trimestre_exigible)
 from .modelo import IndicadorSeguimiento
 
-UMBRAL_PCT_MIN = 0.50          # piso del % hasta la vigencia
+UMBRAL_PCT_MIN = 0.50          # piso del % hasta la vigencia (si no pasan umbrales)
 
-# Semáforo (de sispp-sdis), en PORCENTAJE 0-100.
+# Semáforo por defecto (de sispp-sdis), en PORCENTAJE 0-100.
 UMBRALES_SEMAFORO = {"rojo": 50.0, "amarillo": 75.0, "naranja": 125.0}
+
+
+def limites_de_semaforo(umbrales=None) -> tuple:
+    """``(piso, techo)`` en fracción a partir de umbrales de semáforo en %: el
+    rojo es el piso del % hasta la vigencia y el naranja el techo de sobre
+    ejecución. Sin umbrales (o sin alguno de los dos), los de la librería."""
+    u = umbrales or {}
+    piso, techo = safe_float(u.get("rojo")), safe_float(u.get("naranja"))
+    return (UMBRAL_PCT_MIN if piso is None else piso / 100,
+            UMBRAL_AVANCE if techo is None else techo / 100)
+
+
+def _pct(fraccion) -> str:
+    """1.25 → '125%'; 0.625 → '62.5%'."""
+    return f"{fraccion * 100:g}%"
 
 # Campos inmutables del indicador (ERROR_ESTABILIDAD), con las etiquetas
 # EXACTAS de producción (validation/core.py::validate_stability).
@@ -463,7 +484,7 @@ def _validar_avance_meta(ind, politica, archivo, umbral=UMBRAL_AVANCE):
                                 val_nuevo=f"Último reporte={ultimo}",
                                 periodo=str(year),
                                 detalle=(f"Tipo '{ind.tipo_anualizacion}': último reporte ({ultimo}) "
-                                         f"supera {umbral:.0%} de la meta ({meta_f})")))
+                                         f"supera {_pct(umbral)} de la meta ({meta_f})")))
     elif tipo == "suma":
         vals = _avances_trimestrales_vigencia(ind, year, hasta_q=q)
         if vals:
@@ -475,7 +496,7 @@ def _validar_avance_meta(ind, politica, archivo, umbral=UMBRAL_AVANCE):
                                     val_nuevo=f"Suma={total:g}",
                                     periodo=str(year),
                                     detalle=(f"Tipo 'Suma': suma de reportes ({total:g}) "
-                                             f"supera {umbral:.0%} de la meta ({meta_f})")))
+                                             f"supera {_pct(umbral)} de la meta ({meta_f})")))
 
     pct = safe_float(ind.pct_vigencia.get(str(year)))
     if pct is not None and pct > umbral:
@@ -483,7 +504,7 @@ def _validar_avance_meta(ind, politica, archivo, umbral=UMBRAL_AVANCE):
                             campo=f"% Avance Vigencia {year}",
                             val_base=str(meta_f), val_nuevo=f"{pct:.2%}",
                             periodo=str(year),
-                            detalle=f"% Avance de la vigencia ({pct:.1%}) supera {umbral:.0%} de la meta programada"))
+                            detalle=f"% Avance de la vigencia ({pct:.1%}) supera {_pct(umbral)} de la meta programada"))
     return out
 
 
@@ -589,7 +610,7 @@ def _validar_meta_reporte(ind, politica, archivo):
     return out
 
 
-def _validar_pct_hasta_vig(ind, politica, archivo):
+def _validar_pct_hasta_vig(ind, politica, archivo, piso=UMBRAL_PCT_MIN, techo=UMBRAL_AVANCE):
     out = []
     year, _ = parse_period(ind.corte, ind.anio_reporte)
     if year is None:
@@ -597,10 +618,10 @@ def _validar_pct_hasta_vig(ind, politica, archivo):
     pct = safe_float(ind.pct_vigencia.get(str(year)))
     if pct is None:
         return out
-    if pct < UMBRAL_PCT_MIN or pct > UMBRAL_AVANCE:
-        msg = (f"% avance hasta la vigencia ({pct:.1%}) es inferior al 50%"
-               if pct < UMBRAL_PCT_MIN else
-               f"% avance hasta la vigencia ({pct:.1%}) supera el 125%")
+    if pct < piso or pct > techo:
+        msg = (f"% avance hasta la vigencia ({pct:.1%}) es inferior al {_pct(piso)}"
+               if pct < piso else
+               f"% avance hasta la vigencia ({pct:.1%}) supera el {_pct(techo)}")
         out.append(_finding("ADVERTENCIA_PCT_HASTA_VIG", ind, politica, archivo,
                             campo=f"% Avance Hasta Vigencia {year}",
                             val_nuevo=f"{pct:.2%}", periodo=str(year),
@@ -708,16 +729,18 @@ def _validar_discrepancia_pct(ind, politica, archivo):
     return out
 
 
-def _validaciones_un_archivo(ind, politica, archivo, anio_min, entidad_sector=None):
+def _validaciones_un_archivo(ind, politica, archivo, anio_min, entidad_sector=None,
+                             umbrales=None):
     """Las validaciones de un solo archivo, en el ORDEN de producción
     (run_all_validations). Las dos últimas son posteriores a MS-32b."""
+    piso, techo = limites_de_semaforo(umbrales)
     out = []
     out.extend(_validar_no_numerico(ind, politica, archivo))
     out.extend(_validar_escala(ind, politica, archivo))
-    out.extend(_validar_avance_meta(ind, politica, archivo))
+    out.extend(_validar_avance_meta(ind, politica, archivo, umbral=techo))
     out.extend(_validar_acumulado(ind, politica, archivo, anio_min))
     out.extend(_validar_meta_reporte(ind, politica, archivo))
-    out.extend(_validar_pct_hasta_vig(ind, politica, archivo))
+    out.extend(_validar_pct_hasta_vig(ind, politica, archivo, piso=piso, techo=techo))
     out.extend(_validar_cualitativo(ind, politica, archivo))
     out.extend(_validar_discrepancia_pct(ind, politica, archivo))
     out.extend(_validar_ponderacion_vigente(ind, politica, archivo))
@@ -727,25 +750,28 @@ def _validaciones_un_archivo(ind, politica, archivo, anio_min, entidad_sector=No
 
 # ─────────────────────────── orquestadores ───────────────────────────
 
-def validar_archivo(res_nuevo, *, anio_min: int = 2018, entidad_sector=None) -> list:
+def validar_archivo(res_nuevo, *, anio_min: int = 2018, entidad_sector=None,
+                    umbrales=None) -> list:
     """Validaciones de un solo archivo (sin base). → list[HallazgoSeguimiento].
 
     `entidad_sector`: mapa {entidad normalizada con `norm_entidad`: sector oficial} para la
     regla ADVERTENCIA_SECTOR_ENTIDAD. Opcional: sin él esa regla no corre.
+    `umbrales`: semáforo de quien valida, en % (ver :func:`limites_de_semaforo`).
     """
     politica = res_nuevo.metadatos.nombre_politica or ""
     archivo = res_nuevo.metadatos.archivo_fuente
     alertas = []
     for ind in res_nuevo.indicadores:
         alertas.extend(_validaciones_un_archivo(ind, politica, archivo, anio_min,
-                                                entidad_sector))
+                                                entidad_sector, umbrales))
     return alertas
 
 
 def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018,
-                         entidad_sector=None) -> list:
+                         entidad_sector=None, umbrales=None) -> list:
     """Base vs nuevo + validaciones del nuevo. → list[HallazgoSeguimiento].
-    Orden y textos de ``run_all_validations`` de producción."""
+    Orden y textos de ``run_all_validations`` de producción. `umbrales`: ver
+    :func:`validar_archivo`."""
     politica = res_nuevo.metadatos.nombre_politica or ""
     archivo = res_nuevo.metadatos.archivo_fuente
     base_map = {i.codigo: i for i in res_base.indicadores if i.codigo}
@@ -779,7 +805,7 @@ def validar_consistencia(res_base, res_nuevo, *, anio_min: int = 2018,
             alertas.extend(_validar_cambio_estado(base, nuevo, politica, archivo))
             alertas.extend(_validar_retroactividad(base, nuevo, politica, archivo, anio_min))
         alertas.extend(_validaciones_un_archivo(nuevo, politica, archivo, anio_min,
-                                                entidad_sector))
+                                                entidad_sector, umbrales))
     return alertas
 
 
