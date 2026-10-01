@@ -507,6 +507,18 @@ def avance_acumulado_suma(segs_al_corte, segs_todos, anio: int, trimestre: int) 
     return total
 
 
+def avance_sin_reportes(tipo, lb) -> float:
+    """AV de un indicador de nivel que no ha reportado nada hasta el corte.
+
+    CRECIENTE/DECRECIENTE: la LB, el nivel del que parte. CONSTANTE: 0. Un
+    CONSTANTE nunca se mide contra la LB: su meta es el nivel que debe
+    sostener cada año, y la LB puede estar en otra escala. Tomarla como avance
+    inflaba PHV = AV/MA y PAF = AV/MF (LB 382 y MA 0,2 sin reportes daban
+    PHV = 1910, un 191.000 %). SUMA no pasa por aquí (ver
+    :func:`avance_acumulado_suma`)."""
+    return 0.0 if _tipo(tipo) == "CONSTANTE" else lb
+
+
 def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
                    anio: int, trimestre: int,
                    metas_plan: Optional[dict] = None,
@@ -593,7 +605,7 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         sum_metas_prev = 0.0
         av_acum = next(
             (s["valor_avance"] for s in reversed(segs_al_corte)
-             if s.get("valor_avance") is not None), lb)
+             if s.get("valor_avance") is not None), avance_sin_reportes(t, lb))
 
     reportados = trimestres_reportados(segs_al_corte, anio, trimestre)
     q_ef = trimestre_efectivo(trimestre, periodicidad, reportados)

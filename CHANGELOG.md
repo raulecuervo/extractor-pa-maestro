@@ -3,6 +3,26 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.17.0] — Un CONSTANTE sin reportes avanza 0, no su línea base
+
+### Corregido
+
+- **`metricas.py::metricas_corte`** — el avance acumulado (AV) de un indicador
+  CONSTANTE que no ha reportado nada hasta el corte es **0**. Antes era la línea
+  base, como en CRECIENTE y DECRECIENTE, y eso inflaba `PHV = AV/MA` y
+  `PAF = AV/MF`, que en CONSTANTE no restan la LB. Economía Circular 3.1.12
+  (CONSTANTE, LB 382, meta y meta final 0,2, sin reportes) daba PHV y PAF de
+  1910, un 191.000 %; ahora 0 %. Si MA o MF es 0 el porcentaje sigue vacío, y
+  PAV no cambia (ya quedaba vacío sin reportes en el año). CRECIENTE y
+  DECRECIENTE siguen partiendo de la LB.
+
+### Agregado
+
+- **`metricas.py::avance_sin_reportes(tipo, lb)`** — el AV de un indicador de
+  nivel sin reportes: LB en CRECIENTE/DECRECIENTE, 0 en CONSTANTE. Con esto
+  ningún camino de CONSTANTE lee la LB (un test lo verifica comparando
+  `metricas_corte` con LB 0 y LB 382 en varios escenarios).
+
 ## [0.16.0] — El % de avance en la vigencia se mide contra la meta prorrateada al corte
 
 ### Agregado
