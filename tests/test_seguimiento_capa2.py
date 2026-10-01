@@ -13,6 +13,7 @@ from extractor_pa.seguimiento import (
     ResultadoSeguimiento,
     HallazgoSeguimiento,
     anio_de_serial_excel,
+    avance_sin_reportes,
     calc_brecha,
     calc_lb_ficticia_decreciente,
     calc_meta_acum,
@@ -492,6 +493,78 @@ def test_meta_final_cero_con_linea_base():
     assert calc_paf("DECRECIENTE", 4, 0, 0) is None
     assert calc_paf("CONSTANTE", 4, 0, 0) is None
     assert calc_tid("SUMA", 4, 0, 0) is None
+
+
+def test_constante_sin_reportes_avance_cero():
+    """CONSTANTE con LB 382, meta 0,2 y sin ningún reporte hasta el corte.
+    Antes AV tomaba la LB: PHV = 382/0,2 = 1910 (191.000 %) y PAF igual."""
+    segs = [dict(anio=2026, trimestre=q, meta_anual=0.2, meta_final=0.2,
+                 acumulado=None, valor_avance=None) for q in (1, 2)]
+    m = metricas_corte("Constante", "Semestral", 382.0, segs, segs, 2026, 2)
+    assert m["ma"] == pytest.approx(0.2)
+    assert m["meta_final"] == pytest.approx(0.2)
+    assert m["av_acum"] == 0.0
+    assert m["phv"] == 0.0
+    assert m["paf"] == 0.0
+    assert m["pav"] is None                  # no reportó en el año
+    assert m["tid"] == pytest.approx(1.0)    # MA/MF: no depende de la LB
+
+
+def test_constante_sin_reportes_con_meta_cero_deja_el_pct_vacio():
+    segs = [dict(anio=2026, trimestre=2, meta_anual=0.0, meta_final=0.0,
+                 acumulado=None, valor_avance=None)]
+    m = metricas_corte("Constante", "Semestral", 382.0, segs, segs, 2026, 2)
+    assert m["av_acum"] == 0.0
+    assert m["phv"] is None and m["paf"] is None
+
+
+def test_constante_con_reportes_no_cambia():
+    """MV 95, último reporte 90: AV es el último reporte, como siempre."""
+    segs = [dict(anio=2026, trimestre=1, meta_anual=95, meta_final=95,
+                 acumulado=None, valor_avance=80),
+            dict(anio=2026, trimestre=2, meta_anual=95, meta_final=95,
+                 acumulado=None, valor_avance=90)]
+    m = metricas_corte("Constante", "Trimestral", 0.0, segs, segs, 2026, 2)
+    assert m["av_acum"] == 90
+    assert m["ma"] == pytest.approx(95)
+    assert m["phv"] == pytest.approx(90 / 95)
+    assert m["paf"] == pytest.approx(90 / 95)
+    assert m["pav"] == pytest.approx(90 / 95)
+    assert m["tid"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("metas, avances, anio", [
+    ({2026: 0.2}, {}, 2026),                       # sin reportes
+    ({2026: 95}, {2026: 90}, 2026),                # con reporte
+    ({2025: 90, 2026: 95}, {2025: 88}, 2026),      # reportó solo el año anterior
+    ({2025: None, 2026: 95}, {}, 2025),            # antes de su primera meta
+    ({2024: 90, 2025: None, 2026: 95}, {}, 2025),  # año sin meta: sostiene 2024
+])
+def test_constante_nunca_lee_la_linea_base(metas, avances, anio):
+    segs = _segs_nivel(metas, 95, avances)
+    al_corte = [s for s in segs if s["anio"] <= anio]
+    sin_lb = metricas_corte("Constante", "Anual", 0.0, al_corte, segs, anio, 4)
+    con_lb = metricas_corte("Constante", "Anual", 382.0, al_corte, segs, anio, 4)
+    assert con_lb == sin_lb
+
+
+@pytest.mark.parametrize("tipo, lb, metas, mf", [
+    ("Creciente", 50.0, {2026: 100}, 200),
+    ("Decreciente", 20.0, {2026: 10}, 0),
+])
+def test_creciente_y_decreciente_sin_reportes_siguen_en_la_lb(tipo, lb, metas, mf):
+    segs = _segs_nivel(metas, mf, {})
+    m = metricas_corte(tipo, "Anual", lb, segs, segs, 2026, 4)
+    assert m["av_acum"] == lb
+    assert m["phv"] == pytest.approx(0.0)    # (LB − LB)/(MA − LB)
+    assert m["paf"] == pytest.approx(0.0)
+
+
+def test_avance_sin_reportes():
+    assert avance_sin_reportes("CONSTANTE", 382.0) == 0.0
+    assert avance_sin_reportes(" constante ", 382.0) == 0.0
+    assert avance_sin_reportes("Creciente", 382.0) == 382.0
+    assert avance_sin_reportes("DECRECIENTE", 20.0) == 20.0
 
 
 def test_trayectoria_ideal_es_tid():
