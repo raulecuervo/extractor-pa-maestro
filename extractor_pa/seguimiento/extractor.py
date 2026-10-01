@@ -153,7 +153,7 @@ def _leer_cualitativo(mapa_cual, indice, meta):
 
 
 def extraer_seguimiento(ruta: str | Path) -> ResultadoSeguimiento:
-    """Extrae un `.xlsb` de seguimiento a `ResultadoSeguimiento`."""
+    """Extrae un seguimiento (`.xlsb` o `.xlsx`) a `ResultadoSeguimiento`."""
     nombre = os.path.basename(str(ruta))
     meta = MetadatosSeguimiento(
         archivo_fuente=nombre,
@@ -166,7 +166,7 @@ def extraer_seguimiento(ruta: str | Path) -> ResultadoSeguimiento:
     try:
         wb_cm = loader.abrir(ruta)
     except ImportError:
-        raise  # pyxlsb no instalado: error de entorno, no de datos
+        raise  # pyxlsb no instalado (solo lo pide el .xlsb): error de entorno, no de datos
     except Exception as e:  # noqa: BLE001
         alertas.append(crear_alerta("apertura_seguimiento",
                                     f"No se pudo abrir el archivo: {e}",

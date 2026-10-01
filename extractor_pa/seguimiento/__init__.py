@@ -2,7 +2,7 @@
 """
 Sub-paquete de SEGUIMIENTO (avances periódicos) del extractor maestro.
 
-Fase S1: extracción del `.xlsb` (Avance Cuantitativo/Cualitativo) al modelo
+Fase S1: extracción del `.xlsb` o `.xlsx` (Avance Cuantitativo/Cualitativo) al modelo
 canónico de seguimiento, con detección por anclas e histórico completo.
 
 API:

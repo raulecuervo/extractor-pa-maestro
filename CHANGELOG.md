@@ -3,6 +3,30 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.18.0] — El seguimiento también se lee en `.xlsx` (formato 3.4)
+
+### Agregado
+
+- **`seguimiento/loader.py`** — lee el seguimiento en `.xlsx` además de `.xlsb`.
+  Desde el formato 3.4 (2026, «fórmulas retrocompatibles») el SDP lo entrega en
+  `.xlsx` con la misma estructura: mismas hojas y mismas filas de bloques, años y
+  encabezados que el 3.2 en `.xlsb`. El `.xlsx` se lee con openpyxl (ya era
+  dependencia; no necesita pyxlsb) con los valores que guardó Excel, y cada celda
+  sale con el tipo que entrega pyxlsb: números `float` y fechas como serial de
+  Excel. Así el resto del extractor no distingue el formato: el mismo archivo de
+  Economía Circular S1-26 guardado en los dos formatos da el mismo modelo,
+  indicador por indicador.
+- **`loader.formato_de(ruta)`** — reconoce el formato por el contenido
+  (`xl/workbook.bin` o `xl/workbook.xml`), no por la extensión: un `.xlsx`
+  renombrado a `.xlsb` se lee igual.
+- **`loader.EXTENSIONES`** = `(".xlsb", ".xlsx")`.
+
+### Cambiado
+
+- **`tablero.construir_tablero`** busca seguimientos `*.xlsb` y `*.xlsx`.
+- El CLI (`extractor-pa seguimiento`) y la alerta `apertura_seguimiento` hablan
+  de `.xlsb` o `.xlsx`.
+
 ## [0.17.0] — Un CONSTANTE sin reportes avanza 0, no su línea base
 
 ### Corregido

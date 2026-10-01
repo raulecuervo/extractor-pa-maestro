@@ -82,9 +82,9 @@ _TIPOS = [
                "Una fila trae código de IP pero sin nombre (se omitió).",
                implementado=True),
 
-    # ── Familia: Estructura del SEGUIMIENTO (.xlsb) ──
+    # ── Familia: Estructura del SEGUIMIENTO (.xlsb o .xlsx) ──
     TipoAlerta("apertura_seguimiento", NIVEL_ERROR, "Estructura seguimiento", CAPA_EXTRACCION,
-               "No se pudo abrir el archivo .xlsb de seguimiento.", implementado=True),
+               "No se pudo abrir el archivo de seguimiento (.xlsb o .xlsx).", implementado=True),
     TipoAlerta("hoja_seguimiento_no_encontrada", NIVEL_ERROR, "Estructura seguimiento", CAPA_EXTRACCION,
                "No se encontró la hoja 'Avance Cuantitativo'.", implementado=True),
     TipoAlerta("anclas_no_encontradas", NIVEL_ERROR, "Estructura seguimiento", CAPA_EXTRACCION,

@@ -8,7 +8,7 @@ conteo de hallazgos (reglas V0–V18 + consistencia). Produce un modelo de
 resumen y un HTML navegable autocontenido.
 
 Empareja los archivos por una clave normalizada del nombre (sigla de la
-política): p. ej. `PA_BTI_V4-26_DP.xlsx` ↔ `BTI.xlsb`.
+política): p. ej. `PA_BTI_V4-26_DP.xlsx` ↔ `BTI.xlsb` (o `BTI.xlsx`).
 """
 
 from __future__ import annotations
@@ -147,7 +147,8 @@ def construir_tablero(planes_dir, seg_dir, anio=ANIO_DEFECTO,
     """Construye el tablero (lista de resúmenes por política) desde dos carpetas."""
     planes = [p for p in sorted(glob.glob(os.path.join(planes_dir, "*.xlsx")))
               if not _nombre_archivo(p).startswith("~$")]
-    segs = [s for s in sorted(glob.glob(os.path.join(seg_dir, "*.xlsb")))
+    segs = [s for s in sorted(glob.glob(os.path.join(seg_dir, "*.xlsb"))
+                              + glob.glob(os.path.join(seg_dir, "*.xlsx")))
             if not _nombre_archivo(s).startswith("~$")]
     filas = []
     for clave, rp, rs in emparejar(planes, segs):
