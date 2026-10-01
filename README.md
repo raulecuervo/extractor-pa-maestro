@@ -14,7 +14,7 @@ Diseñada combinando lo mejor de los 7 extractores existentes
 Desarrollo (editable, desde el repo):
 ```bash
 pip install -e .              # núcleo (planes .xlsx)
-pip install -e ".[xlsb]"      # + seguimiento .xlsb (pyxlsb)
+pip install -e ".[xlsb]"      # + seguimiento .xlsb (pyxlsb); el .xlsx no lo necesita
 pip install -e ".[xlsb,pandas,dev]"   # todo + DataFrame + pruebas
 ```
 
@@ -71,7 +71,7 @@ a la de `sispp-gobierno`, así que interoperan. Solo stdlib (sin dependencias ex
 ```bash
 extractor-pa --version
 extractor-pa plan PLAN.xlsx --reglas --anio 2026 --json salida.json --excel salida.xlsx
-extractor-pa seguimiento SEG.xlsb --csv carpeta_salida
+extractor-pa seguimiento SEG.xlsb --csv carpeta_salida     # o SEG.xlsx (formato 3.4)
 extractor-pa validar PLAN.xlsx --anio 2026      # lista hallazgos V0–V18 por tipo
 ```
 (equivalente: `python -m extractor_pa ...`). Salidas: `--json`, `--csv` (carpeta,
@@ -115,8 +115,9 @@ Implementado:
   por plan o **consolidado multi-plan** (`exportar_*` / `exportar_*_consolidado`).
 
 - **Capa de seguimiento** (`extractor_pa/seguimiento/`):
-  - **S1** — extrae el `.xlsb` (Avance Cuantitativo/Cualitativo) al modelo
-    canónico (histórico indicador×año×trimestre), detección por anclas.
+  - **S1** — extrae el `.xlsb` o el `.xlsx` (Avance Cuantitativo/Cualitativo) al
+    modelo canónico (histórico indicador×año×trimestre), detección por anclas. El
+    formato se reconoce por el contenido, no por la extensión.
   - **S2** — `cruzar_con_plan(seg, plan)` empareja por código IR/IP; `consolidar`
     consolida los avances por período (Q/S/Anual, respeta SUMA).
   - **S3** — `validar_consistencia(base, nuevo)` (15 alertas: estabilidad,
@@ -195,7 +196,7 @@ extractor_pa/
   gobernanza.py          triage persistente de alertas: clave estable + estados + reconciliación/autocierre + auditoría
   decisiones.py          decisiones humanas de entidad/sector: store + auditoría + reaplicación (puente desde B1)
   exportadores.py        salidas: JSON/CSV/Excel/DataFrame + consolidado multi-plan
-  seguimiento/           SUB-PAQUETE de seguimiento (.xlsb): loader, resolutor
+  seguimiento/           SUB-PAQUETE de seguimiento (.xlsb/.xlsx): loader, resolutor
                          por anclas, metadatos, extractor → ResultadoSeguimiento
   estrategias/
     base.py              interfaz EstrategiaExtraccion

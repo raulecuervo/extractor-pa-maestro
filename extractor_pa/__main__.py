@@ -4,7 +4,7 @@
 Uso:
     extractor-pa plan PLAN.xlsx [--reglas] [--anio 2026] [--json out.json]
                                 [--csv carpeta] [--excel out.xlsx] [--no-fichas]
-    extractor-pa seguimiento SEG.xlsb [--json out.json] [--csv carpeta] [--excel out.xlsx]
+    extractor-pa seguimiento SEG.xlsb|SEG.xlsx [--json out.json] [--csv carpeta] [--excel out.xlsx]
     extractor-pa validar PLAN.xlsx [--anio 2026]
     extractor-pa --version
 
@@ -120,7 +120,7 @@ def construir_parser() -> argparse.ArgumentParser:
     _add_salidas(sp)
     sp.set_defaults(func=_cmd_plan)
 
-    sp = sub.add_parser("seguimiento", help="extraer un seguimiento (.xlsb)")
+    sp = sub.add_parser("seguimiento", help="extraer un seguimiento (.xlsb o .xlsx)")
     sp.add_argument("archivo")
     _add_salidas(sp)
     sp.set_defaults(func=_cmd_seguimiento)
