@@ -1,7 +1,7 @@
 {
-  "archivo": "plan_accion_pp_cti_v4-25.xlsx",
-  "politica": "POLÍTICA PÚBLICA DE CIENCIA, TECNOLOGÍA E INNOVACIÓN PARA EL DISTRITO CAPITAL, 2019-2038",
-  "formato": "antiguo",
+  "archivo": "04__pa_cti_v5-26_0_v1.xlsx",
+  "politica": "POLÍTICA PÚBLICA DE CIENCIA, TECNOLOGÍA E INNOVACIÓN PARA EL DISTRITO CAPITAL (2019-2038)",
+  "formato": "nuevo",
   "anios": [
     2019,
     2020,
@@ -26,7 +26,7 @@
   ],
   "n_ir": 8,
   "n_ip": 32,
-  "n_financiero": 342,
+  "n_financiero": 0,
   "codigos_ir": [
     "1.1",
     "2.1",
@@ -72,6 +72,6 @@
     "4.1.4"
   ],
   "alertas_por_tipo": {
-    "inconsistencia_en_ir": 14
+    "inconsistencia_en_ir": 24
   }
 }

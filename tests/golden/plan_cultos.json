@@ -1,5 +1,5 @@
 {
-  "archivo": "PA_Cultos_V4_26_DP.xlsx",
+  "archivo": "12__pa_cultos_v4_26_dp_0_v1.xlsx",
   "politica": "Política Pública de “Libertades Fundamentales de Religión, Culto y Conciencia para el Distrito Capital",
   "formato": "nuevo",
   "anios": [
@@ -54,6 +54,6 @@
     "3.1.5"
   ],
   "alertas_por_tipo": {
-    "inconsistencia_en_ir": 19
+    "inconsistencia_en_ir": 7
   }
 }

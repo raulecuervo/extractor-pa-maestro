@@ -1,5 +1,5 @@
 {
-  "archivo": "Plan Accion PP_Indigena_V3_2025 15.12.2025.xlsx",
+  "archivo": "37__plan_accion_pp_indigena_v3_2026.xlsx",
   "politica": "Política Pública de los Pueblos Indígenas en Bogotá D.C.",
   "formato": "nuevo",
   "anios": [
@@ -174,7 +174,5 @@
     "5.1.5",
     "5.1.6"
   ],
-  "alertas_por_tipo": {
-    "inconsistencia_en_ir": 34
-  }
+  "alertas_por_tipo": {}
 }

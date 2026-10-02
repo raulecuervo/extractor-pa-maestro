@@ -1,5 +1,5 @@
 {
-  "archivo": "Plan Accion PP_Raizal_V3_2025 15.12.2025.xlsx",
+  "archivo": "38__pa_raizal_v3_26_nf_v1.xlsx",
   "politica": "Política Pública Distrital para los Raizales",
   "formato": "nuevo",
   "anios": [
@@ -133,6 +133,6 @@
     "7.1.9"
   ],
   "alertas_por_tipo": {
-    "inconsistencia_en_ir": 13
+    "inconsistencia_en_ir": 2
   }
 }
