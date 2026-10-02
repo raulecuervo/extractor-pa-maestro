@@ -391,6 +391,58 @@ def test_plan_limpio_sin_alertas_consistencia():
     assert "codigo_ip_duplicado" not in tipos
 
 
+def _construir_excel_codigos(ruta: str) -> None:
+    """Plan con códigos que el extractor debe tolerar o avisar:
+    - IR «R1.1» e IP «P1.1.1» / «p 1.1.2» (prefijo de tipo, como en Trata).
+    - Fila 14: producto sin código y resultado vacío -> el prefiltro la descarta.
+    - Fila 15: producto «2..1..1» con IR 2.1 válido -> se omite el IP.
+    - Filas 16-17: resultado sin código (rellenado hacia abajo) -> un solo aviso.
+    - Fila 18: «.» en resultado y producto -> relleno, sin aviso."""
+    wb, ws = _nuevo_ws()
+    filas = {
+        12: {1: "1. Objetivo uno", 2: 100, 3: "R1.1 Resultado uno", 4: "IR uno",
+             5: "Vigente", 6: 100, 22: "P1.1.1Producto uno", 23: "IP uno"},
+        13: {22: "p 1.1.2 Producto dos", 23: "IP dos"},
+        14: {22: "Producto sin código", 23: "IP huérfano"},
+        15: {3: "2.1 Resultado dos", 4: "IR dos", 5: "Vigente", 6: 100,
+             22: "2..1..1 Producto mal escrito", 23: "IP mal escrito"},
+        16: {3: "Resultado sin código", 4: "IR sin código",
+             22: "3.1.1 Producto tres", 23: "IP tres"},
+        17: {22: "3.1.2 Producto cuatro", 23: "IP cuatro"},
+        18: {3: ".", 22: "."},
+    }
+    for r, fila in filas.items():
+        for c, v in fila.items():
+            ws.cell(row=r, column=c, value=v)
+    wb.save(ruta)
+
+
+def test_codigos_con_prefijo_y_no_reconocidos():
+    ruta = os.path.join(tempfile.gettempdir(), "plan_codigos_extractor.xlsx")
+    _construir_excel_codigos(ruta)
+    res = extraer_plan_accion(ruta)
+
+    ir = {i.codigo_ir: i for i in res.indicadores_resultado}
+    ip = {i.codigo_ip: i for i in res.indicadores_producto}
+    assert set(ir) == {"1.1", "2.1"}
+    assert ir["1.1"].codigo_objetivo == "1"
+    assert set(ip) == {"1.1.1", "1.1.2", "3.1.1", "3.1.2"}
+    assert ip["1.1.2"].codigo_ir == "1.1"      # el prefijo no rompe el forward-fill
+    assert ip["3.1.1"].codigo_ir is None
+
+    avisos = [(a.campo, a.codigo_ir, a.valor, a.descripcion) for a in res.alertas
+              if a.tipo == "codigo_no_reconocido"]
+    assert [(campo, cir, valor) for campo, cir, valor, _ in avisos] == [
+        ("producto", "", "Producto sin código"),
+        ("producto", "2.1", "2..1..1 Producto mal escrito"),
+        ("resultado", "", "Resultado sin código"),
+    ]
+    assert avisos[0][3].startswith("Fila 14:") and "se descartó" in avisos[0][3]
+    assert avisos[1][3].startswith("Fila 15:") and "se omitió" in avisos[1][3]
+    assert avisos[2][3].startswith("Fila 16:")
+    assert {a.nivel for a in res.alertas if a.tipo == "codigo_no_reconocido"} == {"ADVERTENCIA"}
+
+
 def test_deteccion_nombres_ficha():
     """La detección del código de ficha tolera todas las convenciones reales."""
     from extractor_pa.lector_fichas import codigo_de_hoja_ficha as cod

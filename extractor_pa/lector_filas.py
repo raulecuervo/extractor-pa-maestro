@@ -8,6 +8,7 @@ Incluye:
 - PRE-FILTRO de filas espurias (sin código de IR ni de IP en su valor original):
   evita que las filas de "totales" al final del bloque sean absorbidas por el
   forward-fill y contaminen los pesos del último IR (técnica de sispp-gobierno).
+  Las descartadas que sí traen texto se devuelven aparte para poder avisarlas.
 - Forward-fill básico de las columnas identificadoras del IR para resolver las
   celdas combinadas (versión Fase 1; la estrategia avanzada de 4 capas +
   ascensión de fila vigente se incorpora en la Fase 2).
@@ -18,7 +19,7 @@ es una lista mutable. El forward-fill muta esas listas in situ.
 
 from __future__ import annotations
 
-from .utilidades import extraer_codigo, limpiar
+from .utilidades import extraer_codigo, limpiar, tiene_contenido
 
 
 # Filas vacías consecutivas tras las cuales se da por terminada la tabla. Excel arrastra
@@ -54,18 +55,28 @@ def leer_filas(ws, fila_datos: int) -> list[tuple[int, list]]:
 
 
 def prefiltrar_filas(filas: list[tuple[int, list]], col_res_1idx: int | None,
-                     col_prod_1idx: int | None) -> list[tuple[int, list]]:
-    """Descarta filas sin código de IR ni de IP en su valor ORIGINAL."""
+                     col_prod_1idx: int | None,
+                     descartadas: list | None = None) -> list[tuple[int, list]]:
+    """Descarta filas sin código de IR ni de IP en su valor ORIGINAL.
+
+    Si se pasa `descartadas`, recibe las filas descartadas que SÍ traían texto en
+    la columna de resultado o de producto: no son totales ni relleno, sino un
+    código que no se reconoció, y el llamador debe avisarlo en vez de perderlas
+    en silencio."""
     idx_res = (col_res_1idx or 0) - 1
     idx_prod = (col_prod_1idx or 0) - 1
 
-    def pertenece(valores: list) -> bool:
-        for idx in (idx_res, idx_prod):
-            if 0 <= idx < len(valores) and extraer_codigo(limpiar(valores[idx])):
-                return True
-        return False
+    def celdas(valores: list) -> list:
+        return [limpiar(valores[idx]) for idx in (idx_res, idx_prod)
+                if 0 <= idx < len(valores)]
 
-    return [(r, f) for (r, f) in filas if pertenece(f)]
+    conservadas = []
+    for r, f in filas:
+        if any(extraer_codigo(v) for v in celdas(f)):
+            conservadas.append((r, f))
+        elif descartadas is not None and any(tiene_contenido(v) for v in celdas(f)):
+            descartadas.append((r, f))
+    return conservadas
 
 
 def forward_fill(valores_filas: list[list], indices_0idx: list[int]) -> None:

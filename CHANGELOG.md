@@ -3,6 +3,48 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+## [0.19.0] — Los códigos con prefijo de tipo («P1.1.1», «R1.1») ya no se pierden
+
+### Corregido
+
+- **`utilidades.py::extraer_codigo`** tolera un prefijo de tipo de una letra
+  delante del código: `P` (producto), `R` (resultado) u `O` (objetivo), en
+  mayúscula o minúscula y con o sin un espacio o punto en medio
+  («P1.1.1Acciones…», «r 1.1», «P.1.1.1»). La regex se anclaba en el primer
+  dígito, así que esos códigos daban None y `estrategias/nuevo.py` descartaba la
+  fila sin dejar rastro. El plan de Trata (Decreto 193 de 2022) perdía 27 de sus
+  53 productos: pasa de 26 a 53 IP, y su seguimiento cruza con el plan en 28 de
+  28 indicadores (antes 1). En el resto del corpus (46 planes y 51
+  seguimientos) no cambia ningún IR, IP ni objetivo. La lista es cerrada: «Plan
+  2024…», «Producto 3», «PR1.1» u «OE1.» siguen sin código. Como el seguimiento
+  usa la misma función, también reconoce «P1.1.1» en las hojas cuantitativa y
+  cualitativa. El parche `dashboard_pp/parche_extractor.py` de sispp-gobierno
+  deja de actuar para «P» y «R» (solo reintenta cuando esta función devuelve
+  None), pero sigue haciendo falta para los objetivos «OE1.»–«OE4.» de Trabajo
+  Decente, que aquí siguen sin código.
+
+### Agregado
+
+- **Alerta `codigo_no_reconocido`** (ADVERTENCIA, capa extracción): la celda de
+  resultado o de producto trae texto pero no un código reconocible (IR = N.N,
+  IP = N.N.N). Dice la fila, el texto y qué se perdió: la fila descartada por el
+  prefiltro, el IP omitido o el IR que no se creó. El resultado se avisa una vez
+  por texto, aunque el forward-fill lo repita en varias filas. Las celdas sin
+  letras ni dígitos (un «.» de relleno) no avisan. En el corpus destapa 4
+  productos que hoy se pierden en silencio por códigos mal escritos:
+  Negra-Afro «2..1..3» y «2.2 10», Seguridad «4.2.1» precedido de un BOM
+  (`﻿`) y Migrantes «3. 1 4.».
+- **`lector_filas.prefiltrar_filas(..., descartadas=None)`** — si se le pasa una
+  lista, recibe las filas descartadas que sí traían texto en resultado o
+  producto. Sin ella se comporta igual que antes.
+- **`utilidades.tiene_contenido(valor)`** — True si la celda trae al menos una
+  letra o un dígito.
+
+### Cambiado
+
+- `docs/CATALOGO_ALERTAS.md` regenerado: incluye `codigo_no_reconocido` y los 4
+  tipos de seguimiento que ya estaban en el catálogo y faltaban en el documento.
+
 ## [0.18.0] — El seguimiento también se lee en `.xlsx` (formato 3.4)
 
 ### Agregado
