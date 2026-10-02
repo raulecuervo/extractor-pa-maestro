@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extractor_pa import extraer_plan_accion, NIVEL_ERROR  # noqa: E402
 from extractor_pa.vigencia import calcular_vigencia  # noqa: E402
+from tests.corpus import PLAN_ANTIGUO, SEG_BTI_S1_25, SEG_BTI_S2_25, ruta_plan  # noqa: E402
 
 
 def _nuevo_ws():
@@ -417,28 +418,32 @@ def test_deteccion_nombres_ficha():
     assert cod("2019") is None             # un año, sin punto
 
 
-def test_formato_antiguo_cti():
+def test_formato_antiguo():
     """Integración: el formato antiguo (con bloque financiero) se extrae bien.
 
     Se salta si el archivo real no está disponible (mantiene la suite portable)."""
     import pytest
-    ruta = (r'C:\Users\RaulEsteban\Proyectos\sispp-gobierno'
-            r'\01_planes_accion\plan_accion_pp_cti_v4-25.xlsx')
+    ruta = PLAN_ANTIGUO
     if not os.path.exists(ruta):
-        pytest.skip('archivo CTI no disponible en este entorno')
+        pytest.skip('plan en formato antiguo no disponible en este entorno')
 
     res = extraer_plan_accion(ruta, anio_vigencia=2026)
     assert res.metadatos.formato_detectado == "antiguo"
-    assert not [a for a in res.alertas if a.nivel == NIVEL_ERROR]
+    # Adultez v2-2023 trae un error real de captura: la fila 43 dice 2.1.14 bajo
+    # el IR 2.2 (el seguimiento lo reporta como 2.2.14). Es del dato, no de la
+    # lectura, y el extractor hace bien en marcarlo; el golden fija que sea uno.
+    assert not [a for a in res.alertas
+                if a.nivel == NIVEL_ERROR and a.tipo != "codigo_ip_duplicado"]
     assert len(res.indicadores_resultado) > 0
     assert len(res.indicadores_producto) > 0
     # El bloque financiero debe haberse leído.
     assert len(res.financiero) > 0
-    # El IP se resuelve por ancla: el estado de vigencia se lee correctamente.
-    ip = {i.codigo_ip: i for i in res.indicadores_producto}
+    # El IP se resuelve por ancla: nombre, peso y metas salen de sus columnas.
+    # (Adultez v2-2023 no tiene columna Vigente/No vigente: es_vigente queda vacío.)
     primer = res.indicadores_producto[0]
-    assert primer.es_vigente is not None
     assert primer.nombre_indicador
+    assert primer.peso_pct is not None
+    assert primer.metas_por_anio
     # Hay registros financieros con costo y con código IP válido.
     assert any(f.costo_estimado is not None and f.codigo_ip for f in res.financiero)
 
@@ -564,8 +569,7 @@ def test_seguimiento_xlsb():
     Se salta si el archivo no está disponible (mantiene la suite portable)."""
     import pytest
     from extractor_pa.seguimiento import extraer_seguimiento
-    ruta = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-            r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
+    ruta = SEG_BTI_S1_25
     if not os.path.exists(ruta):
         pytest.skip("archivo .xlsb de seguimiento no disponible en este entorno")
     try:
@@ -615,11 +619,9 @@ def test_seguimiento_cruce_y_consolidacion():
     """Integración S2: cruzar el seguimiento de BTI con su plan y consolidar."""
     import pytest
     from extractor_pa.seguimiento import extraer_seguimiento, cruzar_con_plan, consolidar
-    plan_path = (r"C:\Users\RaulEsteban\Proyectos\sispp-gobierno"
-                 r"\01_planes_accion\PA_BTI_V4-26_DP.xlsx")
-    seg_path = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-                r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
-    if not (os.path.exists(plan_path) and os.path.exists(seg_path)):
+    plan_path = ruta_plan("bti")
+    seg_path = SEG_BTI_S1_25
+    if not (plan_path and os.path.exists(seg_path)):
         pytest.skip("archivos BTI no disponibles")
     try:
         import pyxlsb  # noqa: F401
@@ -694,8 +696,7 @@ def test_exportadores_seguimiento_real():
         extraer_seguimiento, tablas_seguimiento,
         exportar_json_seguimiento, exportar_csv_seguimiento, exportar_excel_seguimiento,
     )
-    seg_path = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-                r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
+    seg_path = SEG_BTI_S1_25
     if not os.path.exists(seg_path):
         pytest.skip("archivo .xlsb de seguimiento no disponible")
     try:
@@ -732,10 +733,8 @@ def test_consistencia_seguimiento_real():
     """Integración S3: validar el par base/nuevo real de BTI sin errores de ejecución."""
     import pytest
     from extractor_pa.seguimiento import extraer_seguimiento, validar_consistencia
-    base_p = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-              r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
-    nuevo_p = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-               r"\archivos_nuevos\Seguimiento a Productos PP BTI S2-25.xlsb")
+    base_p = SEG_BTI_S1_25
+    nuevo_p = SEG_BTI_S2_25
     if not (os.path.exists(base_p) and os.path.exists(nuevo_p)):
         pytest.skip("par BTI base/nuevo no disponible")
     try:

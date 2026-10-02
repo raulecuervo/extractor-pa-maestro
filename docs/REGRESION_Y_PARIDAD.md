@@ -9,16 +9,59 @@ para migrar con confianza.
 - **Huella estable** por archivo (`extractor_pa/regresion.py`): códigos IR/IP,
   conteos, años y alertas por tipo (sin campos no deterministas como el año de
   vigencia).
-- **Corpus** representativo (`tests/corpus.py`): 5 planes (nuevo, antiguo CTI,
-  étnico, grandes) + 3 seguimientos `.xlsb`.
+- **Corpus** (`tests/corpus.py`): curado (BTI, Educación, LGBTI, CTI,
+  Negra-Afro + Adultez en formato antiguo con bloque financiero; 3 seguimientos)
+  y completo (todos los planes de `01_planes_accion` y seguimientos de
+  `02_seguimientos`, pruebas `slow`).
+- **Raíz del corpus**: variable de entorno `EXTRACTOR_PA_CORPUS` (carpeta que
+  contiene `sispp-gobierno/` y `alertas-seguimientos/`); sin ella,
+  `C:\Users\RaulEsteban\Proyectos`. Sin corpus (p. ej. el CI) las pruebas con
+  datos reales se saltan.
 - **Golden** en `tests/golden/<clave>.json` (generados con `scripts/gen_golden.py`).
 - **Prueba** `tests/test_golden.py`: re-ejecuta el maestro y compara contra la
-  huella esperada; falla ante cualquier deriva. Se salta si el archivo no está.
+  huella esperada; falla ante cualquier deriva. La comparación ignora el campo
+  `archivo` (un renombrado no es una regresión).
 
-Actualizar tras un cambio intencional:
+### Claves: la política, no el nombre del archivo
+
+La clave es `plan_<slug>` / `seg_<slug>`, con el slug de la política sacado del
+nombre del archivo sin prefijos de catálogo (`29__`, `Decreto_193_de_2022__`),
+sin prefijo de tipo (`PA_`, `PA_PP_`, `Plan Accion PP_`) y sin sufijo de versión
+(`_V4-26_DP_v1`):
+
+| Archivo | Clave |
+|---|---|
+| `29__pa_bti_v4-26_dp_v1.xlsx` (antes `PA_BTI_V4-26_DP.xlsx`) | `plan_bti` |
+| `Decreto_193_de_2022__pa_trata_v4-26_dp_c_v1.xlsx` | `plan_trata` |
+| `Plan Accion PP_Negra-Afro_V3_2025 15.12.2025.xlsx` | `plan_negra_afro` |
+| `Acción Climática.xlsb` | `seg_accion_climatica` |
+
+Así un renombrado conserva la clave, y una versión nueva del plan **falla** con
+sus diferencias en vez de saltarse: se revisan y se regenera. Si cambia el
+nombre de la política misma (Trabajo Digno → Trabajo Decente), se renombra el
+golden a mano. Detalle en el docstring de `tests/corpus.py`.
+
+### La regresión no se apaga en silencio
+
+En la suite rápida (`pytest`), sin extraer nada:
+
+- `test_corpus_cubierto_por_golden` **falla** si el corpus existe pero ningún
+  archivo tiene golden (lo que pasó al renombrar los planes en 2026-09), y
+  advierte de archivos sin golden y de golden huérfanos.
+- `test_corpus_claves_unicas` falla si dos archivos dan la misma clave (dos
+  versiones del mismo plan en la carpeta).
+- Una política curada que falta en un corpus existente falla, no se salta.
+
+### Actualizar tras un cambio intencional
+
 ```
-python scripts/gen_golden.py
+python scripts/gen_golden.py --revisar   # qué cambiaría, sin escribir
+python scripts/gen_golden.py             # escribe; lista las diferencias con el golden previo
+python scripts/gen_golden.py --podar     # además borra los golden huérfanos
 ```
+
+Una diferencia puede ser una regresión real: revisarla contra el Excel antes de
+aceptar el golden nuevo.
 
 ## B. Paridad con los extractores legados
 

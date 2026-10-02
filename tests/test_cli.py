@@ -9,7 +9,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extractor_pa.__main__ import main, construir_parser
-from tests.corpus import CORPUS_PLAN
+from tests.corpus import ruta_plan
 
 
 def test_version_sale_codigo_cero():
@@ -29,8 +29,8 @@ def test_parser_subcomandos():
 
 
 def test_cli_plan_real(tmp_path, capsys):
-    ruta = CORPUS_PLAN[0][1]   # plan_bti
-    if not os.path.exists(ruta):
+    ruta = ruta_plan("bti")
+    if ruta is None:
         pytest.skip("plan de referencia no disponible")
     salida = tmp_path / "bti.json"
     rc = main(["plan", ruta, "--reglas", "--anio", "2026", "--json", str(salida)])
@@ -41,8 +41,8 @@ def test_cli_plan_real(tmp_path, capsys):
 
 
 def test_cli_validar_real(capsys):
-    ruta = CORPUS_PLAN[0][1]
-    if not os.path.exists(ruta):
+    ruta = ruta_plan("bti")
+    if ruta is None:
         pytest.skip("plan de referencia no disponible")
     rc = main(["validar", ruta, "--anio", "2026"])
     assert rc == 0
