@@ -41,7 +41,8 @@ def test_extraer_codigo(texto, niveles, esperado):
     assert extraer_codigo(texto, niveles) == esperado
 
 
-# Prefijo de tipo P/R/O delante del código (plan de Trata: «P1.1.1Acciones…»).
+# Prefijo de tipo P/R/O/OE delante del código (Trata: «P1.1.1Acciones…»;
+# Trabajo Decente: «OE1. Promover…»).
 @pytest.mark.parametrize("texto,niveles,esperado", [
     ("P1.1.1Acciones encaminadas a promover", 3, "1.1.1"),
     ("P1.1.2. Formación por demanda", 3, "1.1.2"),
@@ -51,17 +52,22 @@ def test_extraer_codigo(texto, niveles, esperado):
     ("P. 3.1.1 con punto y espacio", 3, "3.1.1"),
     ("p.3.1.2", 3, "3.1.2"),
     ("O1 Objetivo con prefijo", 1, "1"),
+    ("OE1. Promover principios y derechos", 1, "1"),
+    ("oe 2. en minúscula y con espacio", 1, "2"),
+    ("OE3.3. Procurar el acceso", 1, "3"),
     ("P1.1.1 Indicador del seguimiento", None, "1.1.1"),   # sin niveles: seguimiento
 ])
 def test_extraer_codigo_tolera_prefijo_de_tipo(texto, niveles, esperado):
     assert extraer_codigo(texto, niveles) == esperado
 
 
-# La lista de prefijos es cerrada: una sola letra P/R/O pegada al número.
+# La lista de prefijos es cerrada: P, R, O u OE pegados al número.
 @pytest.mark.parametrize("texto,niveles", [
     ("Plan 2024 de contingencia", None),
     ("Producto 3 sin código", None),
     ("PR1.1 Dos letras", 2),
+    ("OEA1. Tres letras", 1),
+    ("Oeste 2024", None),
     ("X1.1.1 Letra fuera de la lista", 3),
     ("P", None),
 ])

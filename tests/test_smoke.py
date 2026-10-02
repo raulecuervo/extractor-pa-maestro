@@ -393,14 +393,15 @@ def test_plan_limpio_sin_alertas_consistencia():
 
 def _construir_excel_codigos(ruta: str) -> None:
     """Plan con códigos que el extractor debe tolerar o avisar:
-    - IR «R1.1» e IP «P1.1.1» / «p 1.1.2» (prefijo de tipo, como en Trata).
+    - Objetivo «OE1.» (Trabajo Decente), IR «R1.1» e IP «P1.1.1» / «p 1.1.2»
+      (prefijo de tipo, como en Trata).
     - Fila 14: producto sin código y resultado vacío -> el prefiltro la descarta.
     - Fila 15: producto «2..1..1» con IR 2.1 válido -> se omite el IP.
     - Filas 16-17: resultado sin código (rellenado hacia abajo) -> un solo aviso.
     - Fila 18: «.» en resultado y producto -> relleno, sin aviso."""
     wb, ws = _nuevo_ws()
     filas = {
-        12: {1: "1. Objetivo uno", 2: 100, 3: "R1.1 Resultado uno", 4: "IR uno",
+        12: {1: "OE1. Objetivo uno", 2: 100, 3: "R1.1 Resultado uno", 4: "IR uno",
              5: "Vigente", 6: 100, 22: "P1.1.1Producto uno", 23: "IP uno"},
         13: {22: "p 1.1.2 Producto dos", 23: "IP dos"},
         14: {22: "Producto sin código", 23: "IP huérfano"},
@@ -426,6 +427,7 @@ def test_codigos_con_prefijo_y_no_reconocidos():
     ip = {i.codigo_ip: i for i in res.indicadores_producto}
     assert set(ir) == {"1.1", "2.1"}
     assert ir["1.1"].codigo_objetivo == "1"
+    assert [o.codigo for o in res.objetivos] == ["1"]
     assert set(ip) == {"1.1.1", "1.1.2", "3.1.1", "3.1.2"}
     assert ip["1.1.2"].codigo_ir == "1.1"      # el prefijo no rompe el forward-fill
     assert ip["3.1.1"].codigo_ir is None

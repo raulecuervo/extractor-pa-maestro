@@ -110,11 +110,12 @@ def a_int(valor: Any) -> Optional[int]:
 
 
 # Prefijo de tipo que algunas políticas anteponen al código: «P1.1.1» en los
-# productos, «R1.1» en los resultados, «O1» en los objetivos. Lista cerrada de
-# una letra y solo pegada al número (a lo sumo un espacio o un punto en medio),
+# productos, «R1.1» en los resultados, «O1» u «OE1.» en los objetivos. Lista
+# cerrada y solo pegada al número (a lo sumo un espacio o un punto en medio),
 # para no mutilar textos como «Plan 2024…» o «Producto 3». Sin tolerarlo, el
-# plan de Trata perdía en silencio 27 de sus 53 productos.
-_PREFIJO_TIPO = r"(?:[PRO][. ]?)?"
+# plan de Trata perdía en silencio 27 de sus 53 productos y los objetivos de
+# Trabajo Decente («OE1.»–«OE4.») quedaban sin código.
+_PREFIJO_TIPO = r"(?:(?:OE|[PRO])[. ]?)?"
 
 
 def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
@@ -125,8 +126,8 @@ def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
       usa un negative lookahead para NO confundir "1.1.1" con "1.1".
 
     Tolerante al nombre pegado al código ("4.1.5Nombre"), a separadores
-    irregulares ("1 . 1", "1.1.") y al prefijo de tipo P/R/O ("P1.1.1",
-    "r 1.1", "P.1.1.1")."""
+    irregulares ("1 . 1", "1.1.") y al prefijo de tipo P/R/O/OE ("P1.1.1",
+    "r 1.1", "P.1.1.1", "OE1.")."""
     if not texto:
         return None
     # Colapsa espacios y normaliza separadores: "1 . 1" -> "1.1"
