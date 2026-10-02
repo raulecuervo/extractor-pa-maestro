@@ -278,6 +278,7 @@
     "6.5.2"
   ],
   "alertas_por_tipo": {
+    "codigo_no_reconocido": 2,
     "inconsistencia_en_ir": 17
   }
 }

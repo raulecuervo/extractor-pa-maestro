@@ -23,7 +23,7 @@ def _celda(ws, fila0, col0, valor):
     ws.cell(row=fila0 + 1, column=col0 + 1, value=valor)
 
 
-def _libro_seguimiento(ruta):
+def _libro_seguimiento(ruta, indicador="1.1.1. Indicador demo"):
     wb = openpyxl.Workbook()
     cuant = wb.active
     cuant.title = "Avance Cuantitativo"
@@ -37,7 +37,7 @@ def _libro_seguimiento(ruta):
         _celda(cuant, 2, col, texto)
     _celda(cuant, 3, 15, 2025)
     _celda(cuant, 3, 19, 2026)
-    fila = {0: 1, 2: "Vigente", 3: "1.1.1. Indicador demo", 4: "Nombre demo",
+    fila = {0: 1, 2: "Vigente", 3: indicador, 4: "Nombre demo",
             5: "Sector X", 6: "Entidad Y", 7: 0.25, 8: 10, 9: "Creciente",
             10: "Trimestral", 11: dt.datetime(2025, 1, 1), 12: dt.datetime(2026, 12, 31),
             13: "Q2", 14: "2026",
@@ -50,7 +50,7 @@ def _libro_seguimiento(ruta):
 
     cual = wb.create_sheet("Avance Cualitativo")
     _celda(cual, 2, 15, 2026)                  # 2026: Q1 en 15–16, Q2 en 17–18
-    _celda(cual, 5, 3, "1.1.1. Indicador demo")
+    _celda(cual, 5, 3, indicador)
     _celda(cual, 5, 17, "Avance del semestre")
     _celda(cual, 5, 18, "Enfoque de género")
     wb.save(ruta)
@@ -79,6 +79,17 @@ def test_extrae_un_seguimiento_xlsx(xlsx):
     assert ind.pct_vigencia == {"2025": 0.8, "2026": 0.6}
     assert ind.cualitativos == {"2026_Q2": "Avance del semestre"}
     assert ind.avance_enfoques == {"2026_Q2": "Enfoque de género"}
+
+
+def test_el_codigo_con_prefijo_de_tipo_se_reconoce(tmp_path):
+    """«P1.1.1» (como en el plan de Trata) cruza igual que «1.1.1», también en el cualitativo."""
+    ruta = _libro_seguimiento(tmp_path / "Seguimiento a Productos PP Demo S1-26.xlsx",
+                              indicador="P1.1.1. Indicador demo")
+    res = extraer_seguimiento(ruta)
+    assert res.alertas == []                   # sin indicador_seguimiento_sin_codigo
+    [ind] = res.indicadores
+    assert ind.codigo == "1.1.1"
+    assert ind.cualitativos == {"2026_Q2": "Avance del semestre"}
 
 
 def test_los_numeros_salen_como_en_el_xlsb(xlsx):

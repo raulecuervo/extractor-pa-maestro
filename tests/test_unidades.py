@@ -9,7 +9,8 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extractor_pa.utilidades import (a_float, extraer_codigo, es_vigente,
-                                     peso_positivo, clave_grupo)
+                                     peso_positivo, clave_grupo, tiene_contenido)
+from extractor_pa.lector_filas import prefiltrar_filas
 from extractor_pa.vigencia import calcular_vigencia
 from extractor_pa.lector_fichas import codigo_de_hoja_ficha
 from extractor_pa.pipeline import _es_nombre_politica
@@ -34,9 +35,69 @@ def test_a_float(entrada, esperado):
     ("2 Objetivo general", 1, "2"),
     ("Sin código", None, None),
     ("3.2.1", None, "3.2.1"),
+    ("1 . 1 Separador con espacios", 2, "1.1"),
 ])
 def test_extraer_codigo(texto, niveles, esperado):
     assert extraer_codigo(texto, niveles) == esperado
+
+
+# Prefijo de tipo P/R/O/OE delante del código (Trata: «P1.1.1Acciones…»;
+# Trabajo Decente: «OE1. Promover…»).
+@pytest.mark.parametrize("texto,niveles,esperado", [
+    ("P1.1.1Acciones encaminadas a promover", 3, "1.1.1"),
+    ("P1.1.2. Formación por demanda", 3, "1.1.2"),
+    ("P2.1.10. Actividades de capacitación", 3, "2.1.10"),
+    ("R1.1 Disminución del número de casos", 2, "1.1"),
+    ("r 1.1 en minúscula y con espacio", 2, "1.1"),
+    ("P. 3.1.1 con punto y espacio", 3, "3.1.1"),
+    ("p.3.1.2", 3, "3.1.2"),
+    ("O1 Objetivo con prefijo", 1, "1"),
+    ("OE1. Promover principios y derechos", 1, "1"),
+    ("oe 2. en minúscula y con espacio", 1, "2"),
+    ("OE3.3. Procurar el acceso", 1, "3"),
+    ("P1.1.1 Indicador del seguimiento", None, "1.1.1"),   # sin niveles: seguimiento
+])
+def test_extraer_codigo_tolera_prefijo_de_tipo(texto, niveles, esperado):
+    assert extraer_codigo(texto, niveles) == esperado
+
+
+# La lista de prefijos es cerrada: P, R, O u OE pegados al número.
+@pytest.mark.parametrize("texto,niveles", [
+    ("Plan 2024 de contingencia", None),
+    ("Producto 3 sin código", None),
+    ("PR1.1 Dos letras", 2),
+    ("OEA1. Tres letras", 1),
+    ("Oeste 2024", None),
+    ("X1.1.1 Letra fuera de la lista", 3),
+    ("P", None),
+])
+def test_extraer_codigo_no_inventa_codigos(texto, niveles):
+    assert extraer_codigo(texto, niveles) is None
+
+
+@pytest.mark.parametrize("valor,esperado", [
+    ("Producto sin código", True), ("TOTAL", True), (0, True), ("4", True),
+    (".", False), ("  ", False), ("_", False), ("—", False), (None, False),
+])
+def test_tiene_contenido(valor, esperado):
+    assert tiene_contenido(valor) is esperado
+
+
+# ── lector_filas.prefiltrar_filas ──
+def test_prefiltro_aparta_las_filas_con_texto_sin_codigo():
+    filas = [
+        (12, ["1.1 Resultado", "1.1.1 Producto"]),
+        (13, [None, "P1.1.2 Producto con prefijo"]),
+        (14, [None, "Producto sin código"]),
+        (15, [".", "."]),
+        (16, [None, None, "Total"]),
+    ]
+    descartadas = []
+    conservadas = prefiltrar_filas(filas, 1, 2, descartadas)
+    assert [r for r, _ in conservadas] == [12, 13]
+    assert [r for r, _ in descartadas] == [14]      # «.» y «Total» fuera de columna: sin aviso
+    # Sin la lista, el resultado es el mismo de antes.
+    assert prefiltrar_filas(filas, 1, 2) == conservadas
 
 
 # ── utilidades.es_vigente / peso_positivo / clave_grupo ──

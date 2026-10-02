@@ -84,6 +84,7 @@
     "3.1.9"
   ],
   "alertas_por_tipo": {
+    "codigo_no_reconocido": 1,
     "inconsistencia_en_ir": 9
   }
 }

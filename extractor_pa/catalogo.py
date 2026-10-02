@@ -81,6 +81,10 @@ _TIPOS = [
     TipoAlerta("ip_sin_nombre", NIVEL_ADVERTENCIA, "Estructura", CAPA_EXTRACCION,
                "Una fila trae código de IP pero sin nombre (se omitió).",
                implementado=True),
+    TipoAlerta("codigo_no_reconocido", NIVEL_ADVERTENCIA, "Estructura", CAPA_EXTRACCION,
+               "La celda de resultado o de producto trae texto pero no un código "
+               "reconocible (IR=N.N, IP=N.N.N): el indicador se omitió.",
+               implementado=True),
 
     # ── Familia: Estructura del SEGUIMIENTO (.xlsb o .xlsx) ──
     TipoAlerta("apertura_seguimiento", NIVEL_ERROR, "Estructura seguimiento", CAPA_EXTRACCION,

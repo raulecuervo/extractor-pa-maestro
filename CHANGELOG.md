@@ -3,11 +3,58 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
-## [Sin publicar] — La regresión golden de planes vuelve a correr
-
-No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
+## [0.19.0] — Los códigos con prefijo de tipo («P1.1.1», «R1.1», «OE1.») ya no se pierden
 
 ### Corregido
+
+- **`utilidades.py::extraer_codigo`** tolera un prefijo de tipo delante del
+  código: `P` (producto), `R` (resultado), `O` u `OE` (objetivo), en mayúscula o
+  minúscula y con o sin un espacio o punto en medio («P1.1.1Acciones…»,
+  «r 1.1», «P.1.1.1», «OE1. Promover…»). La regex se anclaba en el primer
+  dígito, así que esos códigos daban None:
+  - **Trata** (Decreto 193 de 2022): `estrategias/nuevo.py` descartaba sin
+    rastro 27 de sus 53 productos. Pasa de 26 a 53 IP, y su seguimiento cruza
+    con el plan en 28 de 28 indicadores (antes 1).
+  - **Trabajo Decente**: sus objetivos «OE1.»–«OE4.» quedaban sin código, sin
+    entidad `Objetivo` y con sus 8 IR y 47 IP colgando de ninguno (las reglas
+    V0/V1 los agrupaban en `SIN_OBJ`). Ahora tiene sus 4 objetivos y cada IR e
+    IP sabe a cuál pertenece. Sus IR e IP no cambian.
+
+  En el resto del corpus (45 planes y 51 seguimientos) no cambia ningún IR, IP
+  ni objetivo. La lista es cerrada: «Plan 2024…», «Producto 3», «PR1.1» u
+  «OEA1.» siguen sin código. Como el seguimiento usa la misma función, también
+  reconoce «P1.1.1» en las hojas cuantitativa y cualitativa. Cubre todo lo que
+  hacía el parche `dashboard_pp/parche_extractor.py` de sispp-gobierno, que
+  puede retirarse cuando ese repo use esta versión.
+
+### Agregado
+
+- **Alerta `codigo_no_reconocido`** (ADVERTENCIA, capa extracción): la celda de
+  resultado o de producto trae texto pero no un código reconocible (IR = N.N,
+  IP = N.N.N). Dice la fila, el texto y qué se perdió: la fila descartada por el
+  prefiltro, el IP omitido o el IR que no se creó. El resultado se avisa una vez
+  por texto, aunque el forward-fill lo repita en varias filas. Las celdas sin
+  letras ni dígitos (un «.» de relleno) no avisan. En el corpus destapa 4
+  productos que hoy se pierden en silencio por códigos mal escritos:
+  Negra-Afro «2..1..3» y «2.2 10», Seguridad «4.2.1» precedido de un BOM
+  (`\ufeff`) y Migrantes «3. 1 4.».
+- **`lector_filas.prefiltrar_filas(..., descartadas=None)`** — si se le pasa una
+  lista, recibe las filas descartadas que sí traían texto en resultado o
+  producto. Sin ella se comporta igual que antes.
+- **`utilidades.tiene_contenido(valor)`** — True si la celda trae al menos una
+  letra o un dígito.
+
+### Cambiado
+
+- `docs/CATALOGO_ALERTAS.md` regenerado: incluye `codigo_no_reconocido` y los 4
+  tipos de seguimiento que ya estaban en el catálogo y faltaban en el documento.
+- Golden de Trata, Negra-Afro, Seguridad y Migrantes actualizados: son los
+  únicos 4 de 100 que cambian, con exactamente lo descrito arriba. El de Trabajo
+  Decente no cambia porque la huella no incluye los objetivos.
+
+### Pruebas — la regresión golden de planes vuelve a correr
+
+No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
 
 - **La regresión golden de planes estaba apagada desde 2026-09-21.** Ese día
   los planes de `sispp-gobierno/01_planes_accion` se renombraron
