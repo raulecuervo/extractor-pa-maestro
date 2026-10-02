@@ -555,6 +555,54 @@ def test_reglas_via_pipeline_flag():
     assert any(a.tipo == "ponderacion_objetivos" for a in res.alertas)
 
 
+def _construir_excel_peso_objetivo(ruta: str) -> None:
+    """Plan con versiones históricas No Vigentes delante de las vigentes:
+    - Objetivo 2 (Trabajo Decente OE2, Trata): el IR 2.1 No Vigente trae peso
+      de objetivo 0 y el IR 2.2 vigente trae 0.5.
+    - Objetivo 3 (Seguridad 4, Seguridad Alimentaria 3): el IR 3.1 No Vigente
+      no trae peso de objetivo; el IR 3.2 vigente trae 0.2.
+    Los objetivos suman 0.3 + 0.5 + 0.2 = 100%."""
+    wb, ws = _nuevo_ws()
+    filas = {
+        12: {1: "1. Objetivo uno", 2: 0.3, 3: "1.1 Resultado uno", 4: "IR uno",
+             5: "Vigente", 6: 0.3, 22: "1.1.1 Producto uno", 23: "IP uno",
+             24: "Vigente", 25: 0.3},
+        13: {1: "2. Objetivo dos", 2: 0, 3: "2.1 Resultado histórico", 4: "IR viejo",
+             5: "No Vigente", 6: 0, 22: "2.1.1 Producto viejo", 23: "IP viejo",
+             24: "No Vigente", 25: 0},
+        14: {1: "2. Objetivo dos", 2: 0.5, 3: "2.2 Resultado vigente", 4: "IR nuevo",
+             5: "Vigente", 6: 0.5, 22: "2.2.1 Producto nuevo", 23: "IP nuevo",
+             24: "Vigente", 25: 0.5},
+        15: {1: "3. Objetivo tres", 3: "3.1 Resultado histórico", 4: "IR viejo",
+             5: "No Vigente", 22: "3.1.1 Producto viejo", 23: "IP viejo",
+             24: "No Vigente", 25: 0},
+        16: {1: "3. Objetivo tres", 2: 0.2, 3: "3.2 Resultado vigente", 4: "IR nuevo",
+             5: "Vigente", 6: 0.2, 22: "3.2.1 Producto nuevo", 23: "IP nuevo",
+             24: "Vigente", 25: 0.2},
+    }
+    for r, fila in filas.items():
+        for c, v in fila.items():
+            ws.cell(row=r, column=c, value=v)
+    wb.save(ruta)
+
+
+def test_peso_objetivo_de_la_fila_vigente():
+    """El peso del objetivo (entidad y reglas V0/V1) es el de su IR vigente, no
+    el de la versión No Vigente que lo encabeza."""
+    ruta = os.path.join(tempfile.gettempdir(), "plan_peso_objetivo.xlsx")
+    _construir_excel_peso_objetivo(ruta)
+    res = extraer_plan_accion(ruta, incluir_reglas_negocio=True)
+
+    assert {o.codigo: o.peso_pct for o in res.objetivos} == {"1": 0.3, "2": 0.5, "3": 0.2}
+    ponderacion = [a.descripcion for a in res.alertas
+                   if a.tipo in ("ponderacion_objetivos", "ponderacion_ir")]
+    assert not ponderacion, ponderacion
+    # Cada IR conserva el peso de objetivo de su propia fila.
+    ir = {i.codigo_ir: i for i in res.indicadores_resultado}
+    assert ir["2.1"].peso_objetivo_pct == 0
+    assert ir["3.1"].peso_objetivo_pct is None
+
+
 def test_exportadores_un_plan():
     """JSON, CSV, Excel y tablas para un solo plan."""
     import json

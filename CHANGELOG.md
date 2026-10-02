@@ -52,6 +52,41 @@ Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
   únicos 4 de 100 que cambian, con exactamente lo descrito arriba. El de Trabajo
   Decente no cambia porque la huella no incluye los objetivos.
 
+### Corregido — el peso del objetivo sale de su fila vigente
+
+- **`validacion.py::_ponderacion`** (V0/V1) y la entidad **`Objetivo`**
+  (`estrategias/nuevo.py`) tomaban el peso del objetivo de su primera fila. Si
+  esa fila es la versión histórica No Vigente con peso 0, ese 0 tapaba el peso
+  de los IR vigentes. Ahora las dos usan **`utilidades.elegir_peso_objetivo`**:
+  el peso de la primera fila vigente (Vigente y peso del IR > 0, la misma que
+  asciende el normalizador: `utilidades.es_fila_vigente`) y, si ninguna lo trae,
+  el primero numérico, como antes. La entidad y V0/V1 dan el mismo peso en todos
+  los objetivos del corpus.
+  - **Trabajo Decente** OE2 (IR 2.1 No Vigente con 0; 2.2–2.4 vigentes con
+    48,48 %): desaparecen los ERROR «Los 4 objetivo(s) suman 51.51%» y «Pesos
+    de IRs del OBJ '2' suman 48.48% pero el peso del objetivo es 0.00%». Salían
+    desde que «OE1.» se reconoce (arriba) y sus IR dejaron de ir a `SIN_OBJ`.
+  - **Trata** OE1–OE3 (cada uno abre con un IR No Vigente con 0): desaparecen
+    sus 4 ERROR de V0/V1 («Los 3 objetivo(s) suman 0.00%»); los objetivos pesan
+    40, 30 y 30 %.
+  - La entidad `Objetivo` de Espacio Público (3), Seguridad Alimentaria (3),
+    Discapacidad (4) y Seguridad (4) tenía `peso_pct=None` porque la primera
+    fila del objetivo venía sin peso (celdas combinadas descuadradas o un IR No
+    Vigente vacío). Ahora tiene 0.33, 0.35, 0.1 y 0.25: el peso que ya usaba V0.
+
+  En los otros 41 de los 47 planes no cambia nada, y en ninguno aparece una
+  alerta. Donde el peso solo está en la fila No Vigente (Espacio Público OE2:
+  0.34 en una celda combinada que abarca todo el objetivo) se sigue usando.
+  `IndicadorResultado.peso_objetivo_pct` no cambia: sigue siendo el de la fila
+  de cada IR. Los golden no cambian (la huella no incluye reglas ni objetivos).
+
+  En otros 88 planes únicos (por hash) de las carpetas hermanas (copias,
+  versiones anteriores y plantilla 2021–2025) cambian 9: copias y versiones
+  anteriores de Trata, Discapacidad y Espacio Público, igual que arriba, y Mujer
+  v5-2025. Esa plantilla vieja ya se leía mal (196 «objetivos», con el texto del
+  objetivo en la columna del peso): su `peso_pct` pasa de ese texto a None,
+  porque un peso que no es numérico no cuenta. Sus alertas no cambian.
+
 ### Pruebas — la regresión golden de planes vuelve a correr
 
 No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.

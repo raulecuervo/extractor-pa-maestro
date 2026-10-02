@@ -2,7 +2,8 @@
 """B2 — objetivo como entidad: jerarquia_ip + objetivo_sin_resultados.
 
 Verifica que ambas alertas DISPARAN con jerarquía rota y que NO disparan
-cuando la jerarquía objetivo→resultado→producto es consistente.
+cuando la jerarquía objetivo→resultado→producto es consistente. También que el
+peso del objetivo en V0/V1 sale de su IR vigente, no del primer IR.
 """
 import sys
 from pathlib import Path
@@ -60,8 +61,51 @@ def test_jerarquia_consistente_no_dispara():
     assert "objetivo_sin_resultados" not in tipos, tipos
 
 
+def _ir(obj, cod, vigente, peso, peso_obj):
+    return IndicadorResultado(codigo_objetivo=obj, codigo_ir=cod, nombre_indicador="IR",
+                              es_vigente=vigente, peso_pct=peso, peso_objetivo_pct=peso_obj)
+
+
+def _ponderacion(irs):
+    objetivos = [Objetivo(codigo=c) for c in dict.fromkeys(i.codigo_objetivo for i in irs)]
+    return [(a.tipo, a.codigo_objetivo) for a in validar_reglas(_res(objetivos, irs, []))
+            if a.tipo in ("ponderacion_objetivos", "ponderacion_ir")]
+
+
+def test_peso_objetivo_sale_del_ir_vigente():
+    # Trabajo Decente OE2: el IR 2.1 No Vigente encabeza el objetivo con peso 0;
+    # el peso del objetivo es el de los IR vigentes (V0 y V1 no deben disparar).
+    irs = [_ir("1", "1.1", "Vigente", 0.5, 0.5),
+           _ir("2", "2.1", "No Vigente", 0, 0),
+           _ir("2", "2.2", "Vigente", 0.25, 0.5),
+           _ir("2", "2.3", "Vigente", 0.25, 0.5)]
+    assert _ponderacion(irs) == []
+
+
+def test_peso_objetivo_sin_ir_vigente_que_lo_traiga_usa_el_primero():
+    # Espacio Público OE2: el peso solo viene en la fila del IR No Vigente.
+    irs = [_ir("1", "1.1", "Vigente", 0.5, 0.5),
+           _ir("2", "2.1", "No vigente", 0, 0.5),
+           _ir("2", "2.2", "Vigente", 0.5, None)]
+    assert _ponderacion(irs) == []
+
+
+def test_peso_objetivo_vigente_que_no_cuadra_alerta():
+    # Manda el peso vigente aunque el histórico sí cuadre: el objetivo 2 vigente
+    # dice 30%, sus IR suman 50% y los objetivos 80%. Con el primer IR (50%, No
+    # Vigente) el error no salía.
+    irs = [_ir("1", "1.1", "Vigente", 0.5, 0.5),
+           _ir("2", "2.1", "No Vigente", 0, 0.5),
+           _ir("2", "2.2", "Vigente", 0.5, 0.3)]
+    assert sorted(_ponderacion(irs)) == [("ponderacion_ir", "2"),
+                                         ("ponderacion_objetivos", "")]
+
+
 if __name__ == "__main__":
     test_jerarquia_ip_dispara_si_falta_el_ir_padre()
     test_objetivo_sin_resultados_dispara_si_no_tiene_ir()
     test_jerarquia_consistente_no_dispara()
+    test_peso_objetivo_sale_del_ir_vigente()
+    test_peso_objetivo_sin_ir_vigente_que_lo_traiga_usa_el_primero()
+    test_peso_objetivo_vigente_que_no_cuadra_alerta()
     print("B2 OK")
