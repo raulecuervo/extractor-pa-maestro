@@ -10,7 +10,71 @@ entre sí (`python scripts/pines_consumidores.py`):
 0.12.0 (fórmulas A, B y C) · 0.13.0 (trayectoria ideal) · 0.14.0 (año sin meta,
 decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
 0.17.0 (AV de CONSTANTE sin reportes) · 0.19.0 (códigos con prefijo, pesos del
-objetivo y en «2.86%», planes antiguos 2021–2025).
+objetivo y en «2.86%», planes antiguos 2021–2025) · 0.20.0 (unidad de medida
+de las fichas técnicas; fichas de Juventud).
+
+## [0.20.0] — La unidad de medida de la ficha es la de la casilla marcada; se leen las fichas «F IR#…»
+
+No cambia ninguna cifra (metas, avances, porcentajes). Cambia la **unidad de
+medida** y los demás datos de ficha que reciben los aplicativos.
+
+### Corregido
+
+- **`lector_fichas.py::_leer_unidad`** devolvía la unidad equivocada cuando la
+  opción marcada no estaba en la primera columna de la cuadrícula. El bloque
+  «Unidad de medida» del formato trae tres opciones por fila (columnas 3, 5 y
+  8), cada una con su casilla a la derecha (4, 6 y 9). La función buscaba la
+  «x» solo en las columnas 1 a 6 y devolvía primero la etiqueta de la columna
+  3, así que:
+  - con **«Porcentaje»** marcado (casilla en la columna 6) entregaba
+    **«Personas»**: 694 fichas del corpus;
+  - con **«Tasa»** o **«Unidad productiva rural»** marcados (casilla en la
+    columna 9) no veía la marca y entregaba `None`: 15 y 8 fichas.
+
+  Ahora la unidad es la opción **pegada a la casilla marcada**: la celda con
+  texto más cercana a la izquierda de la «x» en su fila (y, si no hay ninguna,
+  la más cercana a la derecha), buscando la marca en las columnas 2 a 12. Una
+  marca en «otro» sigue remitiendo a lo escrito en «¿Cuál?», y sin ninguna
+  marca se toma esa respuesta, como antes.
+
+  Comparación sobre las 3.744 fichas de los 47 planes del corpus: la unidad
+  cambia en **720 fichas de 39 planes** (Seguridad 72, Negra-Afro 55, Mujer 52,
+  Rrom 43, Derechos Humanos 41, Juventud 40, ASP 39, LGBTI 31, Indígena 31…) y
+  no cambia en 7 (Biodiversidad, Comunicación Comunitaria, Espacio Público,
+  LEO, Pobreza, Servicio a la Ciudadanía, Talento Humano). En 717 de las 720 la
+  casilla marcada está exactamente a la derecha de la unidad que ahora se
+  entrega. Las 3 restantes son fichas ambiguas, con dos señales a la vez:
+  - Cultos «P.2.2.2»: marcas en «Personas» y en «otro» → «Personas» (antes
+    «Porcentaje»).
+  - Educación «IP #1.3.1»: marca en «Unidad productiva rural» y además un texto
+    en «¿Cuál?» → manda la marca (antes, el texto).
+  - Ruralidad «IP#2.2.5»: marcas en «Unidad productiva rural» y en «Personas» →
+    la primera en orden de lectura (antes «Personas»).
+
+- **`lector_fichas.py::codigo_de_hoja_ficha`** no reconocía las hojas de ficha
+  del plan de **Juventud**, que abrevia «Ficha» como «F»: «F IR#1.1.»,
+  «F IP#1.1.1.». La expresión se ancla al inicio del nombre y solo admitía la
+  palabra completa, así que el plan entero quedaba sin fichas: 0 de 136, con
+  135 avisos de «sin ficha técnica» en los aplicativos. Ahora se leen las 136.
+  La «F» abreviada exige un espacio después («Formato 2024», «Fuentes 1.2» o
+  «F1.2» siguen sin ser fichas). En los otros 46 planes del corpus las hojas
+  reconocidas son exactamente las mismas (3.608).
+
+  sispp-sdis tenía un lector de respaldo para este plan
+  (`etl_maestro._fichas_de_respaldo`). Con esta versión la librería entrega para
+  Juventud las mismas unidades que ese respaldo (Personas 52, Porcentaje 42,
+  Número 17, Tasa 11), de modo que puede retirarse al subir el pin. Diferencia
+  que queda: `dias_rezago` llega como entero, como en todos los demás planes
+  («10 días» → 10, «1 mes» → 1), donde el respaldo guardaba el texto.
+
+### Pruebas
+
+- `tests/test_unidades.py`: nombres de hoja con «F» abreviada; lectura de fichas
+  de un libro con esos nombres; y la cuadrícula de unidades con la marca en cada
+  una de las tres columnas, en «otro», una celda más allá de «otro», sin marca
+  y con dos marcas.
+- Los golden no cambian: la huella no incluye los datos de ficha. La comparación
+  de arriba se hizo aparte, ficha por ficha, contra la 0.19.0.
 
 ## [0.19.0] — Los códigos con prefijo de tipo («P1.1.1», «R1.1», «OE1.») ya no se pierden
 

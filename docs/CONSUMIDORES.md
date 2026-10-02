@@ -28,7 +28,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | seguimiento-pp-sdis | v0.9.11 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
 | generador-seguimiento | v0.9.11 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 
-Última versión publicada: **v0.18.0**; la 0.19.0 está por etiquetar.
+Última versión publicada: **v0.19.0**; la 0.20.0 está por etiquetar.
 
 ## Qué funcionalidad usa cada uno
 
@@ -111,7 +111,7 @@ Los tres archivos que tocan la librería son idénticos en los dos repositorios.
 - **Al subir de versión**: no usa `metricas`, así que las fórmulas no le cambian cifras; sí le llega lo que cambie en la extracción de planes y seguimientos.
 
 ### sispp-sdis, backend (v0.10.1)
-- **`app/etl_maestro.py`** (`extraer_pa`): plan completo, incluidas las fichas técnicas; solo toma las alertas de nivel ERROR.
+- **`app/etl_maestro.py`** (`extraer_pa`): plan completo, incluidas las fichas técnicas; solo toma las alertas de nivel ERROR. Completa con un lector propio (`_fichas_de_respaldo`, sobre `app/etl.py::leer_fichas`) los indicadores que la librería deja sin ficha: lo necesitaba para Juventud, cuyas hojas «F IR#1.1.» no se reconocían. Desde la 0.20.0 la librería las lee y entrega para ese plan las mismas unidades que el respaldo, así que puede retirarlo al subir el pin; `dias_rezago` le llegará como entero («1 mes» → 1), donde el respaldo guardaba el texto.
 - **`app/routers/importador.py`**: `extraer_seguimiento`, `validar_consistencia` con los umbrales por defecto, `safe_float`, y construye `IndicadorSeguimiento` desde su base de datos.
 - **`app/servicios.py`**: `calc_paf`, `calc_tid`, `calc_brecha` y `lb_de_indicador`.
 - **Al subir de versión**: de las fórmulas que usa, `calc_paf` y `calc_tid` cambiaron en 0.14.0: en CRECIENTE y DECRECIENTE solo quedan vacíos si la meta final es igual a la LB, así que un DECRECIENTE con meta final 0 ahora sí tiene PAF y TID. Las demás correcciones de cifras (0.12.0, 0.13.0, 0.16.0, 0.17.0) están en funciones que sispp-sdis no llama, porque calcula por su cuenta la meta acumulada y el avance; por eso puede diferir de alertas-seguimientos para el mismo indicador.
