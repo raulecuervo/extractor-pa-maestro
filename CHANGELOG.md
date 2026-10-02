@@ -23,6 +23,8 @@ No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
   clave; una versión nueva del plan falla con sus diferencias. La comparación
   ignora el campo `archivo` de la huella. Convención en
   `docs/REGRESION_Y_PARIDAD.md`.
+- **`tests/test_corpus.py`**: la convención de claves se prueba sin datos
+  reales, así que corre también en el CI (incluye los renombrados de 2026-09).
 - **Raíz del corpus configurable** con `EXTRACTOR_PA_CORPUS`
   (por defecto `C:\Users\RaulEsteban\Proyectos`).
 - **La regresión no se apaga en silencio**: `test_corpus_cubierto_por_golden`

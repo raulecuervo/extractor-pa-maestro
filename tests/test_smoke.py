@@ -438,11 +438,12 @@ def test_formato_antiguo():
     assert len(res.indicadores_producto) > 0
     # El bloque financiero debe haberse leído.
     assert len(res.financiero) > 0
-    # El IP se resuelve por ancla: el estado de vigencia se lee correctamente.
-    ip = {i.codigo_ip: i for i in res.indicadores_producto}
+    # El IP se resuelve por ancla: nombre, peso y metas salen de sus columnas.
+    # (Adultez v2-2023 no tiene columna Vigente/No vigente: es_vigente queda vacío.)
     primer = res.indicadores_producto[0]
-    assert primer.es_vigente is not None
     assert primer.nombre_indicador
+    assert primer.peso_pct is not None
+    assert primer.metas_por_anio
     # Hay registros financieros con costo y con código IP válido.
     assert any(f.costo_estimado is not None and f.codigo_ip for f in res.financiero)
 

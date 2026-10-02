@@ -33,9 +33,11 @@ con prefijo `plan` o `seg`. El slug es la política, sacada del nombre del
 archivo sin lo que cambia al renombrar o versionar (`slug_politica`):
 
 1. acentos y mayúsculas;
-2. el prefijo del catálogo SISPP: `29__` o `Decreto_193_de_2022__`;
+2. el prefijo del catálogo SISPP: `29__`, `Decreto_193_de_2022__` (o
+   cualquier `<Norma>_<n>_de_<año>__`);
 3. el prefijo del tipo de archivo (`PA_`, `PA_PP_`, `Plan Accion PP_`,
-   `plan_accion_pp_`) y el número de catálogo que a veces le sigue (`PA_42_…`);
+   `plan_accion_pp_`, `Plan de Acción - `) y el número de catálogo que a veces
+   le sigue (`PA_42_…`);
 4. desde el sufijo de versión hasta el final (`_V4-26_DP_v1`, `_v3_2025 15.12.2025`),
    y los números o fechas sueltos al final.
 
@@ -79,21 +81,26 @@ DIR_REPO_DOCS = os.path.join(RAIZ, "alertas-seguimientos",
 
 GOLDEN_DIR = os.path.join(os.path.dirname(__file__), "golden")
 
-_PREFIJO_CATALOGO = re.compile(r"^(?:\d+__|decreto_\d+_de_\d{4}__)")
-_PREFIJO_PLAN = re.compile(r"^(?:pa|plan[ _]accion)(?:[ _]pp)?[ _-]+(?:\d+[ _-]+)?")
-_VERSION = re.compile(r"[ _-]v\d.*$")
+_PREFIJO_CATALOGO = re.compile(r"^(?:\d+|[a-z]+_\d+_de_\d{4})__")
+_PREFIJO_PLAN = re.compile(r"^(?:pa|plan[ _](?:de[ _])?accion)(?:[ _]pp)?[ _-]+(?:\d+[ _-]+)?")
+_VERSION = re.compile(r"(?:^|[ _-])v\d.*$")
 _NUMEROS_FINALES = re.compile(r"(?:[ _.-]+\d+)+$")
+
+
+def _slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", s).strip("_")
 
 
 def slug_politica(nombre: str) -> str:
     """Slug de la política a partir del nombre de archivo (ver la convención arriba)."""
-    s = os.path.splitext(ntpath.basename(str(nombre)))[0]
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
-    s = _PREFIJO_CATALOGO.sub("", s)
+    stem = os.path.splitext(ntpath.basename(str(nombre)))[0]
+    stem = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode().lower()
+    s = _PREFIJO_CATALOGO.sub("", stem)
     s = _PREFIJO_PLAN.sub("", s)
     s = _VERSION.sub("", s)
     s = _NUMEROS_FINALES.sub("", s)
-    return re.sub(r"[^a-z0-9]+", "_", s).strip("_")
+    # Un nombre que es solo prefijo y versión no deja política: se usa entero.
+    return _slug(s) or _slug(stem)
 
 
 def _descubrir(carpeta: str, ext: str, prefijo: str):
