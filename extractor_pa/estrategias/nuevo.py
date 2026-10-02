@@ -27,7 +27,9 @@ from ..modelo import (
     RegistroFinanciero,
 )
 from ..resolutor_columnas import resolver_columnas
-from ..utilidades import extraer_codigo, leer_celda_escala, limpiar, tiene_contenido
+from ..utilidades import (
+    elegir_peso_objetivo, extraer_codigo, leer_celda_escala, limpiar, tiene_contenido,
+)
 from ..vigencia import calcular_vigencia
 
 
@@ -130,6 +132,8 @@ class ExtractorNuevo(EstrategiaExtraccion):
         irs: dict[tuple, IndicadorResultado] = {}
         ips: list[IndicadorProducto] = []
         objetivos: dict[str, Objetivo] = {}
+        # (vigente_ir, peso_ir, peso_objetivo) de cada fila, por objetivo.
+        pesos_objetivo: dict[str, list] = {}
         # El resultado se rellena hacia abajo: se avisa una vez por texto, no por fila.
         resultados_avisados: set = set()
 
@@ -138,9 +142,12 @@ class ExtractorNuevo(EstrategiaExtraccion):
             # B2: objetivo como entidad (se captura aunque la fila no tenga IR).
             obj_txt = g(valores, "objetivo")
             cod_obj = extraer_codigo(obj_txt, niveles=1)
-            if cod_obj and cod_obj not in objetivos:
-                objetivos[cod_obj] = Objetivo(codigo=cod_obj, descripcion=obj_txt,
-                                              peso_pct=g(valores, "peso_objetivo"))
+            if cod_obj:
+                if cod_obj not in objetivos:
+                    objetivos[cod_obj] = Objetivo(codigo=cod_obj, descripcion=obj_txt)
+                pesos_objetivo.setdefault(cod_obj, []).append((
+                    g(valores, "vigente_ir"), g(valores, "peso_ir"),
+                    g(valores, "peso_objetivo")))
             res_txt = g(valores, "resultado")
             codigo_ir = extraer_codigo(res_txt, niveles=2)
             if not codigo_ir and tiene_contenido(res_txt) and res_txt not in resultados_avisados:
@@ -260,6 +267,11 @@ class ExtractorNuevo(EstrategiaExtraccion):
                         costo_estimado=costo, recurso_disponible=recurso,
                         fuente_financiacion=fuente, codigo_proyecto=proyecto,
                     ))
+
+        # El peso del objetivo sale de su primera fila vigente, no de la primera
+        # fila: es el mismo criterio que usan las reglas V0/V1.
+        for cod_obj, objetivo in objetivos.items():
+            objetivo.peso_pct = elegir_peso_objetivo(pesos_objetivo[cod_obj])
 
         # 4) Chequeos de consistencia (Fase 5): inconsistencias entre filas del
         #    mismo IR (sobre valores ORIGINALES) y códigos de IP duplicados.

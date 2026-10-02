@@ -25,7 +25,7 @@ from collections import defaultdict
 from typing import Optional
 
 from .alertas import crear_alerta
-from .utilidades import _norm, a_float
+from .utilidades import _norm, a_float, elegir_peso_objetivo
 
 EPSILON = 0.5  # tolerancia de sumas de ponderación (en puntos porcentuales)
 
@@ -126,14 +126,14 @@ def _add(alertas, tipo, desc, ind=None, *, archivo="", politica="", campo=None, 
 
 def _ponderacion(irs, ips, alertas, archivo, politica):
     """V0/V1/V2 (sumas de pesos) + ponderación faltante."""
-    # Peso del objetivo (primer valor no nulo por objetivo) y peso del IR.
-    peso_de_obj, peso_de_ir = {}, {}
+    # Peso del objetivo (el de su primer IR vigente, si no el primero no nulo:
+    # ver `elegir_peso_objetivo`) y peso del IR.
+    candidatos_obj = defaultdict(list)
+    peso_de_ir = {}
     pesos_por_obj = defaultdict(list)
     for ir in irs:
         obj = ir.codigo_objetivo or "SIN_OBJ"
-        po = a_float(ir.peso_objetivo_pct)
-        if obj not in peso_de_obj and po is not None:
-            peso_de_obj[obj] = po
+        candidatos_obj[obj].append((ir.es_vigente, ir.peso_pct, ir.peso_objetivo_pct))
         p = a_float(ir.peso_pct)
         if p is None:
             if not _es_no_vigente(ir):
@@ -145,6 +145,11 @@ def _ponderacion(irs, ips, alertas, archivo, politica):
         pesos_por_obj[obj].append(p)
         if ir.codigo_ir:
             peso_de_ir[ir.codigo_ir] = p
+    peso_de_obj = {}
+    for obj, candidatos in candidatos_obj.items():
+        po = a_float(elegir_peso_objetivo(candidatos))
+        if po is not None:
+            peso_de_obj[obj] = po
 
     pesos_por_ir = defaultdict(list)
     for ip in ips:

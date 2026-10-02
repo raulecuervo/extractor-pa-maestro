@@ -9,7 +9,8 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extractor_pa.utilidades import (a_float, extraer_codigo, es_vigente,
-                                     peso_positivo, clave_grupo, tiene_contenido)
+                                     peso_positivo, clave_grupo, tiene_contenido,
+                                     elegir_peso_objetivo)
 from extractor_pa.lector_filas import prefiltrar_filas
 from extractor_pa.vigencia import calcular_vigencia
 from extractor_pa.lector_fichas import codigo_de_hoja_ficha
@@ -118,6 +119,29 @@ def test_peso_positivo(valor, esperado):
 
 def test_clave_grupo_usa_codigo():
     assert clave_grupo("1.1 Resultado X") == "1.1"
+
+
+# ── utilidades.elegir_peso_objetivo: (vigente_ir, peso_ir, peso_objetivo) ──
+@pytest.mark.parametrize("candidatos,esperado", [
+    # Trabajo Decente OE2: el IR No Vigente que encabeza el objetivo pesa 0.
+    ([("No Vigente", 0, 0), ("Vigente", 0.1616, 0.4848)], 0.4848),
+    # Trata: el No Vigente trae peso de objetivo 0 y peso de IR vacío.
+    ([("No vigente", None, 0), ("Vigente", 0.4, 0.4)], 0.4),
+    # Vigente con peso de IR 0 no es la fila autoritativa (como en la ascensión).
+    ([("Vigente", 0, 0.1), ("Vigente", 0.3, 0.3)], 0.3),
+    # Sin marca de vigencia cuenta como vigente.
+    ([(None, 0, 0.1), (None, 0.3, 0.3)], 0.3),
+    # Espacio Público OE2: solo el No Vigente trae el peso -> el primero no nulo.
+    ([("No vigente", 0, 0.34), ("Vigente", 0.17, None)], 0.34),
+    # Ninguno vigente: el primero no nulo (como antes).
+    ([("No Vigente", 0, None), ("No Vigente", 0, 0.2), ("No Vigente", 0, 0.5)], 0.2),
+    # Un texto no numérico no cuenta como peso.
+    ([("Vigente", 0.5, "N/A"), ("Vigente", 0.5, "50%")], "50%"),
+    ([("Vigente", 0.5, None)], None),
+    ([], None),
+])
+def test_elegir_peso_objetivo(candidatos, esperado):
+    assert elegir_peso_objetivo(candidatos) == esperado
 
 
 # ── vigencia.calcular_vigencia ──

@@ -155,6 +155,31 @@ def peso_positivo(valor: Any) -> bool:
     return f is not None and f > 0
 
 
+def es_fila_vigente(vigente: Any, peso: Any) -> bool:
+    """True si es la fila autoritativa de un IR: Vigente (o sin marcar) y con
+    peso > 0. Es la fila que asciende el normalizador (capa 4)."""
+    return es_vigente(vigente) and peso_positivo(peso)
+
+
+def elegir_peso_objetivo(candidatos) -> Any:
+    """Peso de un objetivo entre los que traen sus filas o sus IR, en orden.
+
+    `candidatos` son tuplas `(vigente_ir, peso_ir, peso_objetivo)`. Gana el peso
+    del objetivo de la primera fila vigente (`es_fila_vigente`); si ninguna lo
+    trae, el primer valor numérico. Así un IR No Vigente que encabeza el
+    objetivo con peso 0 (la versión histórica) no tapa el peso de los IR
+    vigentes. Devuelve el valor tal como viene, o None si ninguno es numérico."""
+    primero = None
+    for vigente, peso_ir, peso_obj in candidatos:
+        if a_float(peso_obj) is None:
+            continue
+        if es_fila_vigente(vigente, peso_ir):
+            return peso_obj
+        if primero is None:
+            primero = peso_obj
+    return primero
+
+
 def clave_grupo(valor: Any) -> str:
     """Clave de agrupamiento de un IR/objetivo: su código (1, 1.1) o el texto norm."""
     return extraer_codigo(valor) or _norm(valor)

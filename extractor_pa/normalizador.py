@@ -25,7 +25,7 @@ Capas (las metas anuales se EXCLUYEN siempre: se leen de la primera fila del IR)
 from __future__ import annotations
 
 from .lector_filas import forward_fill
-from .utilidades import clave_grupo, es_vigente, peso_positivo
+from .utilidades import clave_grupo, es_fila_vigente
 
 
 # Campos del IR que se propagan dentro del mismo IR (capas 3 y 4).
@@ -88,7 +88,7 @@ def ascender_fila_vigente_por_grupo(valores_filas: list[list], col_grupo_0idx: i
             v = valores_filas[i]
             vig = v[col_vigente_0idx] if col_vigente_0idx < len(v) else None
             peso = v[col_peso_0idx] if col_peso_0idx < len(v) else None
-            if es_vigente(vig) and peso_positivo(peso):
+            if es_fila_vigente(vig, peso):
                 fila_vig = v
                 break
         if fila_vig is None:
