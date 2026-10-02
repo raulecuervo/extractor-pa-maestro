@@ -48,6 +48,42 @@ Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
 - `docs/CATALOGO_ALERTAS.md` regenerado: incluye `codigo_no_reconocido` y los 4
   tipos de seguimiento que ya estaban en el catálogo y faltaban en el documento.
+- Golden de Trata, Negra-Afro, Seguridad y Migrantes actualizados: son los
+  únicos 4 de 100 que cambian, con exactamente lo descrito arriba. El de Trabajo
+  Decente no cambia porque la huella no incluye los objetivos.
+
+### Pruebas — la regresión golden de planes vuelve a correr
+
+No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
+
+- **La regresión golden de planes estaba apagada desde 2026-09-21.** Ese día
+  los planes de `sispp-gobierno/01_planes_accion` se renombraron
+  (`PA_BTI_V4-26_DP.xlsx` → `29__pa_bti_v4-26_dp_v1.xlsx`) y, como la clave del
+  golden salía del nombre del archivo, los 47 planes daban «golden no generado»
+  y se saltaban; el corpus curado apuntaba a archivos que ya no existían. Nada
+  falló. Las versiones 0.13.0 a 0.18.0 no se probaron contra los golden de
+  planes; corridas ahora sobre los 38 archivos viejos (recuperados del
+  historial de `sispp-gobierno`) reproducen sus golden **sin una sola
+  diferencia**.
+- **Claves golden por política** (`tests/corpus.py::slug_politica`): sin
+  prefijos de catálogo, de tipo ni sufijo de versión. Un renombrado conserva la
+  clave; una versión nueva del plan falla con sus diferencias. La comparación
+  ignora el campo `archivo` de la huella. Convención en
+  `docs/REGRESION_Y_PARIDAD.md`.
+- **`tests/test_corpus.py`**: la convención de claves se prueba sin datos
+  reales, así que corre también en el CI (incluye los renombrados de 2026-09).
+- **Raíz del corpus configurable** con `EXTRACTOR_PA_CORPUS`
+  (por defecto `C:\Users\RaulEsteban\Proyectos`).
+- **La regresión no se apaga en silencio**: `test_corpus_cubierto_por_golden`
+  falla si el corpus existe y ningún archivo tiene golden;
+  `test_corpus_claves_unicas` falla ante dos versiones del mismo plan; una
+  política curada ausente falla en vez de saltarse.
+- **`gen_golden.py`** lista lo que cambia contra el golden previo, tiene
+  `--revisar` (sin escribir) y `--podar` (borra huérfanos), y se niega a correr
+  con claves repetidas.
+- `test_smoke.py` y `test_cli.py` toman las rutas del corpus; el formato
+  antiguo se prueba ahora con Adultez v2-2023 (el CTI v4-25 salió del corpus:
+  su versión v5-26 ya viene en formato nuevo).
 
 ## [0.18.0] — El seguimiento también se lee en `.xlsx` (formato 3.4)
 
