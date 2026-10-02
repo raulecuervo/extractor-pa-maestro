@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -22,12 +24,7 @@ from .estrategias import ExtractorNuevo
 from .lector_fichas import enriquecer_con_fichas, leer_fichas
 from .loader import abrir_workbook
 from .localizador_hoja import localizar_hoja
-from .modelo import (
-    NIVEL_ADVERTENCIA,
-    NIVEL_ERROR,
-    Metadatos,
-    ResultadoExtraccion,
-)
+from .modelo import Metadatos, ResultadoExtraccion
 from .resolutor_columnas import EstructuraNoReconocida
 from .utilidades import _norm, limpiar
 
@@ -71,6 +68,28 @@ def _buscar_nombre_politica(celda) -> "str | None":
                     and _es_nombre_politica(cand)):
                 return cand.strip()
     return None
+
+
+_ANCLA_FILA_MEDIA = _norm("Resultado esperado")
+
+
+def _ubicar_encabezados(ws, mapeo: MapeoColumnas) -> MapeoColumnas:
+    """Ajusta las filas de encabezado y de datos a donde de verdad están.
+
+    La plantilla vigente trae «Resultado esperado» en la fila 10 (encabezados
+    9–11, datos desde la 12), pero las versiones anteriores lo bajan: a la fila
+    11 en los planes 2021–2025 y a la 25 cuando la cabecera lista los
+    corresponsables. Con las filas fijas esos planes perdían metas, línea base
+    y bloque financiero, o no se extraían. Si el ancla no aparece en las
+    primeras 40 filas se deja el mapeo como está."""
+    for fila in range(1, 41):
+        for col in range(1, 11):
+            if _norm(ws.cell(row=fila, column=col).value) == _ANCLA_FILA_MEDIA:
+                if fila == mapeo.filas_encabezado[1]:
+                    return mapeo
+                return replace(mapeo, filas_encabezado=(fila - 1, fila, fila + 1),
+                               fila_datos=fila + 2)
+    return mapeo
 
 
 def _extraer_metadatos(ws, mapeo: MapeoColumnas, nombre_archivo: str) -> Metadatos:
@@ -117,11 +136,14 @@ def extraer_plan_accion(
 ) -> ResultadoExtraccion:
     """Extrae un archivo de plan de acción y devuelve el modelo canónico.
 
-    Nunca lanza por errores de datos: los reporta como alertas dentro del
-    `ResultadoExtraccion`.
+    Nunca lanza por el contenido del archivo: los errores de datos se reportan
+    como alertas dentro del `ResultadoExtraccion`, y una excepción inesperada en
+    la extracción queda como la alerta fatal `error_extraccion` (en las etapas
+    opcionales, fichas y reglas, como `error_etapa_opcional`, sin perder el plan).
     - `mapeo`: permite sobreescribir las anclas por defecto.
-    - `anio_vigencia`: año de corte para `meta_vigencia_actual/_anterior`
-      (por defecto se infiere del año actual del sistema).
+    - `anio_vigencia`: año de corte para `meta_vigencia_actual/_anterior`. Sin
+      él se usa el año del reloj del sistema, así que el mismo archivo da otro
+      resultado al cambiar el año; el usado queda en `metadatos.anio_corte`.
     - `leer_fichas_tecnicas`: si True, lee las hojas «Ficha técnica IR#/IP#» y
       completa metodología, unidad de medida, fuentes y días de rezago.
     - `incluir_reglas_negocio`: si True, ejecuta además las reglas V0–V18
@@ -131,7 +153,8 @@ def extraer_plan_accion(
     mapeo_usuario = mapeo
     base_mapeo = mapeo_usuario or MAPEO_NUEVO
     nombre_archivo = os.path.basename(str(ruta))
-    meta = Metadatos(archivo_fuente=nombre_archivo)
+    anio_corte = anio_vigencia if anio_vigencia is not None else datetime.now().year
+    meta = Metadatos(archivo_fuente=nombre_archivo, anio_corte=anio_corte)
 
     # 1) Abrir el libro.
     try:
@@ -142,93 +165,120 @@ def extraer_plan_accion(
             f"No se pudo abrir el archivo: {e}", archivo_fuente=nombre_archivo)])
 
     try:
-        # 2) Localizar la hoja del plan.
-        nombre_hoja = localizar_hoja(wb, base_mapeo.hoja)
-        if nombre_hoja is None:
-            return ResultadoExtraccion(meta, [], [], [crear_alerta(
-                "hoja_no_encontrada",
-                f"No se encontró la hoja del plan de acción. "
-                f"Hojas disponibles: {wb.sheetnames[:8]}",
-                archivo_fuente=nombre_archivo)])
-        ws = wb[nombre_hoja]
+        return _extraer_libro(wb, nombre_archivo, mapeo_usuario, base_mapeo, anio_corte,
+                              leer_fichas_tecnicas, incluir_reglas_negocio, catalogo_oficial)
+    except Exception as e:  # noqa: BLE001 — un fallo inesperado no tumba al llamador
+        return ResultadoExtraccion(meta, [], [], [crear_alerta(
+            "error_extraccion",
+            f"Fallo inesperado al extraer el plan ({type(e).__name__}: {e}).",
+            archivo_fuente=nombre_archivo)])
+    finally:
+        wb.close()
 
-        # 3) Detectar formato y elegir el mapeo efectivo.
-        veredicto = detectar_formato(ws, wb)
-        if mapeo_usuario is not None:
-            mapeo = mapeo_usuario
-        elif veredicto.formato == "antiguo":
-            mapeo = MAPEO_ANTIGUO
-        else:
-            mapeo = MAPEO_NUEVO
 
-        # 4) Metadatos de cabecera.
-        meta = _extraer_metadatos(ws, mapeo, nombre_archivo)
-        meta.hoja_usada = nombre_hoja
-        meta.formato_detectado = veredicto.formato
+def _extraer_libro(wb, nombre_archivo, mapeo_usuario, base_mapeo, anio_corte,
+                   leer_fichas_tecnicas, incluir_reglas_negocio, catalogo_oficial):
+    """Pasos 2–9 de `extraer_plan_accion` sobre el libro ya abierto."""
+    meta = Metadatos(archivo_fuente=nombre_archivo, anio_corte=anio_corte)
+    # 2) Localizar la hoja del plan.
+    nombre_hoja = localizar_hoja(wb, base_mapeo.hoja)
+    if nombre_hoja is None:
+        return ResultadoExtraccion(meta, [], [], [crear_alerta(
+            "hoja_no_encontrada",
+            f"No se encontró la hoja del plan de acción. "
+            f"Hojas disponibles: {wb.sheetnames[:8]}",
+            archivo_fuente=nombre_archivo)])
+    ws = wb[nombre_hoja]
 
-        alertas = []
-        if veredicto.formato is None:
-            alertas.append(crear_alerta(
-                "formato_no_reconocido",
-                f"No se pudo determinar el formato del plan ({veredicto.motivo}).",
-                archivo_fuente=nombre_archivo,
-                nombre_politica=meta.nombre_politica))
-            return ResultadoExtraccion(meta, [], [], alertas)
+    # 3) Detectar formato y elegir el mapeo efectivo.
+    veredicto = detectar_formato(ws, wb)
+    if mapeo_usuario is not None:
+        mapeo = mapeo_usuario
+    else:
+        mapeo = _ubicar_encabezados(
+            ws, MAPEO_ANTIGUO if veredicto.formato == "antiguo" else MAPEO_NUEVO)
 
-        # 5) Extraer con el motor único.
+    # 4) Metadatos de cabecera.
+    meta = _extraer_metadatos(ws, mapeo, nombre_archivo)
+    meta.anio_corte = anio_corte
+    meta.hoja_usada = nombre_hoja
+    meta.formato_detectado = veredicto.formato
+
+    alertas = []
+    if veredicto.formato is None:
+        alertas.append(crear_alerta(
+            "formato_no_reconocido",
+            f"No se pudo determinar el formato del plan ({veredicto.motivo}).",
+            archivo_fuente=nombre_archivo,
+            nombre_politica=meta.nombre_politica))
+        return ResultadoExtraccion(meta, [], [], alertas)
+
+    # 5) Extraer con el motor único.
+    try:
+        irs, ips, financiero, alertas_ext, objetivos = _MOTOR.extraer(
+            ws, mapeo, nombre_archivo, meta.nombre_politica, anio_corte)
+    except EstructuraNoReconocida as e:
+        alertas.append(crear_alerta(
+            "estructura",
+            f"Estructura de columnas no reconocida: {e}",
+            archivo_fuente=nombre_archivo,
+            nombre_politica=meta.nombre_politica))
+        return ResultadoExtraccion(meta, [], [], alertas)
+
+    alertas.extend(alertas_ext)
+
+    # 5b) Enriquecer con fichas técnicas (hojas «Ficha técnica IR#/IP#»).
+    if leer_fichas_tecnicas:
         try:
-            irs, ips, financiero, alertas_ext, objetivos = _MOTOR.extraer(
-                ws, mapeo, nombre_archivo, meta.nombre_politica, anio_vigencia)
-        except EstructuraNoReconocida as e:
-            alertas.append(crear_alerta(
-                "estructura",
-                f"Estructura de columnas no reconocida: {e}",
-                archivo_fuente=nombre_archivo,
-                nombre_politica=meta.nombre_politica))
-            return ResultadoExtraccion(meta, [], [], alertas)
-
-        alertas.extend(alertas_ext)
-
-        # 5b) Enriquecer con fichas técnicas (hojas «Ficha técnica IR#/IP#»).
-        if leer_fichas_tecnicas:
             fichas = leer_fichas(wb)
             if fichas:
                 enriquecer_con_fichas(irs, fichas, "codigo_ir")
                 enriquecer_con_fichas(ips, fichas, "codigo_ip")
+        except Exception as e:  # noqa: BLE001 — sin fichas el plan sigue sirviendo
+            alertas.append(_alerta_etapa_opcional("fichas técnicas", e, meta))
 
-        # 6) Años detectados (unión de las metas de todos los indicadores).
-        anios = set()
-        for ind in irs + ips:
-            anios.update(ind.metas_por_anio.keys())
-        meta.anios_detectados = sorted(anios)
+    # 6) Años detectados (unión de las metas de todos los indicadores).
+    anios = set()
+    for ind in irs + ips:
+        anios.update(ind.metas_por_anio.keys())
+    meta.anios_detectados = sorted(anios)
 
-        # 7) Avisos de extracción vacía.
-        if not irs:
-            alertas.append(crear_alerta(
-                "sin_ir",
-                "No se extrajeron indicadores de resultado (0 IR).",
-                archivo_fuente=nombre_archivo, nombre_politica=meta.nombre_politica))
-        if not ips:
-            alertas.append(crear_alerta(
-                "sin_ip",
-                "No se extrajeron indicadores de producto (0 IP).",
-                archivo_fuente=nombre_archivo, nombre_politica=meta.nombre_politica))
+    # 7) Avisos de extracción vacía.
+    if not irs:
+        alertas.append(crear_alerta(
+            "sin_ir",
+            "No se extrajeron indicadores de resultado (0 IR).",
+            archivo_fuente=nombre_archivo, nombre_politica=meta.nombre_politica))
+    if not ips:
+        alertas.append(crear_alerta(
+            "sin_ip",
+            "No se extrajeron indicadores de producto (0 IP).",
+            archivo_fuente=nombre_archivo, nombre_politica=meta.nombre_politica))
 
-        res = ResultadoExtraccion(meta, irs, ips, alertas, financiero, objetivos)
+    res = ResultadoExtraccion(meta, irs, ips, alertas, financiero, objetivos)
 
-        # 8) Reglas de negocio V0–V18 (opcional).
-        if incluir_reglas_negocio:
-            from .validacion import validar_reglas
+    # 8) Reglas de negocio V0–V18 (opcional).
+    if incluir_reglas_negocio:
+        from .validacion import validar_reglas
+        try:
             res.alertas.extend(validar_reglas(res, catalogo_oficial=catalogo_oficial))
+        except Exception as e:  # noqa: BLE001 — sin reglas el plan sigue sirviendo
+            res.alertas.append(_alerta_etapa_opcional("reglas de negocio", e, meta))
 
-        # 9) Métricas de extracción.
-        meta.n_ir = len(irs)
-        meta.n_ip = len(ips)
-        meta.n_alertas = len(res.alertas)
-        if irs:
-            con_lb = sum(1 for i in irs if i.valor_linea_base not in (None, ""))
-            meta.pct_ir_con_linea_base = round(100.0 * con_lb / len(irs), 1)
+    # 9) Métricas de extracción.
+    meta.n_ir = len(irs)
+    meta.n_ip = len(ips)
+    meta.n_alertas = len(res.alertas)
+    if irs:
+        con_lb = sum(1 for i in irs if i.valor_linea_base not in (None, ""))
+        meta.pct_ir_con_linea_base = round(100.0 * con_lb / len(irs), 1)
 
-        return res
-    finally:
-        wb.close()
+    return res
+
+
+def _alerta_etapa_opcional(etapa: str, e: Exception, meta: Metadatos):
+    return crear_alerta(
+        "error_etapa_opcional",
+        f"Falló la etapa de {etapa} ({type(e).__name__}: {e}); "
+        f"el resto de la extracción se conserva.",
+        archivo_fuente=meta.archivo_fuente, nombre_politica=meta.nombre_politica)

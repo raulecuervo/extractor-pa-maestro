@@ -68,6 +68,12 @@ _TIPOS = [
     TipoAlerta("estructura", NIVEL_ERROR, "Estructura", CAPA_EXTRACCION,
                "Faltan las anclas obligatorias ('Meta de resultado Final'/'Producto esperado').",
                implementado=True),
+    TipoAlerta("error_extraccion", NIVEL_ERROR, "Estructura", CAPA_EXTRACCION,
+               "Fallo inesperado al extraer el plan (excepción interna); no se entrega "
+               "ningún indicador.", implementado=True),
+    TipoAlerta("error_etapa_opcional", NIVEL_ADVERTENCIA, "Estructura", CAPA_EXTRACCION,
+               "Falló una etapa opcional (fichas técnicas o reglas de negocio); el resto "
+               "de la extracción se conserva.", implementado=True),
     TipoAlerta("metadatos", NIVEL_ADVERTENCIA, "Estructura", CAPA_EXTRACCION,
                "No se pudo identificar el nombre de la política en la cabecera.",
                regla="sispp-gobierno"),

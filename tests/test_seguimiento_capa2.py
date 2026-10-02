@@ -11,7 +11,6 @@ from extractor_pa.seguimiento import (
     IndicadorSeguimiento,
     MetadatosSeguimiento,
     ResultadoSeguimiento,
-    HallazgoSeguimiento,
     anio_de_serial_excel,
     avance_sin_reportes,
     calc_brecha,

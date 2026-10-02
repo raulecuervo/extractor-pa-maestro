@@ -4,7 +4,7 @@
 > Generado automáticamente desde `extractor_pa/catalogo.py` (única fuente de verdad).
 > Niveles unificados: **ERROR** (bloquea / dato inutilizable) · **ADVERTENCIA** (revisar) · **INFO** (informativo).
 
-**71 tipos** catalogados · **56 implementados** en el extractor maestro.
+**77 tipos** catalogados · **62 implementados** en el extractor maestro.
 
 Leyenda `Impl.`: ✅ lo produce el maestro · ⬜ documentado (vive en otro aplicativo o pendiente).
 
@@ -19,12 +19,14 @@ Las produce el extractor maestro al leer el Excel.
 | `formato_no_reconocido` | ERROR | — | Estructura | El detector no pudo determinar el formato (ni nuevo ni antiguo). | ✅ |
 | `formato_no_compatible` | ERROR | sispp-gobierno | Estructura | La plantilla es incompatible con el formato vigente. | ⬜ |
 | `estructura` | ERROR | — | Estructura | Faltan las anclas obligatorias ('Meta de resultado Final'/'Producto esperado'). | ✅ |
+| `error_extraccion` | ERROR | — | Estructura | Fallo inesperado al extraer el plan (excepción interna); no se entrega ningún indicador. | ✅ |
+| `error_etapa_opcional` | ADVERTENCIA | — | Estructura | Falló una etapa opcional (fichas técnicas o reglas de negocio); el resto de la extracción se conserva. | ✅ |
 | `metadatos` | ADVERTENCIA | sispp-gobierno | Estructura | No se pudo identificar el nombre de la política en la cabecera. | ⬜ |
 | `sin_ir` | ADVERTENCIA | — | Estructura | No se extrajo ningún Indicador de Resultado. | ✅ |
 | `sin_ip` | ADVERTENCIA | — | Estructura | No se extrajo ningún Indicador de Producto. | ✅ |
 | `ir_sin_nombre` | ADVERTENCIA | — | Estructura | Una fila trae código de IR pero sin nombre (se omitió). | ✅ |
 | `ip_sin_nombre` | ADVERTENCIA | — | Estructura | Una fila trae código de IP pero sin nombre (se omitió). | ✅ |
-| `apertura_seguimiento` | ERROR | — | Estructura seguimiento | No se pudo abrir el archivo .xlsb de seguimiento. | ✅ |
+| `apertura_seguimiento` | ERROR | — | Estructura seguimiento | No se pudo abrir el archivo de seguimiento (.xlsb o .xlsx). | ✅ |
 | `hoja_seguimiento_no_encontrada` | ERROR | — | Estructura seguimiento | No se encontró la hoja 'Avance Cuantitativo'. | ✅ |
 | `anclas_no_encontradas` | ERROR | — | Estructura seguimiento | No se encontraron las anclas de bloques en la fila de encabezados. | ✅ |
 | `sin_indicadores_seguimiento` | ADVERTENCIA | — | Estructura seguimiento | No se extrajo ningún indicador de seguimiento. | ✅ |
@@ -72,7 +74,11 @@ De `alertas-seguimientos` (capa de seguimiento, fuera del extractor de plan).
 |---|---|---|---|---|:---:|
 | `codigo_seguimiento_sin_plan` | INFO | — | Estructura seguimiento | Un código de seguimiento no se encontró en el plan de acción. | ✅ |
 | `ERROR_ESTABILIDAD` | ERROR | — | Seguimiento | Campo inmutable del indicador modificado entre cargas. | ✅ |
+| `ERROR_PONDERACION_OBLIGATORIA` | ERROR | — | Seguimiento | Indicador vigente sin ponderación (debe ser mayor que 0). | ✅ |
+| `ADVERTENCIA_SECTOR_ENTIDAD` | ADVERTENCIA | — | Seguimiento | El sector que trae el archivo no es el oficial de esa entidad. | ✅ |
 | `ERROR_RETROACTIVO` | ERROR | — | Seguimiento | Valor histórico (periodo cerrado) modificado. | ✅ |
+| `ADVERTENCIA_CAMBIO_META` | ADVERTENCIA | — | Seguimiento | Meta de una vigencia o meta final modificada entre cargas. Suele ser un ajuste legítimo al plan de acción, pero cambia el denominador de todos los porcentajes de avance: queda registrado para que un analista lo verifique. | ✅ |
+| `INFO_CAMBIO_ESTADO` | INFO | — | Seguimiento | El indicador cambió de estado (p. ej. Vigente → No Vigente). | ✅ |
 | `ERROR_NO_NUMERICO` | ERROR | — | Seguimiento | Reporte cuantitativo con valor no numérico. | ✅ |
 | `ADVERTENCIA_ESCALA` | ADVERTENCIA | — | Seguimiento | Incoherencia de escala entre la meta y el reporte. | ✅ |
 | `ADVERTENCIA_AVANCE` | ADVERTENCIA | — | Seguimiento | El avance supera la meta + 25% (umbral 125%). | ✅ |

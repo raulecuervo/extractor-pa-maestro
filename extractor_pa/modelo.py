@@ -29,7 +29,7 @@ NIVEL_INFO = "INFO"              # informativo
 # ERRORes (reglas de negocio) son hallazgos de calidad, no fallos de extracción.
 _TIPOS_FATALES = frozenset({
     "apertura", "hoja_no_encontrada", "formato_no_reconocido",
-    "formato_no_compatible", "estructura",
+    "formato_no_compatible", "estructura", "error_extraccion",
 })
 
 
@@ -101,6 +101,8 @@ class IndicadorResultado:
     dias_rezago: Optional[int] = None
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
+    # Solo el formato antiguo trae «Enfoque» en el bloque del IR.
+    enfoque: Optional[str] = None
 
 
 @dataclass
@@ -171,6 +173,10 @@ class Metadatos:
     formato_detectado: Optional[str] = None   # "nuevo" | "antiguo"
     hoja_usada: Optional[str] = None
     anios_detectados: list = field(default_factory=list)
+    # Año de corte con el que se calcularon `meta_vigencia_actual/_anterior`:
+    # el pedido por el llamador o, si no pidió ninguno, el del reloj del sistema.
+    # Pasarlo de nuevo como `anio_vigencia` reproduce la misma extracción.
+    anio_corte: Optional[int] = None
     # Métricas de extracción (se llenan al final del pipeline).
     n_ir: int = 0
     n_ip: int = 0
@@ -207,4 +213,5 @@ class ResultadoExtraccion:
             "indicadores_producto": [asdict(i) for i in self.indicadores_producto],
             "alertas": [asdict(a) for a in self.alertas],
             "financiero": [asdict(f) for f in self.financiero],
+            "objetivos": [asdict(o) for o in self.objetivos],
         }

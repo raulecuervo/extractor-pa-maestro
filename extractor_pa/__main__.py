@@ -26,7 +26,7 @@ def _print_resumen_plan(res) -> None:
     print(f"  archivo   : {m.archivo_fuente}")
     print(f"  política  : {m.nombre_politica}")
     print(f"  formato   : {m.formato_detectado} | hoja: {m.hoja_usada}")
-    print(f"  años      : {m.anios_detectados}")
+    print(f"  años      : {m.anios_detectados}   (corte: {m.anio_corte})")
     print(f"  IR / IP   : {m.n_ir} / {m.n_ip}   (financiero: {len(res.financiero)})")
     print(f"  LB en IR  : {m.pct_ir_con_linea_base}%")
     print(f"  alertas   : {len(res.alertas)}  "

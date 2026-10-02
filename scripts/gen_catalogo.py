@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Genera docs/CATALOGO_ALERTAS.md desde extractor_pa/catalogo.py (fuente única)."""
-import sys, io, os
+import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.path.insert(0, r'C:\Users\RaulEsteban\Proyectos\extractor-pa-maestro')
 

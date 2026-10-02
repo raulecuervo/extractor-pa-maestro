@@ -57,9 +57,10 @@ def detectar_formato(ws, wb=None) -> Veredicto:
                 return Veredicto("antiguo", "alta",
                                  f"Bloque financiero en encabezados (fila {n}: '{str(v).strip()[:30]}')")
 
-    # H1 — Anclas del formato NUEVO en la fila 10.
-    f10 = _textos_fila(ws, 10, max_col)
-    if "Meta de resultado Final" in f10 and "Producto esperado" in f10:
+    # H1 — Anclas del formato NUEVO en la fila 10 (texto normalizado, como las
+    # busca el resolutor: un espacio doble o una tilde distinta no las esconden).
+    f10 = {_norm(t) for t in _textos_fila(ws, 10, max_col)}
+    if _norm("Meta de resultado Final") in f10 and _norm("Producto esperado") in f10:
         return Veredicto("nuevo", "alta",
                          "Anclas 'Meta de resultado Final' + 'Producto esperado' en fila 10")
 
@@ -87,16 +88,19 @@ def detectar_formato(ws, wb=None) -> Veredicto:
                     return Veredicto("antiguo", "alta",
                                      f"Columna financiera '{t}' en fila {fila}")
 
+    # H5 — Datos desde la fila 12 -> nuevo. Va antes que H4 porque los planes
+    # nuevos también traen hojas de ficha técnica.
+    if ws.cell(row=12, column=1).value and ws.cell(row=12, column=3).value:
+        return Veredicto("nuevo", "media", "Datos desde la fila 12 (patrón nuevo)")
+
     # H4 — Muchas hojas de fichas técnicas -> antiguo (requiere el workbook).
     if wb is not None:
         fichas = [s for s in wb.sheetnames if _RE_HOJA_FICHA.search(s)]
         if len(fichas) >= 3:
-            return Veredicto("antiguo", "alta",
+            return Veredicto("antiguo", "media",
                              f"{len(fichas)} hojas de fichas técnicas (IR/IP x.x)")
 
-    # H5 — Posición de los datos.
-    if ws.cell(row=12, column=1).value and ws.cell(row=12, column=3).value:
-        return Veredicto("nuevo", "media", "Datos desde la fila 12 (patrón nuevo)")
+    # H5b — Datos desde la fila 27 -> antiguo.
     if ws.cell(row=27, column=1).value:
         return Veredicto("antiguo", "media", "Datos desde la fila 27 (patrón antiguo)")
 
