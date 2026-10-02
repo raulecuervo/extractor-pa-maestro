@@ -63,6 +63,15 @@ def _factor(pesos: list) -> float:
     return 100.0 if all(p <= 1.0 for p in pos) else 1.0
 
 
+def _leer_peso(valor) -> tuple[Optional[float], bool]:
+    """(número, trae_pct) de una ponderación tal como la dejó el extractor.
+
+    El texto con «%» ('2.86%', '0,5%') ya está en puntos porcentuales: su escala
+    no depende del resto del plan. Un número suelto (0.0286 o 2.86) es ambiguo y
+    su escala la decide `_factor` con los demás números sueltos del plan."""
+    return a_float(valor), isinstance(valor, str) and valor.strip().endswith("%")
+
+
 _EPOCH_EXCEL = _dt.date(1899, 12, 30)   # base de serie de fechas de Excel
 
 
@@ -125,7 +134,14 @@ def _add(alertas, tipo, desc, ind=None, *, archivo="", politica="", campo=None, 
 # ─────────────────────────── reglas ─────────────────────────────
 
 def _ponderacion(irs, ips, alertas, archivo, politica):
-    """V0/V1/V2 (sumas de pesos) + ponderación faltante."""
+    """V0/V1/V2 (sumas de pesos) + ponderación faltante.
+
+    Las sumas se hacen en puntos porcentuales. Cada peso se lee como
+    `(número, trae_pct)` y se lleva a puntos por separado: el texto con «%» va
+    tal cual y los números sueltos se multiplican por un único factor del plan,
+    que `_factor` decide mirando SOLO los números sueltos. Así un «2.86%»
+    escrito como texto en un plan decimal (0.0377, 0.1418…) ya no lo pasa
+    entero a la escala de porcentaje, ni un «0,5%» se lee como 50 %."""
     # Peso del objetivo (el de su primer IR vigente, si no el primero no nulo:
     # ver `elegir_peso_objetivo`) y peso del IR.
     candidatos_obj = defaultdict(list)
@@ -134,43 +150,53 @@ def _ponderacion(irs, ips, alertas, archivo, politica):
     for ir in irs:
         obj = ir.codigo_objetivo or "SIN_OBJ"
         candidatos_obj[obj].append((ir.es_vigente, ir.peso_pct, ir.peso_objetivo_pct))
-        p = a_float(ir.peso_pct)
-        if p is None:
+        p = _leer_peso(ir.peso_pct)
+        if p[0] is None:
             if not _es_no_vigente(ir):
                 _add(alertas, "ponderacion_faltante",
                      f"IR '{ir.codigo_ir}': vigente sin ponderación numérica.",
                      archivo=archivo, politica=politica, cod_obj=obj,
                      cod_ir=ir.codigo_ir, campo="peso_pct")
-            p = 0.0
+            p = (0.0, False)
         pesos_por_obj[obj].append(p)
         if ir.codigo_ir:
             peso_de_ir[ir.codigo_ir] = p
     peso_de_obj = {}
     for obj, candidatos in candidatos_obj.items():
-        po = a_float(elegir_peso_objetivo(candidatos))
-        if po is not None:
+        po = _leer_peso(elegir_peso_objetivo(candidatos))
+        if po[0] is not None:
             peso_de_obj[obj] = po
 
     pesos_por_ir = defaultdict(list)
     for ip in ips:
         irk = ip.codigo_ir or "SIN_IR"
-        p = a_float(ip.peso_pct)
-        if p is None:
+        p = _leer_peso(ip.peso_pct)
+        if p[0] is None:
             if not _es_no_vigente(ip):
                 _add(alertas, "ponderacion_faltante",
                      f"IP '{ip.codigo_ip}': vigente sin ponderación numérica.",
                      archivo=archivo, politica=politica, cod_ir=irk,
                      cod_ip=ip.codigo_ip, campo="peso_pct")
-            p = 0.0
+            p = (0.0, False)
         pesos_por_ir[irk].append(p)
 
-    factor = _factor(list(peso_de_obj.values())
-                     + [p for ps in pesos_por_obj.values() for p in ps]
-                     + [p for ps in pesos_por_ir.values() for p in ps])
+    todos = (list(peso_de_obj.values())
+             + [p for ps in pesos_por_obj.values() for p in ps]
+             + [p for ps in pesos_por_ir.values() for p in ps])
+    factor = _factor([v for v, pct in todos if not pct])
+
+    def puntos(peso):
+        v, pct = peso
+        return v if pct else v * factor
+
+    peso_de_obj = {k: puntos(p) for k, p in peso_de_obj.items()}
+    peso_de_ir = {k: puntos(p) for k, p in peso_de_ir.items()}
+    pesos_por_obj = {k: [puntos(p) for p in ps] for k, ps in pesos_por_obj.items()}
+    pesos_por_ir = {k: [puntos(p) for p in ps] for k, ps in pesos_por_ir.items()}
 
     # V0
     if peso_de_obj:
-        total = sum(peso_de_obj.values()) * factor
+        total = sum(peso_de_obj.values())
         if abs(total - 100.0) > EPSILON:
             _add(alertas, "ponderacion_objetivos",
                  f"Los {len(peso_de_obj)} objetivo(s) suman {total:.2f}% (esperado 100%).",
@@ -178,24 +204,22 @@ def _ponderacion(irs, ips, alertas, archivo, politica):
                  valor=round(total, 2))
     # V1
     for obj, pesos in pesos_por_obj.items():
-        total = sum(pesos) * factor
-        esperado = (peso_de_obj.get(obj) or 0) * factor
-        if peso_de_obj.get(obj) is not None and abs(total - esperado) > EPSILON:
+        total = sum(pesos)
+        esperado = peso_de_obj.get(obj)
+        if esperado is not None and abs(total - esperado) > EPSILON:
             _add(alertas, "ponderacion_ir",
                  f"Pesos de IRs del OBJ '{obj}' suman {total:.2f}% pero el peso del objetivo es {esperado:.2f}%.",
                  archivo=archivo, politica=politica, cod_obj=obj, campo="peso_pct",
                  valor=round(total, 2))
     # V2
     for irk, pesos in pesos_por_ir.items():
-        total = sum(pesos) * factor
-        p_ir = peso_de_ir.get(irk)
-        if p_ir is not None:
-            esperado = p_ir * factor
-            if abs(total - esperado) > EPSILON:
-                _add(alertas, "ponderacion_ip",
-                     f"Pesos de IPs del IR '{irk}' suman {total:.2f}% pero el peso del IR es {esperado:.2f}%.",
-                     archivo=archivo, politica=politica, cod_ir=irk, campo="peso_pct",
-                     valor=round(total, 2))
+        total = sum(pesos)
+        esperado = peso_de_ir.get(irk)
+        if esperado is not None and abs(total - esperado) > EPSILON:
+            _add(alertas, "ponderacion_ip",
+                 f"Pesos de IPs del IR '{irk}' suman {total:.2f}% pero el peso del IR es {esperado:.2f}%.",
+                 archivo=archivo, politica=politica, cod_ir=irk, campo="peso_pct",
+                 valor=round(total, 2))
 
 
 def _vigencia_ponderacion(inds, alertas, archivo, politica, tipo_label, cod_attr):

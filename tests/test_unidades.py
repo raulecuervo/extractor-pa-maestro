@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Unit tests por etapa (Hito 2): helpers puros de utilidades, vigencia y fichas."""
+"""Unit tests por etapa (Hito 2): helpers puros de utilidades, vigencia, fichas y validación."""
 
 import os
 import sys
@@ -15,6 +15,7 @@ from extractor_pa.lector_filas import prefiltrar_filas
 from extractor_pa.vigencia import calcular_vigencia
 from extractor_pa.lector_fichas import codigo_de_hoja_ficha
 from extractor_pa.pipeline import _es_nombre_politica
+from extractor_pa.validacion import _factor, _leer_peso
 
 
 # ── utilidades.a_float (tolerante, formato europeo) ──
@@ -142,6 +143,25 @@ def test_clave_grupo_usa_codigo():
 ])
 def test_elegir_peso_objetivo(candidatos, esperado):
     assert elegir_peso_objetivo(candidatos) == esperado
+
+
+# ── validacion._leer_peso / _factor (escala de la ponderación) ──
+@pytest.mark.parametrize("valor,esperado", [
+    (0.0377, (0.0377, False)), (25, (25.0, False)), (0, (0.0, False)),
+    ("0.0377", (0.0377, False)),             # texto sin «%»: tan ambiguo como el número
+    ("2.86%", (2.86, True)), ("0,5%", (0.5, True)), (" 14.7 % ", (14.7, True)),
+    ("0%", (0.0, True)),
+    (None, (None, False)), ("n/a", (None, False)), ("%", (None, True)),
+])
+def test_leer_peso(valor, esperado):
+    assert _leer_peso(valor) == esperado
+
+
+@pytest.mark.parametrize("pesos,esperado", [
+    ([0.6, 0.4, 0.0377], 100.0), ([84.19, 0.5], 1.0), ([0, None], 1.0), ([], 1.0),
+])
+def test_factor(pesos, esperado):
+    assert _factor(pesos) == esperado
 
 
 # ── vigencia.calcular_vigencia ──
