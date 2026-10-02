@@ -10,11 +10,10 @@ API pública:
     for ir in resultado.indicadores_resultado:
         print(ir.codigo_ir, ir.nombre_indicador, ir.metas_por_anio)
 
-Fase 1: formato NUEVO funcional (detección de formato, hoja flexible, columnas
-por encabezado, pre-filtro, forward-fill básico, escala % en metas). El formato
-ANTIGUO, el forward-fill avanzado (4 capas + ascensión de fila vigente), las
-fichas técnicas y los adaptadores de salida llegan en fases posteriores
-(ver PLAN_EXTRACTOR_MAESTRO.md).
+Cubre los formatos nuevo y antiguo del plan (.xlsx), las fichas técnicas, las
+reglas de negocio V0–V18, la gobernanza de alertas y los adaptadores de salida.
+El seguimiento (.xlsb/.xlsx) vive en el subpaquete `extractor_pa.seguimiento`.
+Estado y estabilidad de cada capa: README.md.
 """
 
 from .config import MapeoColumnas, MAPEO_NUEVO, MAPEO_ANTIGUO
@@ -85,6 +84,12 @@ __all__ = [
     "aplicar_decisiones",
     "ACCIONES_VALIDAS",
     "CAMPOS_ENTIDAD",
+    "CatalogoOficial",
+    "CATALOGO_OFICIAL_DEFECTO",
+    "SECTORES_OFICIALES",
+    "ENTIDADES_OFICIALES",
+    "sugerencias_normalizacion",
+    "aplicar_normalizacion",
     "tablas",
     "tablas_consolidadas",
     "exportar_json",

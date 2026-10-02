@@ -20,7 +20,6 @@ from ..consistencia import chequear_consistencia_ir, chequear_duplicados_ip
 from ..lector_filas import leer_filas, prefiltrar_filas
 from ..normalizador import normalizar_celdas_combinadas
 from ..modelo import (
-    NIVEL_ADVERTENCIA,
     IndicadorProducto,
     IndicadorResultado,
     Objetivo,
@@ -197,6 +196,7 @@ class ExtractorNuevo(EstrategiaExtraccion):
                         anio_vigencia_anterior=av_ant,
                         meta_vigencia_actual=mv,
                         meta_vigencia_anterior=mv_ant,
+                        enfoque=g(valores, "enfoque_ir"),
                     )
 
             # IP: una entrada por fila con código de producto.

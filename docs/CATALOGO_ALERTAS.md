@@ -4,7 +4,7 @@
 > Generado automáticamente desde `extractor_pa/catalogo.py` (única fuente de verdad).
 > Niveles unificados: **ERROR** (bloquea / dato inutilizable) · **ADVERTENCIA** (revisar) · **INFO** (informativo).
 
-**76 tipos** catalogados · **61 implementados** en el extractor maestro.
+**78 tipos** catalogados · **63 implementados** en el extractor maestro.
 
 Leyenda `Impl.`: ✅ lo produce el maestro · ⬜ documentado (vive en otro aplicativo o pendiente).
 
@@ -19,6 +19,8 @@ Las produce el extractor maestro al leer el Excel.
 | `formato_no_reconocido` | ERROR | — | Estructura | El detector no pudo determinar el formato (ni nuevo ni antiguo). | ✅ |
 | `formato_no_compatible` | ERROR | sispp-gobierno | Estructura | La plantilla es incompatible con el formato vigente. | ⬜ |
 | `estructura` | ERROR | — | Estructura | Faltan las anclas obligatorias ('Meta de resultado Final'/'Producto esperado'). | ✅ |
+| `error_extraccion` | ERROR | — | Estructura | Fallo inesperado al extraer el plan (excepción interna); no se entrega ningún indicador. | ✅ |
+| `error_etapa_opcional` | ADVERTENCIA | — | Estructura | Falló una etapa opcional (fichas técnicas o reglas de negocio); el resto de la extracción se conserva. | ✅ |
 | `metadatos` | ADVERTENCIA | sispp-gobierno | Estructura | No se pudo identificar el nombre de la política en la cabecera. | ⬜ |
 | `sin_ir` | ADVERTENCIA | — | Estructura | No se extrajo ningún Indicador de Resultado. | ✅ |
 | `sin_ip` | ADVERTENCIA | — | Estructura | No se extrajo ningún Indicador de Producto. | ✅ |

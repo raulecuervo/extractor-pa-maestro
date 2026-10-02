@@ -18,15 +18,44 @@ pip install -e ".[xlsb]"      # + seguimiento .xlsb (pyxlsb); el .xlsx no lo nec
 pip install -e ".[xlsb,pandas,dev]"   # todo + DataFrame + pruebas
 ```
 
-Para los **aplicativos que la consumen** (fijar una versión estable):
+Para los **aplicativos que la consumen**, fijar un tag. El repositorio es
+público; las versiones son los tags `vX.Y.Z` y cada uno trae su Release con el
+wheel adjunto (lo publica `.github/workflows/release.yml`):
 ```bash
-# desde el repo (privado) por tag:
-pip install "extractor-pa @ git+https://github.com/raulecuervo/extractor-pa-maestro.git@v0.9.8"
-pip install "extractor-pa[xlsb] @ git+https://github.com/raulecuervo/extractor-pa-maestro.git@v0.9.8"  # si lee .xlsb
-# o desde el wheel publicado (dist/extractor_pa-0.9.8-py3-none-any.whl):
-pip install extractor_pa-0.9.8-py3-none-any.whl
+pip install "extractor-pa @ git+https://github.com/raulecuervo/extractor-pa-maestro.git@vX.Y.Z"
+pip install "extractor-pa[xlsb] @ git+https://github.com/raulecuervo/extractor-pa-maestro.git@vX.Y.Z"  # si lee .xlsb
+# o el wheel del Release, en entornos sin git:
+pip install https://github.com/raulecuervo/extractor-pa-maestro/releases/download/vX.Y.Z/extractor_pa-X.Y.Z-py3-none-any.whl
 ```
 En `requirements.txt` de cada app, fijar `extractor-pa @ git+…@vX.Y.Z` (o `extractor-pa[xlsb] @ …`).
+
+## Consumidores y versiones
+
+Cada aplicativo fija su propio tag, y las fórmulas del seguimiento (PAF, TID,
+PAV, MES, AV) han cambiado entre versiones: **dos aplicativos con pines distintos
+muestran cifras distintas para el mismo indicador.** Para verlo:
+```bash
+python scripts/pines_consumidores.py     # tag que fija cada app vecina frente a la versión actual
+```
+Qué aplicativo usa qué funcionalidad, con sus archivos de entrada:
+[`docs/CONSUMIDORES.md`](docs/CONSUMIDORES.md).
+
+Las versiones que mueven cifras llevan la marca **«Cambia cifras»** en
+`CHANGELOG.md` (índice al inicio). Subir el pin de una app por encima de una de
+ellas cambia lo que esa app muestra: conviene subir juntas las apps que se comparan
+entre sí.
+
+### Estabilidad por capa
+
+| Capa | Estabilidad | La usan |
+|---|---|---|
+| `extraer_plan_accion` y el modelo canónico (`ResultadoExtraccion`, IR, IP, `Objetivo`) | Estable | validador, extractor-planes-accion, creador, seguimiento-pp-sdis, sispp-gobierno, sispp-SDP, sispp-sdis |
+| `extractor_pa.seguimiento`: extracción, cruce, `metricas`, `validacion_seg` | Estable. Lo que importan los aplicativos está fijado en `tests/test_contrato_consumidores.py` | alertas-seguimientos, generador-seguimiento, sispp-gobierno, sispp-SDP, sispp-sdis |
+| Reglas V0–V18, catálogo oficial (V4), gobernanza, decisiones, exportadores, tablero y CLI | Disponibles, sin aplicativos que las usen: pueden cambiar entre versiones menores | scripts de este repo |
+
+Antes de renombrar o mover algo de las dos primeras filas, búsquelo en
+`tests/test_contrato_consumidores.py`: esa prueba falla si desaparece un nombre que
+usa un aplicativo.
 
 ## Catálogo oficial / V4 (opcional)
 
@@ -77,14 +106,15 @@ extractor-pa validar PLAN.xlsx --anio 2026      # lista hallazgos V0–V18 por t
 (equivalente: `python -m extractor_pa ...`). Salidas: `--json`, `--csv` (carpeta,
 varias tablas), `--excel` (varias hojas). Código de salida ≠0 si la extracción falla.
 
-## Estado: Plan (fases 1–6) ✅ · Seguimiento (S1–S4) ✅ · Empaquetado + CLI ✅
+## Qué hace
 
-Implementado:
 - **Carga** del libro (con acceso a celdas combinadas).
 - **Localización flexible** de la hoja del plan (exacto → fuzzy → matriz → >40 col).
 - **Detección de formato** (nuevo / antiguo).
-- **Resolución de columnas por encabezado** (filas 9/10/11) con resolución de
-  celdas combinadas y **fallback posicional**, anclas **configurables**.
+- **Resolución de columnas por encabezado** con resolución de celdas combinadas,
+  **fallback posicional** y anclas **configurables**. Las filas de encabezado se
+  ubican por el ancla «Resultado esperado»: 9–11 en la plantilla vigente, 10–12 en
+  los planes 2021–2025 y 24–26 cuando la cabecera lista los corresponsables.
 - **Pre-filtro** de filas espurias (totales) antes del forward-fill.
 - **Normalización avanzada de celdas combinadas (Fase 2):** 4 capas
   (ffill libre de identificadores → `peso_objetivo` por objetivo → campos IR por
@@ -95,24 +125,33 @@ Implementado:
   (`0.0736` → `7.36`).
 - **Año de vigencia (Fase 3):** `anio_vigencia` / `anio_vigencia_anterior` y
   `meta_vigencia_actual` / `meta_vigencia_anterior` por indicador, con prioridad
-  (año explícito → año actual → anterior más cercano → primero).
+  (año explícito → año actual → anterior más cercano → primero). Sin
+  `anio_vigencia` se usa el año del reloj; el usado queda en
+  `metadatos.anio_corte`, y pasarlo de nuevo reproduce la extracción.
 - **Fichas técnicas (Fase 4a):** lee las hojas «Ficha técnica IR#/IP#» y completa
   `metodologia`, `unidad_medida`, `fuente_datos`, `dias_rezago`, `descripcion`,
   `observaciones`. Unidad por casilla «x» o por «¿Cuál?» (unidad libre).
 - **Formato antiguo / bloque financiero (Fase 4b):** detecta la variante con
   bloque financiero (`MAPEO_ANTIGUO`), resuelve IR/IP **por ancla** y extrae el
   bloque financiero (`RegistroFinanciero`: costo, recurso, fuente, proyecto, por año).
+  Los grupos de cada año se reconocen por sus encabezados («Costo Estimado» o
+  «Costo», con o sin código de proyecto).
 - **Deduplicación de IR** y extracción de IP, con **alertas de extracción**.
 - **Consistencia (Fase 5):** detecta inconsistencias entre las filas de un mismo
   IR (`inconsistencia_en_ir`) y códigos de IP duplicados (`codigo_ip_duplicado`).
-- **Catálogo consolidado de alertas** (`catalogo.py`, 64 tipos de los 9
-  aplicativos) como única fuente de nivel/descripción. Doc: `docs/CATALOGO_ALERTAS.md`.
+- **Catálogo consolidado de alertas** (`catalogo.py`, tipos de los 9 aplicativos)
+  como única fuente de nivel/descripción. Doc regenerable: `docs/CATALOGO_ALERTAS.md`
+  (`python scripts/gen_catalogo.py`).
+- **No lanza por el contenido del archivo:** un fallo inesperado queda como la
+  alerta fatal `error_extraccion`; si falla una etapa opcional (fichas o reglas),
+  queda como `error_etapa_opcional` y el plan se conserva.
 - **Motor de reglas de negocio V0–V18** (`validar_reglas(resultado)`):
   ponderación, tipología, fechas, metas, línea base, códigos. Opt-in en el
   pipeline con `incluir_reglas_negocio=True`.
-- **Modelo canónico** serializable (`to_dict()` → JSON).
+- **Modelo canónico** serializable (`to_dict()` → JSON, objetivos incluidos).
 - **Adaptadores de salida (Fase 6):** JSON, CSV, Excel y DataFrame (pandas),
-  por plan o **consolidado multi-plan** (`exportar_*` / `exportar_*_consolidado`).
+  por plan o **consolidado multi-plan** (`exportar_*` / `exportar_*_consolidado`),
+  con una tabla por entidad: metadatos, IR, IP, objetivos, alertas y financiero.
 
 - **Capa de seguimiento** (`extractor_pa/seguimiento/`):
   - **S1** — extrae el `.xlsb` o el `.xlsx` (Avance Cuantitativo/Cualitativo) al
@@ -135,11 +174,7 @@ filas = consolidar(seg, 2024, "Anual")
   contra los extractores legados (plan 8/8, seguimiento 6/6). Ver
   `docs/REGRESION_Y_PARIDAD.md`.
 
-Validado contra **38 planes** (`.xlsx`) + **55 seguimientos** (`.xlsb`), 0 errores · **53 pruebas**.
-
-Pendiente (ver `ESTADO.md`):
-- **Fase 8 — Migración** de los aplicativos al maestro.
-- Alertas operativas/cualitativas (requieren contexto de operación), adaptador ORM.
+Estado y pendientes: `ESTADO.md`. Planes de trabajo anteriores: `docs/historico/`.
 
 > Limitación conocida (Fase 2): la ascensión corrige los campos de identidad del IR
 > (nombre, vigencia, peso, sector…); las **metas anuales** y `meta_final` se siguen
@@ -191,32 +226,33 @@ extractor_pa/
   vigencia.py            año de vigencia y metas comparables (Fase 3)
   lector_fichas.py       fichas técnicas: metodología, unidad, días de rezago (Fase 4a)
   consistencia.py        inconsistencias entre filas del IR + IP duplicados (Fase 5)
-  catalogo.py            catálogo consolidado de alertas (64 tipos, fuente única)
+  catalogo.py            catálogo consolidado de alertas (fuente única)
+  catalogo_oficial.py    sectores/entidades oficiales: regla V4 + normalización difusa
   validacion.py          motor de reglas de negocio V0–V18 sobre el modelo canónico
   gobernanza.py          triage persistente de alertas: clave estable + estados + reconciliación/autocierre + auditoría
   decisiones.py          decisiones humanas de entidad/sector: store + auditoría + reaplicación (puente desde B1)
   exportadores.py        salidas: JSON/CSV/Excel/DataFrame + consolidado multi-plan
+  tablero.py             tablero HTML de cumplimiento por política
+  regresion.py           huellas estables para golden files y paridad
   seguimiento/           SUB-PAQUETE de seguimiento (.xlsb/.xlsx): loader, resolutor
                          por anclas, metadatos, extractor → ResultadoSeguimiento
   estrategias/
     base.py              interfaz EstrategiaExtraccion
-    nuevo.py             formato nuevo (Fase 1)
-    antiguo.py           formato antiguo (stub, Fase 4)
+    nuevo.py             motor único de extracción (nuevo y antiguo)
+    antiguo.py           subclase con otro nombre: el formato antiguo solo cambia el MapeoColumnas
   pipeline.py            orquestador extraer_plan_accion()
 tests/
-  test_smoke.py          smoke test end-to-end con Excel sintético
+  test_smoke.py                  end-to-end con Excel sintético
+  test_contrato_consumidores.py  nombres que importan los aplicativos
+  test_golden*.py                regresión contra planes y seguimientos reales
+scripts/                         lotes, reportes, golden y pines_consumidores.py
 ```
 
 ## Pruebas
 
 ```bash
-python -m pytest tests/ -q
-# o como script:
-python tests/test_smoke.py
+python -m pytest -q          # rápida; los golden se saltan si los archivos reales no están
+python -m pytest -m slow -q  # regresión completa sobre todas las políticas reales
+ruff check extractor_pa scripts tests
 ```
-
-## Instalación (editable)
-
-```bash
-pip install -e .
-```
+CI (`.github/workflows/ci.yml`) corre ruff y las pruebas en Python 3.10–3.14.

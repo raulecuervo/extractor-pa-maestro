@@ -41,3 +41,14 @@ addopts = "-m 'not slow'"
 markers = [
     "slow: regresión exhaustiva sobre todas las políticas (correr con -m slow)",
 ]
+filterwarnings = [
+    # openpyxl usa datetime.utcnow() al guardar; no es nuestro y Python 3.12+ lo avisa.
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:openpyxl",
+]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# Solo errores reales: sintaxis (E9) y pyflakes (nombres sin usar o sin definir).
+select = ["E9", "F"]

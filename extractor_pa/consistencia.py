@@ -19,7 +19,6 @@ from __future__ import annotations
 from collections import defaultdict
 
 from .alertas import crear_alerta
-from .modelo import NIVEL_ADVERTENCIA
 from .utilidades import _norm, a_float, extraer_codigo, limpiar
 
 

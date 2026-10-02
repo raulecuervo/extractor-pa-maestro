@@ -421,8 +421,8 @@ def lb_de_indicador(linea_base, tipo, metas: Optional[dict] = None,
 
 # ─────────────────────────── núcleo al corte ───────────────────────────
 
-def _suma_metas_prev_suma(segs_al_corte, segs_todos, anio: int,
-                          metas_plan: Optional[dict] = None) -> float:
+def suma_metas_anteriores_suma(segs_al_corte, segs_todos, anio: int,
+                               metas_plan: Optional[dict] = None) -> float:
     """SUMA: Σ meta_anual por año calendario < ``anio``. Por año se usa lo
     reportado en seguimiento si existe; si no, la meta del plan solo cuando
     ``max(año en seguimientos) > año``. Sin imputación sintética hacia atrás.
@@ -461,6 +461,11 @@ def _suma_metas_prev_suma(segs_al_corte, segs_todos, anio: int,
         if fv is not None:
             total += fv
     return total
+
+
+# Nombre anterior, privado. Alertas y Seguimiento lo importa así
+# (motor_calculo.py); se conserva para no romperlo. Usar el público.
+_suma_metas_prev_suma = suma_metas_anteriores_suma
 
 
 def avance_acumulado_suma(segs_al_corte, segs_todos, anio: int, trimestre: int) -> float:
@@ -598,7 +603,7 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
             meta_prev = nivel_inicial
 
     if t == "SUMA":
-        sum_metas_prev = _suma_metas_prev_suma(
+        sum_metas_prev = suma_metas_anteriores_suma(
             segs_al_corte, segs_todos, anio, metas_plan)
         av_acum = avance_acumulado_suma(segs_al_corte, segs_todos, anio, trimestre)
     else:

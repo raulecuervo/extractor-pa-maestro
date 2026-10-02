@@ -34,7 +34,7 @@ _COLS_IR_GRUPO = [
     "nombre_ir", "vigente_ir", "peso_ir", "formula_ir", "sector_ir",
     "entidad_ir", "ods", "meta_ods", "tipo_anual_ir", "periodicidad_ir",
     "lb_valor_ir", "lb_anio_ir", "lb_fuente_ir", "fecha_inicio_ir",
-    "fecha_fin_ir", "meta_final_ir",
+    "fecha_fin_ir", "meta_final_ir", "enfoque_ir",
 ]
 
 

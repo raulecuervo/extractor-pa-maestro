@@ -3,6 +3,15 @@
 Formato basado en fases del plan (`../_codigo_extraido_pp/PLAN_EXTRACTOR_MAESTRO.md`).
 Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
 
+**Cambia cifras.** Estas versiones cambian lo que un aplicativo calcula o
+muestra para los mismos archivos. Subir el pin a través de una de ellas mueve
+cifras o alertas, así que conviene subir juntos los aplicativos que se comparan
+entre sí (`python scripts/pines_consumidores.py`):
+0.12.0 (fórmulas A, B y C) · 0.13.0 (trayectoria ideal) · 0.14.0 (año sin meta,
+decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
+0.17.0 (AV de CONSTANTE sin reportes) · 0.19.0 (códigos con prefijo, pesos del
+objetivo y en «2.86%», planes antiguos 2021–2025).
+
 ## [0.19.0] — Los códigos con prefijo de tipo («P1.1.1», «R1.1», «OE1.») ya no se pierden
 
 ### Corregido
@@ -190,6 +199,72 @@ No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
 - `test_smoke.py` y `test_cli.py` toman las rutas del corpus; el formato
   antiguo se prueba ahora con Adultez v2-2023 (el CTI v4-25 salió del corpus:
   su versión v5-26 ya viene en formato nuevo).
+
+> **Cambia cifras** en los planes de plantilla antigua: aparecen metas, líneas
+> base y registros financieros que antes salían vacíos. Los 92 planes de la
+> plantilla vigente del corpus (100 archivos) extraen exactamente lo mismo.
+
+### Corregido — los planes antiguos 2021–2025 conservan metas, línea base y financiero
+
+- **`pipeline.py::_ubicar_encabezados`** — las filas de encabezado y de datos se
+  ubican por el ancla «Resultado esperado» en vez de fijarse en 9–11 / 12. Los
+  planes 2021–2025 (Familias, Vejez, Habitabilidad en Calle, Indígena v2,
+  Negra-Afro v2) las tienen en 10–12 / 13: se extraían sin metas anuales, sin
+  línea base, sin fechas y sin bloque financiero (ningún IR con metas). Servicio
+  a la Ciudadanía v5, con la cabecera de corresponsables, las tiene en 24–26 / 27
+  y terminaba en `estructura` con 0 indicadores; ahora 7 IR, 37 IP y 315
+  registros financieros. Un `mapeo` explícito se sigue respetando tal cual.
+- **`resolutor_columnas.py`**:
+  - los encabezados repetidos (IR / IP) se buscan en la fila de detalle y en la
+    del medio. En Negra-Afro v2 la «Fecha de inicio» del IR se tomaba de la
+    columna del IP (19 alertas `inconsistencia_en_ir` falsas); en Adultez v2 el
+    «Tipo de anualización» y el «Enfoque» salían vacíos;
+  - el bloque financiero se reconoce por sus encabezados («Costo Estimado» o
+    «Costo», con o sin código de proyecto) y el año se lee en la fila del medio,
+    no en la 10 fija;
+  - sector, entidad y dirección del responsable se leen por sus subencabezados:
+    en Adultez v2 el título combinado empieza una columna antes, sobre «Costo
+    total», y el sector quedaba con el costo;
+  - redacciones anteriores de las anclas («Responsable de la ejecución»,
+    «Ponderación relativa del producto (%)», «Importancia relativa de productos
+    (%)», «Importancia relativa del indicador de resultado (%)») se prueban solo
+    si la vigente no aparece. El CTI v4-25 recupera los responsables de sus 32 IP.
+- **`detector_formato.py`** — la heurística H1 compara las anclas normalizadas,
+  como el resolutor, y la de «muchas hojas de ficha técnica → antiguo» va después
+  de «datos desde la fila 12 → nuevo», porque los planes nuevos también traen fichas.
+- **`extraer_plan_accion`** cumple lo que promete su docstring: una excepción
+  inesperada ya no llega al llamador. En la extracción queda como la alerta fatal
+  `error_extraccion`; en las etapas opcionales (fichas técnicas, reglas de
+  negocio), como `error_etapa_opcional` (ADVERTENCIA) y el plan se conserva.
+
+### Agregado — enfoque del IR, año de corte, objetivos en las salidas, API del seguimiento y CI
+
+- **`IndicadorResultado.enfoque`** — el «Enfoque» del bloque IR del formato
+  antiguo. `MAPEO_ANTIGUO` ya lo resolvía (`enfoque_ir`) pero no llegaba al modelo.
+- **`Metadatos.anio_corte`** — año de corte usado para `meta_vigencia_actual` /
+  `_anterior`: el `anio_vigencia` pedido o, si no se pidió, el del reloj. Pasarlo
+  de nuevo reproduce la extracción.
+- **`to_dict()`, `tablas()` y los exportadores** incluyen los `objetivos` (B2,
+  v0.9.11), que hasta ahora no salían en JSON, CSV ni Excel.
+- **API pública del seguimiento** — `safe_float`, `parse_lb`, `parse_period`,
+  `limites_de_semaforo` y `suma_metas_anteriores_suma` (nombre público de
+  `_suma_metas_prev_suma`, que se conserva como alias) se exportan desde
+  `extractor_pa.seguimiento`. `CatalogoOficial` y sus funciones entran en
+  `extractor_pa.__all__`.
+- **`tests/test_contrato_consumidores.py`** — los nombres que importan los
+  aplicativos hermanos; falla si alguno desaparece.
+- **`scripts/pines_consumidores.py`** — qué versión fija cada aplicativo vecino.
+- **CI**: ruff (errores y nombres sin usar) y Python 3.13–3.14 en la matriz.
+  **`release.yml`**: cada tag `vX.Y.Z` construye el wheel y el sdist y los adjunta
+  a un Release.
+
+### Documentación — consumidores, versiones y estado
+
+- README: el repositorio es público, instalación por tag o por wheel del Release,
+  consumidores y versiones, estabilidad por capa. ESTADO.md al día; los planes de
+  trabajo anteriores pasan a `docs/historico/`.
+- `scripts/gen_catalogo.py` toma la carpeta del repo de su propia ubicación: tenía
+  escrita la ruta del checkout principal y, corrido desde un worktree, escribía allá.
 
 ## [0.18.0] — El seguimiento también se lee en `.xlsx` (formato 3.4)
 

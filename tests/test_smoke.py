@@ -617,7 +617,8 @@ def test_exportadores_un_plan():
     # tablas(): estructura esperada y metas expandidas a columnas meta_<año>.
     tbls = tablas(res)
     assert set(tbls) == {"metadatos", "indicadores_resultado",
-                         "indicadores_producto", "alertas", "financiero"}
+                         "indicadores_producto", "alertas", "financiero", "objetivos"}
+    assert tbls["objetivos"] and all(o["codigo"] and o["politica"] for o in tbls["objetivos"])
     assert len(tbls["indicadores_resultado"]) == 2
     fila_ir = tbls["indicadores_resultado"][0]
     assert "meta_2024" in fila_ir and "meta_2025" in fila_ir

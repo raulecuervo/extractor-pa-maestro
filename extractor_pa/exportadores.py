@@ -11,7 +11,7 @@ otros sistemas, sin acoplar el extractor a ninguno:
 - **DataFrame** → `a_dataframes` (pandas, dependencia opcional).
 
 Y la versión **consolidada multi-plan** (`*_consolidado`), que apila los
-indicadores/alertas/financiero de varias políticas en tablas únicas (con
+indicadores/alertas/financiero/objetivos de varias políticas en tablas únicas (con
 columnas `politica` y `archivo`), para analizar todo el corpus junto.
 
 Las tablas se entregan en **formato ancho**: las metas anuales se expanden a
@@ -55,6 +55,13 @@ def _flat_alerta(a, meta) -> dict:
     return d
 
 
+def _flat_objetivo(o, meta) -> dict:
+    d = asdict(o)
+    d["politica"] = meta.nombre_politica or ""
+    d["archivo"] = meta.archivo_fuente or ""
+    return d
+
+
 def _flat_financiero(f, meta) -> dict:
     d = asdict(f)
     d["politica"] = meta.nombre_politica or ""
@@ -75,13 +82,15 @@ def tablas(resultado) -> dict:
                                  for i in resultado.indicadores_producto],
         "alertas": [_flat_alerta(a, m) for a in resultado.alertas],
         "financiero": [_flat_financiero(f, m) for f in resultado.financiero],
+        "objetivos": [_flat_objetivo(o, m) for o in resultado.objetivos],
     }
 
 
 def tablas_consolidadas(resultados: Iterable) -> dict:
     """Apila las tablas de varios resultados en tablas únicas (multi-plan)."""
     out = {"metadatos": [], "indicadores_resultado": [],
-           "indicadores_producto": [], "alertas": [], "financiero": []}
+           "indicadores_producto": [], "alertas": [], "financiero": [],
+           "objetivos": []}
     for res in resultados:
         for nombre, filas in tablas(res).items():
             out[nombre].extend(filas)
@@ -147,7 +156,7 @@ def _escribir_csv_tablas(tbls: dict, carpeta: str | Path, prefijo: str = "") -> 
 
 
 def exportar_csv(resultado, carpeta: str | Path, prefijo: str = "") -> list:
-    """Escribe un CSV por tabla (metadatos, IR, IP, alertas, financiero)."""
+    """Escribe un CSV por tabla (metadatos, IR, IP, alertas, financiero, objetivos)."""
     return _escribir_csv_tablas(tablas(resultado), carpeta, prefijo)
 
 
