@@ -75,13 +75,17 @@ Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
     Vigente vacío). Ahora tiene 0.33, 0.35, 0.1 y 0.25: el peso que ya usaba V0.
 
   En los otros 41 de los 47 planes no cambia nada, y en ninguno aparece una
-  alerta. En los 55 planes únicos de las carpetas hermanas (16 de la plantilla
-  2021–2025) solo cambian versiones anteriores de Trata, Discapacidad y Espacio
-  Público, igual que arriba. Donde el peso solo está en la fila No Vigente
-  (Espacio Público OE2: 0.34 en una celda combinada que abarca todo el objetivo)
-  se sigue usando. `IndicadorResultado.peso_objetivo_pct` no cambia: sigue
-  siendo el de la fila de cada IR. Los golden no cambian (la huella no incluye
-  reglas ni objetivos).
+  alerta. Donde el peso solo está en la fila No Vigente (Espacio Público OE2:
+  0.34 en una celda combinada que abarca todo el objetivo) se sigue usando.
+  `IndicadorResultado.peso_objetivo_pct` no cambia: sigue siendo el de la fila
+  de cada IR. Los golden no cambian (la huella no incluye reglas ni objetivos).
+
+  En otros 88 planes únicos (por hash) de las carpetas hermanas (copias,
+  versiones anteriores y plantilla 2021–2025) cambian 9: copias y versiones
+  anteriores de Trata, Discapacidad y Espacio Público, igual que arriba, y Mujer
+  v5-2025. Esa plantilla vieja ya se leía mal (196 «objetivos», con el texto del
+  objetivo en la columna del peso): su `peso_pct` pasa de ese texto a None,
+  porque un peso que no es numérico no cuenta. Sus alertas no cambian.
 
 ### Pruebas — la regresión golden de planes vuelve a correr
 
