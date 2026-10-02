@@ -8,7 +8,8 @@ Combina las mejores versiones encontradas en el análisis comparativo:
                     (de sispp-sdis: "1.234,56" -> 1234.56).
 - `extraer_codigo`  extracción de códigos N / N.N / N.N.N con regex tolerante
                     al nombre pegado al código (de generador-seguimiento y
-                    creador-planes-accion).
+                    creador-planes-accion) y al prefijo de tipo «P1.1.1» (de
+                    sispp-gobierno).
 - `leer_celda_escala`  lectura de metas respetando el number_format de Excel
                     (de generador-seguimiento: 0.0736 con formato % -> 7.36).
 """
@@ -73,6 +74,14 @@ def limpiar_texto(valor: Any) -> Optional[str]:
     return None if _norm(s) in NULOS else s
 
 
+def tiene_contenido(valor: Any) -> bool:
+    """True si la celda trae al menos una letra o un dígito.
+
+    Separa el texto que alguien escribió de los rellenos sin dato (una celda con
+    solo «.» al final del bloque de Espacio Público), que no merecen alerta."""
+    return valor is not None and re.search(r"[^\W_]", str(valor)) is not None
+
+
 def a_float(valor: Any) -> Optional[float]:
     """Convierte a float de forma tolerante.
 
@@ -100,6 +109,15 @@ def a_int(valor: Any) -> Optional[int]:
     return int(f) if f is not None else None
 
 
+# Prefijo de tipo que algunas políticas anteponen al código: «P1.1.1» en los
+# productos, «R1.1» en los resultados, «O1» u «OE1.» en los objetivos. Lista
+# cerrada y solo pegada al número (a lo sumo un espacio o un punto en medio),
+# para no mutilar textos como «Plan 2024…» o «Producto 3». Sin tolerarlo, el
+# plan de Trata perdía en silencio 27 de sus 53 productos y los objetivos de
+# Trabajo Decente («OE1.»–«OE4.») quedaban sin código.
+_PREFIJO_TIPO = r"(?:(?:OE|[PRO])[. ]?)?"
+
+
 def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
     """Extrae el código numérico al inicio de un texto.
 
@@ -107,18 +125,19 @@ def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
     - `niveles=1|2|3`: exige exactamente ese nº de niveles (OE=1, IR=2, IP=3) y
       usa un negative lookahead para NO confundir "1.1.1" con "1.1".
 
-    Tolerante al nombre pegado al código ("4.1.5Nombre") y a separadores
-    irregulares ("1 . 1", "1.1.")."""
+    Tolerante al nombre pegado al código ("4.1.5Nombre"), a separadores
+    irregulares ("1 . 1", "1.1.") y al prefijo de tipo P/R/O/OE ("P1.1.1",
+    "r 1.1", "P.1.1.1", "OE1.")."""
     if not texto:
         return None
     # Colapsa espacios y normaliza separadores: "1 . 1" -> "1.1"
     t = re.sub(r"\s*\.\s*", ".", re.sub(r"\s+", " ", str(texto).strip()))
     if niveles:
         # (?!\d) impide que "1.1.1" sea capturado como "1.1" cuando niveles=2.
-        patron = r"^\s*(\d+" + r"\.\d+" * (niveles - 1) + r")(?!\d)"
+        patron = r"^\s*" + _PREFIJO_TIPO + r"(\d+" + r"\.\d+" * (niveles - 1) + r")(?!\d)"
     else:
-        patron = r"^(\d+(?:\.\d+)*)"
-    m = re.match(patron, t)
+        patron = r"^" + _PREFIJO_TIPO + r"(\d+(?:\.\d+)*)"
+    m = re.match(patron, t, re.IGNORECASE)
     return m.group(1).rstrip(".") if m else None
 
 
@@ -134,6 +153,31 @@ def peso_positivo(valor: Any) -> bool:
     """True si el peso/ponderación es un número > 0."""
     f = a_float(valor)
     return f is not None and f > 0
+
+
+def es_fila_vigente(vigente: Any, peso: Any) -> bool:
+    """True si es la fila autoritativa de un IR: Vigente (o sin marcar) y con
+    peso > 0. Es la fila que asciende el normalizador (capa 4)."""
+    return es_vigente(vigente) and peso_positivo(peso)
+
+
+def elegir_peso_objetivo(candidatos) -> Any:
+    """Peso de un objetivo entre los que traen sus filas o sus IR, en orden.
+
+    `candidatos` son tuplas `(vigente_ir, peso_ir, peso_objetivo)`. Gana el peso
+    del objetivo de la primera fila vigente (`es_fila_vigente`); si ninguna lo
+    trae, el primer valor numérico. Así un IR No Vigente que encabeza el
+    objetivo con peso 0 (la versión histórica) no tapa el peso de los IR
+    vigentes. Devuelve el valor tal como viene, o None si ninguno es numérico."""
+    primero = None
+    for vigente, peso_ir, peso_obj in candidatos:
+        if a_float(peso_obj) is None:
+            continue
+        if es_fila_vigente(vigente, peso_ir):
+            return peso_obj
+        if primero is None:
+            primero = peso_obj
+    return primero
 
 
 def clave_grupo(valor: Any) -> str:

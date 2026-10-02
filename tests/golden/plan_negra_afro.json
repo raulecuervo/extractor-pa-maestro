@@ -1,5 +1,5 @@
 {
-  "archivo": "Plan Accion PP_Negra-Afro_V3_2025 15.12.2025.xlsx",
+  "archivo": "39__pa_pp_negra-afro_v3_26.xlsx",
   "politica": "Política Pública de la Población Negra, Afrocolombiana y Palenquera en Bogotá",
   "formato": "nuevo",
   "anios": [
@@ -278,6 +278,7 @@
     "6.5.2"
   ],
   "alertas_por_tipo": {
-    "inconsistencia_en_ir": 115
+    "codigo_no_reconocido": 2,
+    "inconsistencia_en_ir": 17
   }
 }

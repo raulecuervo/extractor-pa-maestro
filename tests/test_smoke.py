@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extractor_pa import extraer_plan_accion, NIVEL_ERROR  # noqa: E402
 from extractor_pa.vigencia import calcular_vigencia  # noqa: E402
+from tests.corpus import PLAN_ANTIGUO, SEG_BTI_S1_25, SEG_BTI_S2_25, ruta_plan  # noqa: E402
 
 
 def _nuevo_ws():
@@ -391,6 +392,60 @@ def test_plan_limpio_sin_alertas_consistencia():
     assert "codigo_ip_duplicado" not in tipos
 
 
+def _construir_excel_codigos(ruta: str) -> None:
+    """Plan con códigos que el extractor debe tolerar o avisar:
+    - Objetivo «OE1.» (Trabajo Decente), IR «R1.1» e IP «P1.1.1» / «p 1.1.2»
+      (prefijo de tipo, como en Trata).
+    - Fila 14: producto sin código y resultado vacío -> el prefiltro la descarta.
+    - Fila 15: producto «2..1..1» con IR 2.1 válido -> se omite el IP.
+    - Filas 16-17: resultado sin código (rellenado hacia abajo) -> un solo aviso.
+    - Fila 18: «.» en resultado y producto -> relleno, sin aviso."""
+    wb, ws = _nuevo_ws()
+    filas = {
+        12: {1: "OE1. Objetivo uno", 2: 100, 3: "R1.1 Resultado uno", 4: "IR uno",
+             5: "Vigente", 6: 100, 22: "P1.1.1Producto uno", 23: "IP uno"},
+        13: {22: "p 1.1.2 Producto dos", 23: "IP dos"},
+        14: {22: "Producto sin código", 23: "IP huérfano"},
+        15: {3: "2.1 Resultado dos", 4: "IR dos", 5: "Vigente", 6: 100,
+             22: "2..1..1 Producto mal escrito", 23: "IP mal escrito"},
+        16: {3: "Resultado sin código", 4: "IR sin código",
+             22: "3.1.1 Producto tres", 23: "IP tres"},
+        17: {22: "3.1.2 Producto cuatro", 23: "IP cuatro"},
+        18: {3: ".", 22: "."},
+    }
+    for r, fila in filas.items():
+        for c, v in fila.items():
+            ws.cell(row=r, column=c, value=v)
+    wb.save(ruta)
+
+
+def test_codigos_con_prefijo_y_no_reconocidos():
+    ruta = os.path.join(tempfile.gettempdir(), "plan_codigos_extractor.xlsx")
+    _construir_excel_codigos(ruta)
+    res = extraer_plan_accion(ruta)
+
+    ir = {i.codigo_ir: i for i in res.indicadores_resultado}
+    ip = {i.codigo_ip: i for i in res.indicadores_producto}
+    assert set(ir) == {"1.1", "2.1"}
+    assert ir["1.1"].codigo_objetivo == "1"
+    assert [o.codigo for o in res.objetivos] == ["1"]
+    assert set(ip) == {"1.1.1", "1.1.2", "3.1.1", "3.1.2"}
+    assert ip["1.1.2"].codigo_ir == "1.1"      # el prefijo no rompe el forward-fill
+    assert ip["3.1.1"].codigo_ir is None
+
+    avisos = [(a.campo, a.codigo_ir, a.valor, a.descripcion) for a in res.alertas
+              if a.tipo == "codigo_no_reconocido"]
+    assert [(campo, cir, valor) for campo, cir, valor, _ in avisos] == [
+        ("producto", "", "Producto sin código"),
+        ("producto", "2.1", "2..1..1 Producto mal escrito"),
+        ("resultado", "", "Resultado sin código"),
+    ]
+    assert avisos[0][3].startswith("Fila 14:") and "se descartó" in avisos[0][3]
+    assert avisos[1][3].startswith("Fila 15:") and "se omitió" in avisos[1][3]
+    assert avisos[2][3].startswith("Fila 16:")
+    assert {a.nivel for a in res.alertas if a.tipo == "codigo_no_reconocido"} == {"ADVERTENCIA"}
+
+
 def test_deteccion_nombres_ficha():
     """La detección del código de ficha tolera todas las convenciones reales."""
     from extractor_pa.lector_fichas import codigo_de_hoja_ficha as cod
@@ -417,27 +472,32 @@ def test_deteccion_nombres_ficha():
     assert cod("2019") is None             # un año, sin punto
 
 
-def test_formato_antiguo_cti():
+def test_formato_antiguo():
     """Integración: el formato antiguo (con bloque financiero) se extrae bien.
 
     Se salta si el archivo real no está disponible (mantiene la suite portable)."""
     import pytest
-    ruta = (r'C:\Users\RaulEsteban\Proyectos\sispp-gobierno'
-            r'\01_planes_accion\plan_accion_pp_cti_v4-25.xlsx')
+    ruta = PLAN_ANTIGUO
     if not os.path.exists(ruta):
-        pytest.skip('archivo CTI no disponible en este entorno')
+        pytest.skip('plan en formato antiguo no disponible en este entorno')
 
     res = extraer_plan_accion(ruta, anio_vigencia=2026)
     assert res.metadatos.formato_detectado == "antiguo"
-    assert not [a for a in res.alertas if a.nivel == NIVEL_ERROR]
+    # Adultez v2-2023 trae un error real de captura: la fila 43 dice 2.1.14 bajo
+    # el IR 2.2 (el seguimiento lo reporta como 2.2.14). Es del dato, no de la
+    # lectura, y el extractor hace bien en marcarlo; el golden fija que sea uno.
+    assert not [a for a in res.alertas
+                if a.nivel == NIVEL_ERROR and a.tipo != "codigo_ip_duplicado"]
     assert len(res.indicadores_resultado) > 0
     assert len(res.indicadores_producto) > 0
     # El bloque financiero debe haberse leído.
     assert len(res.financiero) > 0
-    # El IP se resuelve por ancla: el estado de vigencia se lee correctamente.
+    # El IP se resuelve por ancla: nombre, peso y metas salen de sus columnas.
+    # (Adultez v2-2023 no tiene columna Vigente/No vigente: es_vigente queda vacío.)
     primer = res.indicadores_producto[0]
-    assert primer.es_vigente is not None
     assert primer.nombre_indicador
+    assert primer.peso_pct is not None
+    assert primer.metas_por_anio
     # Hay registros financieros con costo y con código IP válido.
     assert any(f.costo_estimado is not None and f.codigo_ip for f in res.financiero)
 
@@ -493,6 +553,54 @@ def test_reglas_via_pipeline_flag():
     _construir_excel_reglas(ruta, limpio=False)
     res = extraer_plan_accion(ruta, incluir_reglas_negocio=True)
     assert any(a.tipo == "ponderacion_objetivos" for a in res.alertas)
+
+
+def _construir_excel_peso_objetivo(ruta: str) -> None:
+    """Plan con versiones históricas No Vigentes delante de las vigentes:
+    - Objetivo 2 (Trabajo Decente OE2, Trata): el IR 2.1 No Vigente trae peso
+      de objetivo 0 y el IR 2.2 vigente trae 0.5.
+    - Objetivo 3 (Seguridad 4, Seguridad Alimentaria 3): el IR 3.1 No Vigente
+      no trae peso de objetivo; el IR 3.2 vigente trae 0.2.
+    Los objetivos suman 0.3 + 0.5 + 0.2 = 100%."""
+    wb, ws = _nuevo_ws()
+    filas = {
+        12: {1: "1. Objetivo uno", 2: 0.3, 3: "1.1 Resultado uno", 4: "IR uno",
+             5: "Vigente", 6: 0.3, 22: "1.1.1 Producto uno", 23: "IP uno",
+             24: "Vigente", 25: 0.3},
+        13: {1: "2. Objetivo dos", 2: 0, 3: "2.1 Resultado histórico", 4: "IR viejo",
+             5: "No Vigente", 6: 0, 22: "2.1.1 Producto viejo", 23: "IP viejo",
+             24: "No Vigente", 25: 0},
+        14: {1: "2. Objetivo dos", 2: 0.5, 3: "2.2 Resultado vigente", 4: "IR nuevo",
+             5: "Vigente", 6: 0.5, 22: "2.2.1 Producto nuevo", 23: "IP nuevo",
+             24: "Vigente", 25: 0.5},
+        15: {1: "3. Objetivo tres", 3: "3.1 Resultado histórico", 4: "IR viejo",
+             5: "No Vigente", 22: "3.1.1 Producto viejo", 23: "IP viejo",
+             24: "No Vigente", 25: 0},
+        16: {1: "3. Objetivo tres", 2: 0.2, 3: "3.2 Resultado vigente", 4: "IR nuevo",
+             5: "Vigente", 6: 0.2, 22: "3.2.1 Producto nuevo", 23: "IP nuevo",
+             24: "Vigente", 25: 0.2},
+    }
+    for r, fila in filas.items():
+        for c, v in fila.items():
+            ws.cell(row=r, column=c, value=v)
+    wb.save(ruta)
+
+
+def test_peso_objetivo_de_la_fila_vigente():
+    """El peso del objetivo (entidad y reglas V0/V1) es el de su IR vigente, no
+    el de la versión No Vigente que lo encabeza."""
+    ruta = os.path.join(tempfile.gettempdir(), "plan_peso_objetivo.xlsx")
+    _construir_excel_peso_objetivo(ruta)
+    res = extraer_plan_accion(ruta, incluir_reglas_negocio=True)
+
+    assert {o.codigo: o.peso_pct for o in res.objetivos} == {"1": 0.3, "2": 0.5, "3": 0.2}
+    ponderacion = [a.descripcion for a in res.alertas
+                   if a.tipo in ("ponderacion_objetivos", "ponderacion_ir")]
+    assert not ponderacion, ponderacion
+    # Cada IR conserva el peso de objetivo de su propia fila.
+    ir = {i.codigo_ir: i for i in res.indicadores_resultado}
+    assert ir["2.1"].peso_objetivo_pct == 0
+    assert ir["3.1"].peso_objetivo_pct is None
 
 
 def test_exportadores_un_plan():
@@ -564,8 +672,7 @@ def test_seguimiento_xlsb():
     Se salta si el archivo no está disponible (mantiene la suite portable)."""
     import pytest
     from extractor_pa.seguimiento import extraer_seguimiento
-    ruta = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-            r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
+    ruta = SEG_BTI_S1_25
     if not os.path.exists(ruta):
         pytest.skip("archivo .xlsb de seguimiento no disponible en este entorno")
     try:
@@ -615,11 +722,9 @@ def test_seguimiento_cruce_y_consolidacion():
     """Integración S2: cruzar el seguimiento de BTI con su plan y consolidar."""
     import pytest
     from extractor_pa.seguimiento import extraer_seguimiento, cruzar_con_plan, consolidar
-    plan_path = (r"C:\Users\RaulEsteban\Proyectos\sispp-gobierno"
-                 r"\01_planes_accion\PA_BTI_V4-26_DP.xlsx")
-    seg_path = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-                r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
-    if not (os.path.exists(plan_path) and os.path.exists(seg_path)):
+    plan_path = ruta_plan("bti")
+    seg_path = SEG_BTI_S1_25
+    if not (plan_path and os.path.exists(seg_path)):
         pytest.skip("archivos BTI no disponibles")
     try:
         import pyxlsb  # noqa: F401
@@ -694,8 +799,7 @@ def test_exportadores_seguimiento_real():
         extraer_seguimiento, tablas_seguimiento,
         exportar_json_seguimiento, exportar_csv_seguimiento, exportar_excel_seguimiento,
     )
-    seg_path = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-                r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
+    seg_path = SEG_BTI_S1_25
     if not os.path.exists(seg_path):
         pytest.skip("archivo .xlsb de seguimiento no disponible")
     try:
@@ -732,10 +836,8 @@ def test_consistencia_seguimiento_real():
     """Integración S3: validar el par base/nuevo real de BTI sin errores de ejecución."""
     import pytest
     from extractor_pa.seguimiento import extraer_seguimiento, validar_consistencia
-    base_p = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-              r"\archivos_base\Seguimiento a Productos PP BTI S1-25.xlsb")
-    nuevo_p = (r"C:\Users\RaulEsteban\Proyectos\alertas-seguimientos"
-               r"\archivos_nuevos\Seguimiento a Productos PP BTI S2-25.xlsb")
+    base_p = SEG_BTI_S1_25
+    nuevo_p = SEG_BTI_S2_25
     if not (os.path.exists(base_p) and os.path.exists(nuevo_p)):
         pytest.skip("par BTI base/nuevo no disponible")
     try:

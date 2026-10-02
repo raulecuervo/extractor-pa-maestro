@@ -9,15 +9,202 @@ cifras o alertas, así que conviene subir juntos los aplicativos que se comparan
 entre sí (`python scripts/pines_consumidores.py`):
 0.12.0 (fórmulas A, B y C) · 0.13.0 (trayectoria ideal) · 0.14.0 (año sin meta,
 decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
-0.17.0 (AV de CONSTANTE sin reportes) · Sin publicar (planes antiguos 2021–2025).
+0.17.0 (AV de CONSTANTE sin reportes) · 0.19.0 (códigos con prefijo, pesos del
+objetivo y en «2.86%», planes antiguos 2021–2025).
 
-## [Sin publicar] — Los planes antiguos 2021–2025 conservan metas, línea base y financiero
+## [0.19.0] — Los códigos con prefijo de tipo («P1.1.1», «R1.1», «OE1.») ya no se pierden
+
+### Corregido
+
+- **`utilidades.py::extraer_codigo`** tolera un prefijo de tipo delante del
+  código: `P` (producto), `R` (resultado), `O` u `OE` (objetivo), en mayúscula o
+  minúscula y con o sin un espacio o punto en medio («P1.1.1Acciones…»,
+  «r 1.1», «P.1.1.1», «OE1. Promover…»). La regex se anclaba en el primer
+  dígito, así que esos códigos daban None:
+  - **Trata** (Decreto 193 de 2022): `estrategias/nuevo.py` descartaba sin
+    rastro 27 de sus 53 productos. Pasa de 26 a 53 IP, y su seguimiento cruza
+    con el plan en 28 de 28 indicadores (antes 1).
+  - **Trabajo Decente**: sus objetivos «OE1.»–«OE4.» quedaban sin código, sin
+    entidad `Objetivo` y con sus 8 IR y 47 IP colgando de ninguno (las reglas
+    V0/V1 los agrupaban en `SIN_OBJ`). Ahora tiene sus 4 objetivos y cada IR e
+    IP sabe a cuál pertenece. Sus IR e IP no cambian.
+
+  En el resto del corpus (45 planes y 51 seguimientos) no cambia ningún IR, IP
+  ni objetivo. La lista es cerrada: «Plan 2024…», «Producto 3», «PR1.1» u
+  «OEA1.» siguen sin código. Como el seguimiento usa la misma función, también
+  reconoce «P1.1.1» en las hojas cuantitativa y cualitativa. Cubre todo lo que
+  hacía el parche `dashboard_pp/parche_extractor.py` de sispp-gobierno, que
+  puede retirarse cuando ese repo use esta versión.
+
+### Agregado
+
+- **Alerta `codigo_no_reconocido`** (ADVERTENCIA, capa extracción): la celda de
+  resultado o de producto trae texto pero no un código reconocible (IR = N.N,
+  IP = N.N.N). Dice la fila, el texto y qué se perdió: la fila descartada por el
+  prefiltro, el IP omitido o el IR que no se creó. El resultado se avisa una vez
+  por texto, aunque el forward-fill lo repita en varias filas. Las celdas sin
+  letras ni dígitos (un «.» de relleno) no avisan. En el corpus destapa 4
+  productos que hoy se pierden en silencio por códigos mal escritos:
+  Negra-Afro «2..1..3» y «2.2 10», Seguridad «4.2.1» precedido de un BOM
+  (`\ufeff`) y Migrantes «3. 1 4.».
+- **`lector_filas.prefiltrar_filas(..., descartadas=None)`** — si se le pasa una
+  lista, recibe las filas descartadas que sí traían texto en resultado o
+  producto. Sin ella se comporta igual que antes.
+- **`utilidades.tiene_contenido(valor)`** — True si la celda trae al menos una
+  letra o un dígito.
+
+### Cambiado
+
+- `docs/CATALOGO_ALERTAS.md` regenerado: incluye `codigo_no_reconocido` y los 4
+  tipos de seguimiento que ya estaban en el catálogo y faltaban en el documento.
+- Golden de Trata, Negra-Afro, Seguridad y Migrantes actualizados: son los
+  únicos 4 de 100 que cambian, con exactamente lo descrito arriba. El de Trabajo
+  Decente no cambia porque la huella no incluye los objetivos.
+
+### Corregido — el peso del objetivo sale de su fila vigente
+
+- **`validacion.py::_ponderacion`** (V0/V1) y la entidad **`Objetivo`**
+  (`estrategias/nuevo.py`) tomaban el peso del objetivo de su primera fila. Si
+  esa fila es la versión histórica No Vigente con peso 0, ese 0 tapaba el peso
+  de los IR vigentes. Ahora las dos usan **`utilidades.elegir_peso_objetivo`**:
+  el peso de la primera fila vigente (Vigente y peso del IR > 0, la misma que
+  asciende el normalizador: `utilidades.es_fila_vigente`) y, si ninguna lo trae,
+  el primero numérico, como antes. La entidad y V0/V1 dan el mismo peso en todos
+  los objetivos del corpus.
+  - **Trabajo Decente** OE2 (IR 2.1 No Vigente con 0; 2.2–2.4 vigentes con
+    48,48 %): desaparecen los ERROR «Los 4 objetivo(s) suman 51.51%» y «Pesos
+    de IRs del OBJ '2' suman 48.48% pero el peso del objetivo es 0.00%». Salían
+    desde que «OE1.» se reconoce (arriba) y sus IR dejaron de ir a `SIN_OBJ`.
+  - **Trata** OE1–OE3 (cada uno abre con un IR No Vigente con 0): desaparecen
+    sus 4 ERROR de V0/V1 («Los 3 objetivo(s) suman 0.00%»); los objetivos pesan
+    40, 30 y 30 %.
+  - La entidad `Objetivo` de Espacio Público (3), Seguridad Alimentaria (3),
+    Discapacidad (4) y Seguridad (4) tenía `peso_pct=None` porque la primera
+    fila del objetivo venía sin peso (celdas combinadas descuadradas o un IR No
+    Vigente vacío). Ahora tiene 0.33, 0.35, 0.1 y 0.25: el peso que ya usaba V0.
+
+  En los otros 41 de los 47 planes no cambia nada, y en ninguno aparece una
+  alerta. Donde el peso solo está en la fila No Vigente (Espacio Público OE2:
+  0.34 en una celda combinada que abarca todo el objetivo) se sigue usando.
+  `IndicadorResultado.peso_objetivo_pct` no cambia: sigue siendo el de la fila
+  de cada IR. Los golden no cambian (la huella no incluye reglas ni objetivos).
+
+  En otros 88 planes únicos (por hash) de las carpetas hermanas (copias,
+  versiones anteriores y plantilla 2021–2025) cambian 9: copias y versiones
+  anteriores de Trata, Discapacidad y Espacio Público, igual que arriba, y Mujer
+  v5-2025. Esa plantilla vieja ya se leía mal (196 «objetivos», con el texto del
+  objetivo en la columna del peso): su `peso_pct` pasa de ese texto a None,
+  porque un peso que no es numérico no cuenta. Sus alertas no cambian.
+
+### Corregido — un peso escrito como «2.86%» ya no cambia la escala de todo el plan
+
+- **`validacion.py::_ponderacion`** (V0/V1/V2) — el factor de escala era uno
+  para todo el plan: ×100 si todos los pesos eran ≤ 1 (decimales), ×1 si no.
+  Como `a_float("2.86%")` da 2.86, un solo peso escrito como texto con «%» en un
+  plan decimal pasaba el plan entero a ×1, y los demás pesos (0.0377,
+  0.1418…) se leían como 0.04 % y 0.14 %. Al revés, un «0,5%» da 0.5 ≤ 1 y se
+  multiplicaba por 100: medio punto se leía como el 50 %.
+
+  Ahora las sumas se hacen en puntos porcentuales y cada peso se lleva a puntos
+  por su cuenta (`_leer_peso` → `(número, trae_pct)`): el texto con «%» va tal
+  cual, porque no es ambiguo, y los números sueltos se multiplican por el factor
+  del plan, que `_factor` decide mirando **solo los números sueltos**. El peso
+  del objetivo se sigue eligiendo de su fila vigente (arriba) y luego se lee
+  igual que los demás. Los planes que escriben todos sus pesos como «%» o como
+  números > 1 (Ruralidad, el único de escala porcentaje del corpus, con 43 de
+  sus pesos de IP ≤ 1) dan lo mismo que antes. Las alertas no cambian de tipo,
+  de nivel ni de redacción.
+  - **Juventud** v9-26: desaparece el ERROR falso «Los 7 objetivo(s) suman
+    1.00%»: suman 100.00 %. El V1 del objetivo 7 se mantiene, porque el
+    descuadre es real, pero ahora con cifras reales: «suman 17.04% pero el peso
+    del objetivo es 14.18%» (antes «3.00% … 0.14%»). Los IR 7.1 a 7.4 suman
+    exactamente 14.18; el 7.5, el único peso escrito como texto («2.86%»), se
+    agregó sin rebajar el objetivo, y todos los IR suman 102.86 %. Además, con
+    el factor ×1 el V2 no podía dispararse en este plan, porque toda diferencia
+    era menor que 0,5 «puntos». Ahora revisa de verdad sus 37 IR, y todos
+    cuadran.
+  - **Seguridad Alimentaria** v7-26: desaparece el ERROR falso «Pesos de IPs
+    del IR '2.2' suman 101.00% pero el peso del IR es 2.00%». Los IP 2.2.2 y
+    2.2.3 traen «0,5%» como texto; 1 + 0,5 + 0,5 = 2.
+
+  Comparado antes/después con `incluir_reglas_negocio=True` sobre los 47 planes
+  de `sispp-gobierno/01_planes_accion`, con el arreglo del peso del objetivo ya
+  aplicado: solo cambian esas dos políticas, con exactamente lo descrito.
+  `ponderacion_objetivos` pasa de 1 a 0 (el de Juventud era el último del
+  corpus) y `ponderacion_ip` de 40 a 39; `ponderacion_ir` se queda en 1 (el de
+  Juventud, ahora con cifras reales), y `ponderacion_faltante`,
+  `vigencia_ponderacion` y el resto de las alertas no se mueven. En los 63
+  archivos únicos de `alertas-seguimientos/Repositorio_Documentos_Politicas`
+  (7 en formato antiguo) cambian solo las copias de esos dos planes.
+
+  Ningún aplicativo hermano llama a `validar_reglas`: el cambio se ve en el CLI,
+  en `tablero` y en los scripts de este repo. `validador_plan_accion`
+  (`reglas_ponderacion.py::_detectar_factor`) tiene su propia copia de la regla
+  vieja y el mismo error.
+
+  Descartado durante el arreglo:
+  - **Dividir entre 100 en `a_float`**: lo usan también las metas, la línea
+    base y las reglas V14 y V17, y su convención («74.97%» → 74.97, en puntos)
+    es la misma de `leer_celda_escala`. Además, una celda sola no sabe en qué
+    escala está el plan: en Ruralidad un «14.7%» debe seguir siendo 14.7.
+  - **Normalizar en `leer_celda_escala` o en `estrategias/nuevo.py`**: los
+    pesos se leen como valores (`leer_filas`), no como celdas, y `peso_pct`
+    sale crudo del modelo a propósito. Los consumidores lo leen así con sus
+    propios parsers, y la estrategia antigua necesitaría el mismo arreglo. La
+    escala de un número suelto solo se puede decidir con el plan entero, y eso
+    pasa únicamente en `validacion`, que es donde se suma.
+  - **Decidir la escala por mayoría**: rompería Ruralidad.
+
+  Queda igual que antes un número suelto en la escala equivocada (2.86
+  tecleado como número en un plan decimal): sin el formato de la celda es
+  ambiguo. No hay ninguno en el corpus.
+
+  Pruebas: 7 casos de V0/V1/V2 en `test_b2_jerarquia.py`. Fallan sin este
+  arreglo los de Juventud, Seguridad Alimentaria, un plan decimal con un «%» y
+  un descuadre en tres escalas. Los de todo «%» y escala porcentaje (Ruralidad)
+  son guardas que pasan antes y después. Uno combina los dos arreglos (el peso
+  vigente del objetivo viene como «50%») y falla con cualquiera de los dos
+  solo. En `test_unidades.py`, `_leer_peso` y `_factor`. Los golden no cambian:
+  la huella se extrae sin `incluir_reglas_negocio` y no incluye V0–V18.
+
+### Pruebas — la regresión golden de planes vuelve a correr
+
+No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
+
+- **La regresión golden de planes estaba apagada desde 2026-09-21.** Ese día
+  los planes de `sispp-gobierno/01_planes_accion` se renombraron
+  (`PA_BTI_V4-26_DP.xlsx` → `29__pa_bti_v4-26_dp_v1.xlsx`) y, como la clave del
+  golden salía del nombre del archivo, los 47 planes daban «golden no generado»
+  y se saltaban; el corpus curado apuntaba a archivos que ya no existían. Nada
+  falló. Las versiones 0.13.0 a 0.18.0 no se probaron contra los golden de
+  planes; corridas ahora sobre los 38 archivos viejos (recuperados del
+  historial de `sispp-gobierno`) reproducen sus golden **sin una sola
+  diferencia**.
+- **Claves golden por política** (`tests/corpus.py::slug_politica`): sin
+  prefijos de catálogo, de tipo ni sufijo de versión. Un renombrado conserva la
+  clave; una versión nueva del plan falla con sus diferencias. La comparación
+  ignora el campo `archivo` de la huella. Convención en
+  `docs/REGRESION_Y_PARIDAD.md`.
+- **`tests/test_corpus.py`**: la convención de claves se prueba sin datos
+  reales, así que corre también en el CI (incluye los renombrados de 2026-09).
+- **Raíz del corpus configurable** con `EXTRACTOR_PA_CORPUS`
+  (por defecto `C:\Users\RaulEsteban\Proyectos`).
+- **La regresión no se apaga en silencio**: `test_corpus_cubierto_por_golden`
+  falla si el corpus existe y ningún archivo tiene golden;
+  `test_corpus_claves_unicas` falla ante dos versiones del mismo plan; una
+  política curada ausente falla en vez de saltarse.
+- **`gen_golden.py`** lista lo que cambia contra el golden previo, tiene
+  `--revisar` (sin escribir) y `--podar` (borra huérfanos), y se niega a correr
+  con claves repetidas.
+- `test_smoke.py` y `test_cli.py` toman las rutas del corpus; el formato
+  antiguo se prueba ahora con Adultez v2-2023 (el CTI v4-25 salió del corpus:
+  su versión v5-26 ya viene en formato nuevo).
 
 > **Cambia cifras** en los planes de plantilla antigua: aparecen metas, líneas
 > base y registros financieros que antes salían vacíos. Los 92 planes de la
 > plantilla vigente del corpus (100 archivos) extraen exactamente lo mismo.
 
-### Corregido
+### Corregido — los planes antiguos 2021–2025 conservan metas, línea base y financiero
 
 - **`pipeline.py::_ubicar_encabezados`** — las filas de encabezado y de datos se
   ubican por el ancla «Resultado esperado» en vez de fijarse en 9–11 / 12. Los
@@ -50,7 +237,7 @@ decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
   `error_extraccion`; en las etapas opcionales (fichas técnicas, reglas de
   negocio), como `error_etapa_opcional` (ADVERTENCIA) y el plan se conserva.
 
-### Agregado
+### Agregado — enfoque del IR, año de corte, objetivos en las salidas, API del seguimiento y CI
 
 - **`IndicadorResultado.enfoque`** — el «Enfoque» del bloque IR del formato
   antiguo. `MAPEO_ANTIGUO` ya lo resolvía (`enfoque_ir`) pero no llegaba al modelo.
@@ -71,11 +258,13 @@ decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
   **`release.yml`**: cada tag `vX.Y.Z` construye el wheel y el sdist y los adjunta
   a un Release.
 
-### Documentación
+### Documentación — consumidores, versiones y estado
 
 - README: el repositorio es público, instalación por tag o por wheel del Release,
   consumidores y versiones, estabilidad por capa. ESTADO.md al día; los planes de
   trabajo anteriores pasan a `docs/historico/`.
+- `scripts/gen_catalogo.py` toma la carpeta del repo de su propia ubicación: tenía
+  escrita la ruta del checkout principal y, corrido desde un worktree, escribía allá.
 
 ## [0.18.0] — El seguimiento también se lee en `.xlsx` (formato 3.4)
 

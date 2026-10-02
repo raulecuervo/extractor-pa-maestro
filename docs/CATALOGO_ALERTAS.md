@@ -4,7 +4,7 @@
 > Generado automáticamente desde `extractor_pa/catalogo.py` (única fuente de verdad).
 > Niveles unificados: **ERROR** (bloquea / dato inutilizable) · **ADVERTENCIA** (revisar) · **INFO** (informativo).
 
-**77 tipos** catalogados · **62 implementados** en el extractor maestro.
+**78 tipos** catalogados · **63 implementados** en el extractor maestro.
 
 Leyenda `Impl.`: ✅ lo produce el maestro · ⬜ documentado (vive en otro aplicativo o pendiente).
 
@@ -26,6 +26,7 @@ Las produce el extractor maestro al leer el Excel.
 | `sin_ip` | ADVERTENCIA | — | Estructura | No se extrajo ningún Indicador de Producto. | ✅ |
 | `ir_sin_nombre` | ADVERTENCIA | — | Estructura | Una fila trae código de IR pero sin nombre (se omitió). | ✅ |
 | `ip_sin_nombre` | ADVERTENCIA | — | Estructura | Una fila trae código de IP pero sin nombre (se omitió). | ✅ |
+| `codigo_no_reconocido` | ADVERTENCIA | — | Estructura | La celda de resultado o de producto trae texto pero no un código reconocible (IR=N.N, IP=N.N.N): el indicador se omitió. | ✅ |
 | `apertura_seguimiento` | ERROR | — | Estructura seguimiento | No se pudo abrir el archivo de seguimiento (.xlsb o .xlsx). | ✅ |
 | `hoja_seguimiento_no_encontrada` | ERROR | — | Estructura seguimiento | No se encontró la hoja 'Avance Cuantitativo'. | ✅ |
 | `anclas_no_encontradas` | ERROR | — | Estructura seguimiento | No se encontraron las anclas de bloques en la fila de encabezados. | ✅ |

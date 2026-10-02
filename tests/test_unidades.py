@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Unit tests por etapa (Hito 2): helpers puros de utilidades, vigencia y fichas."""
+"""Unit tests por etapa (Hito 2): helpers puros de utilidades, vigencia, fichas y validación."""
 
 import os
 import sys
@@ -9,10 +9,13 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from extractor_pa.utilidades import (a_float, extraer_codigo, es_vigente,
-                                     peso_positivo, clave_grupo)
+                                     peso_positivo, clave_grupo, tiene_contenido,
+                                     elegir_peso_objetivo)
+from extractor_pa.lector_filas import prefiltrar_filas
 from extractor_pa.vigencia import calcular_vigencia
 from extractor_pa.lector_fichas import codigo_de_hoja_ficha
 from extractor_pa.pipeline import _es_nombre_politica
+from extractor_pa.validacion import _factor, _leer_peso
 
 
 # ── utilidades.a_float (tolerante, formato europeo) ──
@@ -34,9 +37,69 @@ def test_a_float(entrada, esperado):
     ("2 Objetivo general", 1, "2"),
     ("Sin código", None, None),
     ("3.2.1", None, "3.2.1"),
+    ("1 . 1 Separador con espacios", 2, "1.1"),
 ])
 def test_extraer_codigo(texto, niveles, esperado):
     assert extraer_codigo(texto, niveles) == esperado
+
+
+# Prefijo de tipo P/R/O/OE delante del código (Trata: «P1.1.1Acciones…»;
+# Trabajo Decente: «OE1. Promover…»).
+@pytest.mark.parametrize("texto,niveles,esperado", [
+    ("P1.1.1Acciones encaminadas a promover", 3, "1.1.1"),
+    ("P1.1.2. Formación por demanda", 3, "1.1.2"),
+    ("P2.1.10. Actividades de capacitación", 3, "2.1.10"),
+    ("R1.1 Disminución del número de casos", 2, "1.1"),
+    ("r 1.1 en minúscula y con espacio", 2, "1.1"),
+    ("P. 3.1.1 con punto y espacio", 3, "3.1.1"),
+    ("p.3.1.2", 3, "3.1.2"),
+    ("O1 Objetivo con prefijo", 1, "1"),
+    ("OE1. Promover principios y derechos", 1, "1"),
+    ("oe 2. en minúscula y con espacio", 1, "2"),
+    ("OE3.3. Procurar el acceso", 1, "3"),
+    ("P1.1.1 Indicador del seguimiento", None, "1.1.1"),   # sin niveles: seguimiento
+])
+def test_extraer_codigo_tolera_prefijo_de_tipo(texto, niveles, esperado):
+    assert extraer_codigo(texto, niveles) == esperado
+
+
+# La lista de prefijos es cerrada: P, R, O u OE pegados al número.
+@pytest.mark.parametrize("texto,niveles", [
+    ("Plan 2024 de contingencia", None),
+    ("Producto 3 sin código", None),
+    ("PR1.1 Dos letras", 2),
+    ("OEA1. Tres letras", 1),
+    ("Oeste 2024", None),
+    ("X1.1.1 Letra fuera de la lista", 3),
+    ("P", None),
+])
+def test_extraer_codigo_no_inventa_codigos(texto, niveles):
+    assert extraer_codigo(texto, niveles) is None
+
+
+@pytest.mark.parametrize("valor,esperado", [
+    ("Producto sin código", True), ("TOTAL", True), (0, True), ("4", True),
+    (".", False), ("  ", False), ("_", False), ("—", False), (None, False),
+])
+def test_tiene_contenido(valor, esperado):
+    assert tiene_contenido(valor) is esperado
+
+
+# ── lector_filas.prefiltrar_filas ──
+def test_prefiltro_aparta_las_filas_con_texto_sin_codigo():
+    filas = [
+        (12, ["1.1 Resultado", "1.1.1 Producto"]),
+        (13, [None, "P1.1.2 Producto con prefijo"]),
+        (14, [None, "Producto sin código"]),
+        (15, [".", "."]),
+        (16, [None, None, "Total"]),
+    ]
+    descartadas = []
+    conservadas = prefiltrar_filas(filas, 1, 2, descartadas)
+    assert [r for r, _ in conservadas] == [12, 13]
+    assert [r for r, _ in descartadas] == [14]      # «.» y «Total» fuera de columna: sin aviso
+    # Sin la lista, el resultado es el mismo de antes.
+    assert prefiltrar_filas(filas, 1, 2) == conservadas
 
 
 # ── utilidades.es_vigente / peso_positivo / clave_grupo ──
@@ -57,6 +120,48 @@ def test_peso_positivo(valor, esperado):
 
 def test_clave_grupo_usa_codigo():
     assert clave_grupo("1.1 Resultado X") == "1.1"
+
+
+# ── utilidades.elegir_peso_objetivo: (vigente_ir, peso_ir, peso_objetivo) ──
+@pytest.mark.parametrize("candidatos,esperado", [
+    # Trabajo Decente OE2: el IR No Vigente que encabeza el objetivo pesa 0.
+    ([("No Vigente", 0, 0), ("Vigente", 0.1616, 0.4848)], 0.4848),
+    # Trata: el No Vigente trae peso de objetivo 0 y peso de IR vacío.
+    ([("No vigente", None, 0), ("Vigente", 0.4, 0.4)], 0.4),
+    # Vigente con peso de IR 0 no es la fila autoritativa (como en la ascensión).
+    ([("Vigente", 0, 0.1), ("Vigente", 0.3, 0.3)], 0.3),
+    # Sin marca de vigencia cuenta como vigente.
+    ([(None, 0, 0.1), (None, 0.3, 0.3)], 0.3),
+    # Espacio Público OE2: solo el No Vigente trae el peso -> el primero no nulo.
+    ([("No vigente", 0, 0.34), ("Vigente", 0.17, None)], 0.34),
+    # Ninguno vigente: el primero no nulo (como antes).
+    ([("No Vigente", 0, None), ("No Vigente", 0, 0.2), ("No Vigente", 0, 0.5)], 0.2),
+    # Un texto no numérico no cuenta como peso.
+    ([("Vigente", 0.5, "N/A"), ("Vigente", 0.5, "50%")], "50%"),
+    ([("Vigente", 0.5, None)], None),
+    ([], None),
+])
+def test_elegir_peso_objetivo(candidatos, esperado):
+    assert elegir_peso_objetivo(candidatos) == esperado
+
+
+# ── validacion._leer_peso / _factor (escala de la ponderación) ──
+@pytest.mark.parametrize("valor,esperado", [
+    (0.0377, (0.0377, False)), (25, (25.0, False)), (0, (0.0, False)),
+    ("0.0377", (0.0377, False)),             # texto sin «%»: tan ambiguo como el número
+    ("2.86%", (2.86, True)), ("0,5%", (0.5, True)), (" 14.7 % ", (14.7, True)),
+    ("0%", (0.0, True)),
+    (None, (None, False)), ("n/a", (None, False)), ("%", (None, True)),
+])
+def test_leer_peso(valor, esperado):
+    assert _leer_peso(valor) == esperado
+
+
+@pytest.mark.parametrize("pesos,esperado", [
+    ([0.6, 0.4, 0.0377], 100.0), ([84.19, 0.5], 1.0), ([0, None], 1.0), ([], 1.0),
+])
+def test_factor(pesos, esperado):
+    assert _factor(pesos) == esperado
 
 
 # ── vigencia.calcular_vigencia ──

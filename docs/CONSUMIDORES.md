@@ -28,7 +28,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | seguimiento-pp-sdis | v0.9.11 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
 | generador-seguimiento | v0.9.11 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 
-Última versión publicada: **v0.18.0**.
+Última versión publicada: **v0.18.0**; la 0.19.0 está por etiquetar.
 
 ## Qué funcionalidad usa cada uno
 
@@ -107,7 +107,7 @@ Existe en la librería, pero ningún aplicativo lo llama:
 Los tres archivos que tocan la librería son idénticos en los dos repositorios.
 - **Etapa 01** (`extraccion_maestro.py`): `extraer_plan_accion`; vuelca las alertas (ADVERTENCIA → WARNING), descarta si no `exitoso` y convierte IR e IP a dicts, incluidos los corresponsables, PDD y enfoques.
 - **Etapa 04** (`extraccion_seg_maestro.py`): `extraer_seguimiento`, con todos los campos del indicador, incluidos `metas_acumuladas` y los porcentajes.
-- **`dashboard_pp/parche_extractor.py`**: reemplaza `extraer_codigo` en cinco módulos de la librería para aceptar «P1.1.1» y «R1.1». Puede retirarse cuando fijen la versión que trae ese arreglo (rama `fix/codigo-prefijo-tipo`).
+- **`dashboard_pp/parche_extractor.py`**: reemplaza `extraer_codigo` en cinco módulos de la librería para aceptar «P1.1.1» y «R1.1». Puede retirarse cuando fijen v0.19.0 o posterior, que ya acepta «P», «R», «O» y «OE».
 - **Al subir de versión**: no usa `metricas`, así que las fórmulas no le cambian cifras; sí le llega lo que cambie en la extracción de planes y seguimientos.
 
 ### sispp-sdis, backend (v0.10.1)
@@ -122,7 +122,7 @@ Los tres archivos que tocan la librería son idénticos en los dos repositorios.
 ### extractor-planes-accion (v0.9.11)
 - **`modulo_planes_accion/extractor_maestro.py`**: `extraer_plan_nuevo` es el que usa el orquestador. `extraer_plan_antiguo` (que lee `financiero`) existe pero **no está conectado**: el orquestador sigue con `extractor_antiguo.py`, el legado.
 - **`auditar_perdidas.py`**: compara el maestro con el legado (`leer_fichas_tecnicas=False`).
-- **Oportunidad**: los planes antiguos 2021–2025 ya conservan metas, línea base y bloque financiero (rama `fix/mejoras-analisis`), y el IR trae su `enfoque`; con eso se podría activar el adaptador antiguo.
+- **Oportunidad**: los planes antiguos 2021–2025 conservan metas, línea base y bloque financiero desde v0.19.0, y el IR trae su `enfoque`; con eso se podría activar el adaptador antiguo.
 
 ### creador-planes-accion (v0.9.11)
 - **`app/import_excel_maestro.py`** (`importar_politica`, llamado desde `app/routers/ui.py`): `extraer_plan_accion` sobre un archivo temporal y reconstrucción de la jerarquía de su ORM (objetivo → resultado → IR → IP) con todos los campos, fichas técnicas incluidas. Los metadatos de la política los lee con su propio código, no los del maestro, y no mira las alertas.

@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Genera docs/CATALOGO_ALERTAS.md desde extractor_pa/catalogo.py (fuente única)."""
-import sys, io
+import io, os, sys
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.path.insert(0, r'C:\Users\RaulEsteban\Proyectos\extractor-pa-maestro')
+# El repo es la carpeta padre de scripts/: así funciona desde cualquier copia o worktree.
+RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, RAIZ)
 
 from extractor_pa.catalogo import (
     _TIPOS, CAPA_EXTRACCION, CAPA_VALIDACION_PLAN, CAPA_SEGUIMIENTO,
@@ -71,6 +73,6 @@ L.append("- Las capas 3–6 (seguimiento, operativas, cualitativas, calidad) se 
          "para el consolidado pero pertenecen a los aplicativos de seguimiento/operación, "
          "no al extractor del plan.")
 
-out = r"C:\Users\RaulEsteban\Proyectos\extractor-pa-maestro\docs\CATALOGO_ALERTAS.md"
+out = os.path.join(RAIZ, "docs", "CATALOGO_ALERTAS.md")
 open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
 print("OK:", out, "|", tot, "tipos,", impl, "implementados")

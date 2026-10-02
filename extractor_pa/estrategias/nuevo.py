@@ -26,8 +26,28 @@ from ..modelo import (
     RegistroFinanciero,
 )
 from ..resolutor_columnas import resolver_columnas
-from ..utilidades import extraer_codigo, leer_celda_escala, limpiar
+from ..utilidades import (
+    elegir_peso_objetivo, extraer_codigo, leer_celda_escala, limpiar, tiene_contenido,
+)
 from ..vigencia import calcular_vigencia
+
+
+# Código que se espera en cada columna identificadora: (tipo, forma).
+_CODIGO_ESPERADO = {"resultado": ("IR", "N.N"), "producto": ("IP", "N.N.N")}
+
+
+def _codigo_no_reconocido(fila_abs, clave, texto, consecuencia, archivo, politica,
+                          codigo_ir=None):
+    """Alerta de una celda de resultado/producto con texto pero sin código."""
+    tipo, forma = _CODIGO_ESPERADO[clave]
+    texto = str(texto)
+    resumen = texto if len(texto) <= 80 else texto[:79] + "…"
+    return crear_alerta(
+        "codigo_no_reconocido",
+        f"Fila {fila_abs}: el {clave} «{resumen}» no trae un código de {tipo} "
+        f"reconocible ({forma}); {consecuencia}.",
+        archivo_fuente=archivo, nombre_politica=politica,
+        codigo_ir=codigo_ir, campo=clave, valor=texto)
 
 
 class ExtractorNuevo(EstrategiaExtraccion):
@@ -38,20 +58,6 @@ class ExtractorNuevo(EstrategiaExtraccion):
         alertas = []
         financiero: list = []
         cols, metas_ir_cols, metas_ip_cols, financiero_cols = resolver_columnas(ws, mapeo)
-
-        # 1) Leer filas (con índice absoluto) y descartar filas espurias.
-        filas = leer_filas(ws, mapeo.fila_datos)
-        filas = prefiltrar_filas(filas, cols.get("resultado"), cols.get("producto"))
-        if not filas:
-            return [], [], financiero, alertas, []
-
-        # 2) Snapshot de los valores ORIGINALES (antes de normalizar) para el
-        #    chequeo de consistencia; la normalización uniformizaría las filas.
-        snapshots = [list(valores) for _, valores in filas]
-
-        # 3) Normalización de celdas combinadas (4 capas + ascensión de fila
-        #    vigente). Las metas anuales quedan excluidas (se leen por celda).
-        normalizar_celdas_combinadas([f for _, f in filas], cols)
 
         # Helpers de lectura de una fila (lista de valores).
         def g(valores, clave):
@@ -67,6 +73,31 @@ class ExtractorNuevo(EstrategiaExtraccion):
                 return None
             i = col - 1
             return limpiar(valores[i]) if i < len(valores) else None
+
+        # 1) Leer filas (con índice absoluto) y descartar filas espurias. Las
+        #    descartadas con texto en resultado/producto traen un código que no
+        #    se reconoció: se avisan en vez de perderlas en silencio.
+        filas = leer_filas(ws, mapeo.fila_datos)
+        descartadas: list = []
+        filas = prefiltrar_filas(filas, cols.get("resultado"), cols.get("producto"),
+                                 descartadas)
+        for fila_abs, valores in descartadas:
+            for clave in ("resultado", "producto"):
+                texto = g(valores, clave)
+                if tiene_contenido(texto):
+                    alertas.append(_codigo_no_reconocido(
+                        fila_abs, clave, texto, "la fila se descartó",
+                        nombre_archivo, nombre_politica))
+        if not filas:
+            return [], [], financiero, alertas, []
+
+        # 2) Snapshot de los valores ORIGINALES (antes de normalizar) para el
+        #    chequeo de consistencia; la normalización uniformizaría las filas.
+        snapshots = [list(valores) for _, valores in filas]
+
+        # 3) Normalización de celdas combinadas (4 capas + ascensión de fila
+        #    vigente). Las metas anuales quedan excluidas (se leen por celda).
+        normalizar_celdas_combinadas([f for _, f in filas], cols)
 
         def metas_de(fila_abs, columnas):
             """Lee {año: valor} respetando la escala % de cada celda. Conserva el
@@ -100,16 +131,29 @@ class ExtractorNuevo(EstrategiaExtraccion):
         irs: dict[tuple, IndicadorResultado] = {}
         ips: list[IndicadorProducto] = []
         objetivos: dict[str, Objetivo] = {}
+        # (vigente_ir, peso_ir, peso_objetivo) de cada fila, por objetivo.
+        pesos_objetivo: dict[str, list] = {}
+        # El resultado se rellena hacia abajo: se avisa una vez por texto, no por fila.
+        resultados_avisados: set = set()
 
         # 3) Recorrer filas y construir IR (dedup) e IP.
         for fila_abs, valores in filas:
             # B2: objetivo como entidad (se captura aunque la fila no tenga IR).
             obj_txt = g(valores, "objetivo")
             cod_obj = extraer_codigo(obj_txt, niveles=1)
-            if cod_obj and cod_obj not in objetivos:
-                objetivos[cod_obj] = Objetivo(codigo=cod_obj, descripcion=obj_txt,
-                                              peso_pct=g(valores, "peso_objetivo"))
-            codigo_ir = extraer_codigo(g(valores, "resultado"), niveles=2)
+            if cod_obj:
+                if cod_obj not in objetivos:
+                    objetivos[cod_obj] = Objetivo(codigo=cod_obj, descripcion=obj_txt)
+                pesos_objetivo.setdefault(cod_obj, []).append((
+                    g(valores, "vigente_ir"), g(valores, "peso_ir"),
+                    g(valores, "peso_objetivo")))
+            res_txt = g(valores, "resultado")
+            codigo_ir = extraer_codigo(res_txt, niveles=2)
+            if not codigo_ir and tiene_contenido(res_txt) and res_txt not in resultados_avisados:
+                resultados_avisados.add(res_txt)
+                alertas.append(_codigo_no_reconocido(
+                    fila_abs, "resultado", res_txt, "no se creó el indicador de resultado",
+                    nombre_archivo, nombre_politica))
             clave_ir = (nombre_politica, codigo_ir)
 
             if codigo_ir and clave_ir not in irs:
@@ -156,8 +200,13 @@ class ExtractorNuevo(EstrategiaExtraccion):
                     )
 
             # IP: una entrada por fila con código de producto.
-            codigo_ip = extraer_codigo(g(valores, "producto"), niveles=3)
+            prod_txt = g(valores, "producto")
+            codigo_ip = extraer_codigo(prod_txt, niveles=3)
             if not codigo_ip:
+                if tiene_contenido(prod_txt):
+                    alertas.append(_codigo_no_reconocido(
+                        fila_abs, "producto", prod_txt, "se omitió el indicador de producto",
+                        nombre_archivo, nombre_politica, codigo_ir=codigo_ir))
                 continue
             nombre_ip = g(valores, "nombre_ip")
             if not nombre_ip:
@@ -218,6 +267,11 @@ class ExtractorNuevo(EstrategiaExtraccion):
                         costo_estimado=costo, recurso_disponible=recurso,
                         fuente_financiacion=fuente, codigo_proyecto=proyecto,
                     ))
+
+        # El peso del objetivo sale de su primera fila vigente, no de la primera
+        # fila: es el mismo criterio que usan las reglas V0/V1.
+        for cod_obj, objetivo in objetivos.items():
+            objetivo.peso_pct = elegir_peso_objetivo(pesos_objetivo[cod_obj])
 
         # 4) Chequeos de consistencia (Fase 5): inconsistencias entre filas del
         #    mismo IR (sobre valores ORIGINALES) y códigos de IP duplicados.
