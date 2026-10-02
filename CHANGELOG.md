@@ -87,6 +87,77 @@ Capa de seguimiento: ver `../_codigo_extraido_pp/PLAN_EXTRACTOR_SEGUIMIENTO.md`.
   objetivo en la columna del peso): su `peso_pct` pasa de ese texto a None,
   porque un peso que no es numérico no cuenta. Sus alertas no cambian.
 
+### Corregido — un peso escrito como «2.86%» ya no cambia la escala de todo el plan
+
+- **`validacion.py::_ponderacion`** (V0/V1/V2) — el factor de escala era uno
+  para todo el plan: ×100 si todos los pesos eran ≤ 1 (decimales), ×1 si no.
+  Como `a_float("2.86%")` da 2.86, un solo peso escrito como texto con «%» en un
+  plan decimal pasaba el plan entero a ×1, y los demás pesos (0.0377,
+  0.1418…) se leían como 0.04 % y 0.14 %. Al revés, un «0,5%» da 0.5 ≤ 1 y se
+  multiplicaba por 100: medio punto se leía como el 50 %.
+
+  Ahora las sumas se hacen en puntos porcentuales y cada peso se lleva a puntos
+  por su cuenta (`_leer_peso` → `(número, trae_pct)`): el texto con «%» va tal
+  cual, porque no es ambiguo, y los números sueltos se multiplican por el factor
+  del plan, que `_factor` decide mirando **solo los números sueltos**. El peso
+  del objetivo se sigue eligiendo de su fila vigente (arriba) y luego se lee
+  igual que los demás. Los planes que escriben todos sus pesos como «%» o como
+  números > 1 (Ruralidad, el único de escala porcentaje del corpus, con 43 de
+  sus pesos de IP ≤ 1) dan lo mismo que antes. Las alertas no cambian de tipo,
+  de nivel ni de redacción.
+  - **Juventud** v9-26: desaparece el ERROR falso «Los 7 objetivo(s) suman
+    1.00%»: suman 100.00 %. El V1 del objetivo 7 se mantiene, porque el
+    descuadre es real, pero ahora con cifras reales: «suman 17.04% pero el peso
+    del objetivo es 14.18%» (antes «3.00% … 0.14%»). Los IR 7.1 a 7.4 suman
+    exactamente 14.18; el 7.5, el único peso escrito como texto («2.86%»), se
+    agregó sin rebajar el objetivo, y todos los IR suman 102.86 %. Además, con
+    el factor ×1 el V2 no podía dispararse en este plan, porque toda diferencia
+    era menor que 0,5 «puntos». Ahora revisa de verdad sus 37 IR, y todos
+    cuadran.
+  - **Seguridad Alimentaria** v7-26: desaparece el ERROR falso «Pesos de IPs
+    del IR '2.2' suman 101.00% pero el peso del IR es 2.00%». Los IP 2.2.2 y
+    2.2.3 traen «0,5%» como texto; 1 + 0,5 + 0,5 = 2.
+
+  Comparado antes/después con `incluir_reglas_negocio=True` sobre los 47 planes
+  de `sispp-gobierno/01_planes_accion`, con el arreglo del peso del objetivo ya
+  aplicado: solo cambian esas dos políticas, con exactamente lo descrito.
+  `ponderacion_objetivos` pasa de 1 a 0 (el de Juventud era el último del
+  corpus) y `ponderacion_ip` de 40 a 39; `ponderacion_ir` se queda en 1 (el de
+  Juventud, ahora con cifras reales), y `ponderacion_faltante`,
+  `vigencia_ponderacion` y el resto de las alertas no se mueven. En los 63
+  archivos únicos de `alertas-seguimientos/Repositorio_Documentos_Politicas`
+  (7 en formato antiguo) cambian solo las copias de esos dos planes.
+
+  Ningún aplicativo hermano llama a `validar_reglas`: el cambio se ve en el CLI,
+  en `tablero` y en los scripts de este repo. `validador_plan_accion`
+  (`reglas_ponderacion.py::_detectar_factor`) tiene su propia copia de la regla
+  vieja y el mismo error.
+
+  Descartado durante el arreglo:
+  - **Dividir entre 100 en `a_float`**: lo usan también las metas, la línea
+    base y las reglas V14 y V17, y su convención («74.97%» → 74.97, en puntos)
+    es la misma de `leer_celda_escala`. Además, una celda sola no sabe en qué
+    escala está el plan: en Ruralidad un «14.7%» debe seguir siendo 14.7.
+  - **Normalizar en `leer_celda_escala` o en `estrategias/nuevo.py`**: los
+    pesos se leen como valores (`leer_filas`), no como celdas, y `peso_pct`
+    sale crudo del modelo a propósito. Los consumidores lo leen así con sus
+    propios parsers, y la estrategia antigua necesitaría el mismo arreglo. La
+    escala de un número suelto solo se puede decidir con el plan entero, y eso
+    pasa únicamente en `validacion`, que es donde se suma.
+  - **Decidir la escala por mayoría**: rompería Ruralidad.
+
+  Queda igual que antes un número suelto en la escala equivocada (2.86
+  tecleado como número en un plan decimal): sin el formato de la celda es
+  ambiguo. No hay ninguno en el corpus.
+
+  Pruebas: 7 casos de V0/V1/V2 en `test_b2_jerarquia.py`. Fallan sin este
+  arreglo los de Juventud, Seguridad Alimentaria, un plan decimal con un «%» y
+  un descuadre en tres escalas. Los de todo «%» y escala porcentaje (Ruralidad)
+  son guardas que pasan antes y después. Uno combina los dos arreglos (el peso
+  vigente del objetivo viene como «50%») y falla con cualquiera de los dos
+  solo. En `test_unidades.py`, `_leer_peso` y `_factor`. Los golden no cambian:
+  la huella se extrae sin `incluir_reglas_negocio` y no incluye V0–V18.
+
 ### Pruebas — la regresión golden de planes vuelve a correr
 
 No cambia la librería: solo las pruebas, el corpus y `scripts/gen_golden.py`.
