@@ -10,7 +10,51 @@ entre sí (`python scripts/pines_consumidores.py`):
 0.12.0 (fórmulas A, B y C) · 0.13.0 (trayectoria ideal) · 0.14.0 (año sin meta,
 decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
 0.17.0 (AV de CONSTANTE sin reportes) · 0.19.0 (códigos con prefijo, pesos del
-objetivo y en «2.86%», planes antiguos 2021–2025).
+objetivo y en «2.86%», planes antiguos 2021–2025) · 0.21.0 (años sueltos en las
+fechas, tolerancia de los acumulados, formatos sin bloques de %).
+
+## [0.21.0] — Lo que apareció al cruzar las actas de revisión de S1-2026 con el motor
+
+Numerada después de la 0.20.0 (fichas, PR #12). Los cuatro casos salieron de
+comparar las 45 actas de revisión de S1-2026 con las alertas que el motor saca
+de los mismos archivos; cada uno tiene su prueba en
+`tests/test_seguimiento_corpus_s1_2026.py`.
+
+### Corregido
+
+- **Un año escrito suelto en una columna de fecha ya no queda en 1905**
+  (`seguimiento/extractor.py::_fecha`). «2024» en *Fecha de inicio* o *Fecha de
+  finalización* se leía como el serial de Excel 2024, el 16 de julio de 1905. En
+  los formatos enviados de S1-2026 eran **244 fechas**, y disparaban alertas de
+  fechas incoherentes («el indicador inicia en 1905…»). Un entero entre 1900 y
+  2100 es ahora un año: «2024-01-01», como ya lo leían
+  `validacion._parse_fecha` (plan) y `metricas.periodo_de_fecha`.
+- **Una celda con error de fórmula se nombra como en Excel**
+  (`seguimiento/loader.py`). pyxlsb entrega un `#REF!` como el texto `'0x17'`;
+  ahora sale `'#REF!'` —lo mismo que entrega openpyxl en un `.xlsx`— y
+  `ERROR_NO_NUMERICO` dice «La celda de 2026 Q3 tiene un error de fórmula de
+  Excel (#REF!): corregir la fórmula o dejar la celda vacía» en vez de «el valor
+  '0x17' no es numérico» (Salud Mental, S1-2026).
+- **`ADVERTENCIA_ACUM_META_FIN` y `ADVERTENCIA_ACUM_META_VIG` toleran el ruido
+  de punto flotante** (`seguimiento/validacion_seg.py::_supera`). Un acumulado
+  de 0.1 + 0.2 = 0.30000000000000004 «superaba» una meta final de 0.3
+  (Seguridad + Paz 4.3.9). Se compara con una tolerancia relativa de 1e-9: un
+  exceso de verdad sigue alertando.
+
+### Añadido
+
+- **Formatos sin los bloques de porcentaje** (`seguimiento/resolutor.py`). Solo
+  *Avance y seguimiento* y *Metas programadas* son anclas obligatorias. Un
+  archivo sin los tres bloques de % —el formato propio con que Movilidad Cero
+  envió S1-2026— se rechazaba entero con `anclas_no_encontradas`; ahora se leen
+  avances, acumulados y metas, los porcentajes (y la meta acumulada, que se
+  ubica desde ellos) quedan vacíos y sale la alerta nueva
+  `anclas_porcentaje_ausentes` (ADVERTENCIA). Los aplicativos calculan esos
+  porcentajes por su cuenta. Comparado con la versión 3.1 que transcribió el
+  SDP, coinciden metas, meta final y los trimestres reportados.
+
+**Cambia cifras**: menos alertas de fechas y de meta final superada en los
+archivos afectados, y archivos que antes no daban indicadores.
 
 ## [0.19.0] — Los códigos con prefijo de tipo («P1.1.1», «R1.1», «OE1.») ya no se pierden
 

@@ -30,6 +30,23 @@ EXTENSIONES = (".xlsb", ".xlsx")
 _EPOCA_EXCEL = _dt.datetime(1899, 12, 30)
 _UN_DIA = _dt.timedelta(days=1)
 
+# Una celda con error de fórmula llega de pyxlsb como ``hex(código)``: un
+# ``#REF!`` es el texto ``'0x17'``. Se traduce al texto que muestra Excel, que es
+# también lo que entrega openpyxl para el mismo error en un ``.xlsx``. Así un
+# mensaje dice «#REF!» y no «0x17», y los dos formatos dan lo mismo.
+ERRORES_EXCEL = {
+    "0x0": "#NULL!", "0x7": "#DIV/0!", "0xf": "#VALUE!", "0x17": "#REF!",
+    "0x1d": "#NAME?", "0x24": "#NUM!", "0x2a": "#N/A", "0x2b": "#GETTING_DATA",
+}
+TEXTOS_ERROR_EXCEL = frozenset(ERRORES_EXCEL.values())
+
+
+def _valor_xlsb(valor):
+    """Valor de pyxlsb con los errores de Excel como los escribe Excel."""
+    if isinstance(valor, str):
+        return ERRORES_EXCEL.get(valor, valor)
+    return valor
+
 
 def _open_workbook(ruta):
     try:
@@ -148,7 +165,7 @@ def leer_hoja(wb, nombre_hoja: str) -> dict:
             if not row:
                 continue
             fila = row[0].r
-            vals = {c.c: c.v for c in row if c.v is not None and c.v != ""}
+            vals = {c.c: _valor_xlsb(c.v) for c in row if c.v is not None and c.v != ""}
             if vals:
                 mapa[fila] = vals
     return mapa

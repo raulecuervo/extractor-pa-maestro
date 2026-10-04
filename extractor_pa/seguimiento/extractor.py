@@ -36,9 +36,17 @@ def _series(fila: dict, col: Optional[int]):
 
 
 def _fecha(valor):
-    """Convierte un serial de Excel (o texto) a fecha ISO 'YYYY-MM-DD'."""
+    """Convierte un serial de Excel (o texto) a fecha ISO 'YYYY-MM-DD'.
+
+    Un entero entre 1900 y 2100 es un año escrito suelto ("2024"), no el serial
+    2024, que sería el 16 de julio de 1905: se toma como el 1 de enero de ese
+    año, igual que ``validacion._parse_fecha`` en el plan y
+    ``metricas.periodo_de_fecha``.
+    """
     if valor is None or valor == "":
         return None
+    if isinstance(valor, (int, float)) and float(valor).is_integer() and 1900 <= valor <= 2100:
+        return f"{int(valor)}-01-01"
     if isinstance(valor, (int, float)):
         try:
             d = _dt.datetime(1899, 12, 30) + _dt.timedelta(days=float(valor))
@@ -54,6 +62,14 @@ def _leer_cuantitativo(mapa, meta, alertas):
     fila_bloques = mapa.get(R.FILA_BLOQUES, {})
     fila_anios = mapa.get(R.FILA_ANIOS, {})
     anclas = R.detectar_anclas(fila_bloques)  # lanza AnclasNoEncontradas
+    faltan_pct = [k for k in R.ANCLAS_PORCENTAJE if k not in anclas]
+    if faltan_pct:
+        alertas.append(crear_alerta(
+            "anclas_porcentaje_ausentes",
+            "El archivo no trae los bloques de porcentaje de avance "
+            f"({', '.join(faltan_pct)}): se leen avances, acumulados y metas, y los "
+            "porcentajes quedan por calcular.",
+            archivo_fuente=meta.archivo_fuente, nombre_politica=meta.nombre_politica))
     (anios, mapa_trim, mapa_acum, mapa_meta, col_meta_final,
      mapa_meta_acum, mapa_pct_vig, mapa_pct_acum, mapa_pct_total) = \
         R.construir_mapas_cuant(fila_anios, anclas)

@@ -60,6 +60,7 @@ from ..catalogo_oficial import norm_entidad
 from .metricas import (calc_mes, calc_meta_periodo, calc_pct_vigencia, hay_meta,
                        lb_de_indicador, periodo_de_fecha, safe_float,
                        trimestre_exigible)
+from .loader import TEXTOS_ERROR_EXCEL
 from .modelo import IndicadorSeguimiento
 
 UMBRAL_PCT_MIN = 0.50          # piso del % hasta la vigencia (si no pasan umbrales)
@@ -420,11 +421,16 @@ def _validar_no_numerico(ind, politica, archivo):
     for q in range(1, 5):
         val = ind.avances.get(f"{year}_Q{q}")
         if val is not None and val != "" and not _es_numerico(val):
+            if str(val) in TEXTOS_ERROR_EXCEL:
+                detalle = (f"La celda de {year} Q{q} tiene un error de fórmula de Excel "
+                           f"({val}): corregir la fórmula o dejar la celda vacía")
+            else:
+                detalle = f"El valor '{str(val)[:60]}' no es numérico en {year} Q{q}"
             out.append(_finding("ERROR_NO_NUMERICO", ind, politica, archivo,
                                 campo=f"Avance {year} Q{q}",
                                 val_nuevo=str(val)[:80],
                                 periodo=f"{year} Q{q}",
-                                detalle=f"El valor '{str(val)[:60]}' no es numérico en {year} Q{q}"))
+                                detalle=detalle))
     return out
 
 
@@ -509,6 +515,16 @@ def _validar_avance_meta(ind, politica, archivo, umbral=UMBRAL_AVANCE):
     return out
 
 
+def _supera(valor, limite, tolerancia=1e-9):
+    """``valor > limite`` sin contar el ruido de punto flotante.
+
+    Los acumulados se suman en el archivo y aquí: 0.1 + 0.2 da
+    0.30000000000000004, que "superaba" una meta final de 0.3 (Seguridad + Paz
+    4.3.9, S1-2026).
+    """
+    return valor > limite + tolerancia * max(1.0, abs(limite))
+
+
 def _validar_acumulado(ind, politica, archivo, anio_min):
     out = []
     year, _ = parse_period(ind.corte, ind.anio_reporte)
@@ -519,7 +535,7 @@ def _validar_acumulado(ind, politica, archivo, anio_min):
         return out
 
     meta_final = safe_float(ind.meta_final)
-    if meta_final is not None and meta_final > 0 and acum_rep > meta_final:
+    if meta_final is not None and meta_final > 0 and _supera(acum_rep, meta_final):
         out.append(_finding("ADVERTENCIA_ACUM_META_FIN", ind, politica, archivo,
                             campo=f"Acumulado {year}",
                             val_base=f"Meta final={meta_final}",
@@ -535,7 +551,7 @@ def _validar_acumulado(ind, politica, archivo, anio_min):
         for y in range(anio_inicio, year + 1)
         if safe_float(ind.metas.get(str(y))) is not None
     )
-    if meta_sum > 0 and acum_rep > meta_sum:
+    if meta_sum > 0 and _supera(acum_rep, meta_sum):
         out.append(_finding("ADVERTENCIA_ACUM_META_VIG", ind, politica, archivo,
                             campo=f"Acumulado {year}",
                             val_base=f"Meta acumulada hasta {year}={meta_sum:g}",
