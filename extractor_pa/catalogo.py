@@ -100,6 +100,11 @@ _TIPOS = [
     TipoAlerta("anclas_no_encontradas", NIVEL_ERROR, "Estructura seguimiento", CAPA_EXTRACCION,
                "No se encontraron las anclas de bloques en la fila de encabezados.",
                implementado=True),
+    TipoAlerta("anclas_porcentaje_ausentes", NIVEL_ADVERTENCIA, "Estructura seguimiento",
+               CAPA_EXTRACCION,
+               "El archivo no trae los bloques de porcentaje de avance; se leen avances, "
+               "acumulados y metas, y los porcentajes quedan por calcular.",
+               implementado=True),
     TipoAlerta("sin_indicadores_seguimiento", NIVEL_ADVERTENCIA, "Estructura seguimiento", CAPA_EXTRACCION,
                "No se extrajo ningún indicador de seguimiento.", implementado=True),
     TipoAlerta("indicador_seguimiento_sin_codigo", NIVEL_INFO, "Estructura seguimiento", CAPA_EXTRACCION,

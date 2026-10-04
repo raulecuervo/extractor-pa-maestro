@@ -47,19 +47,29 @@ ANCLAS_CUANT = {
 }
 
 
+# Sin avances y metas no hay seguimiento. Los bloques de porcentaje son
+# columnas derivadas: hay formatos de entidad (Movilidad Cero, S1-2026) que no
+# los traen, y los aplicativos calculan esos porcentajes por su cuenta.
+ANCLAS_OBLIGATORIAS = ("avance", "metas")
+ANCLAS_PORCENTAJE = ("pct_vig", "pct_acum", "pct_total")
+
+
 class AnclasNoEncontradas(ValueError):
     """No se hallaron las anclas obligatorias en la fila de bloques."""
 
 
 def detectar_anclas(fila_bloques: dict) -> dict:
-    """{nombre_ancla: columna} a partir de la fila de bloques."""
+    """{nombre_ancla: columna} a partir de la fila de bloques.
+
+    Falla solo si faltan las obligatorias; las de porcentaje pueden faltar.
+    """
     anclas = {}
     for col, val in fila_bloques.items():
         texto = str(val).strip()
         for nombre, patron in ANCLAS_CUANT.items():
             if nombre not in anclas and patron.search(texto):
                 anclas[nombre] = col
-    faltantes = [k for k in ANCLAS_CUANT if k not in anclas]
+    faltantes = [k for k in ANCLAS_OBLIGATORIAS if k not in anclas]
     if faltantes:
         raise AnclasNoEncontradas(f"Faltan anclas en la fila de bloques: {faltantes}")
     return anclas
@@ -73,9 +83,11 @@ def construir_mapas_cuant(fila_anios: dict, anclas: dict):
     y pct_vig: col_pct_vig - n + i)."""
     col_avance = anclas["avance"]
     col_metas = anclas["metas"]
-    col_pct_vig = anclas["pct_vig"]
-    col_pct_acum = anclas["pct_acum"]
-    col_pct_total = anclas["pct_total"]
+    # Sin los bloques de porcentaje sus mapas quedan vacíos, y también el de
+    # meta acumulada, que se ubica contando hacia atrás desde 'pct_vig'.
+    col_pct_vig = anclas.get("pct_vig")
+    col_pct_acum = anclas.get("pct_acum")
+    col_pct_total = anclas.get("pct_total")
 
     # Años en el bloque de trimestres (entre 'avance' y 'metas').
     anios = sorted(
@@ -94,10 +106,13 @@ def construir_mapas_cuant(fila_anios: dict, anclas: dict):
         mapa_trim[anio] = {1: base_q, 2: base_q + 1, 3: base_q + 2, 4: base_q + 3}
         mapa_acum[anio] = col_metas - n + i     # los acumulados van justo antes de 'metas'
         mapa_meta[anio] = col_metas + i
-        mapa_meta_acum[anio] = col_pct_vig - n + i   # meta acumulada (antes de pct_vig)
-        mapa_pct_vig[anio] = col_pct_vig + i
-        mapa_pct_acum[anio] = col_pct_acum + i
-        mapa_pct_total[anio] = col_pct_total + i
+        if col_pct_vig is not None:
+            mapa_meta_acum[anio] = col_pct_vig - n + i   # meta acumulada (antes de pct_vig)
+            mapa_pct_vig[anio] = col_pct_vig + i
+        if col_pct_acum is not None:
+            mapa_pct_acum[anio] = col_pct_acum + i
+        if col_pct_total is not None:
+            mapa_pct_total[anio] = col_pct_total + i
     col_meta_final = col_metas + n
     return (anios, mapa_trim, mapa_acum, mapa_meta, col_meta_final,
             mapa_meta_acum, mapa_pct_vig, mapa_pct_acum, mapa_pct_total)
