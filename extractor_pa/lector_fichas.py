@@ -28,12 +28,17 @@ from .utilidades import _norm
 # Detección del CÓDIGO en el nombre de la hoja de ficha. Las plantillas reales
 # usan convenciones muy distintas; el código (N.N para IR, N.N.N para IP) puede ir:
 #   - tras «Ficha técnica IR#/IP#»  (BTI, Discapacidad)
+#   - tras «F IR#/IP#»              (Juventud: «F IR#1.1.», «F IP#1.1.1.»)
 #   - tras «R.»/«P.» o «R »/«P »    (Cultos, Salud Mental)
 #   - tras «IR_»/«IP_» (guion bajo) (Pobreza, Talento Humano)
 #   - al inicio, sin prefijo        (LEO «1.1.1. Desc», Hábitat «1.1.10»)
+# «Ficha» puede venir abreviada como «F» (Juventud). La regex se ancla al inicio del
+# nombre: sin esa abreviatura, la «F» suelta impedía reconocer las 136 fichas de ese
+# plan y todos sus indicadores quedaban «sin ficha técnica». La «F» abreviada exige un
+# espacio después, para no confundir un nombre que simplemente empieza por «F».
 _RE_CODIGO_FICHA = re.compile(
     r"^\s*"
-    r"(?:ficha\s*(?:t[eé]cnica|de\s*producto)?\s*)?"   # «Ficha técnica/de producto» opcional
+    r"(?:(?:ficha|f(?=\s))\s*(?:t[eé]cnica|de\s*producto)?\s*)?"   # «Ficha»/«F» (técnica/de producto) opcional
     r"(?:i[rp]|[rp])?"                                  # prefijo IR/IP o R/P opcional
     r"\s*[#:._\-]?\s*"                                  # separador opcional (incluye «_»)
     r"(\d+(?:\.\d+){1,2})\b",                           # código N.N (IR) o N.N.N (IP)
@@ -81,17 +86,54 @@ def _a_int(valor: Any) -> Optional[int]:
     return int(m.group(0)) if m else None
 
 
+# El bloque «Unidad de medida» de la ficha es una cuadrícula: cada fila trae varias
+# opciones, cada una con su casilla a la derecha (la col 1 es el rótulo de la sección):
+#
+#     col 3        col 4   col 5        col 6   col 8                     col 9
+#     Kilómetros   [ ]     kilos        [ ]     Tasa                      [ ]
+#     Hectáreas    [ ]     Metros       [ ]     Unidad productiva rural   [ ]
+#     Personas     [ ]     Porcentaje   [x]     otro                      [ ]
+#     ¿Cuál?  ______
+_COLS_UNIDAD = range(2, 13)
+_ES_OTRO = ("otro", "otra")
+
+
+def _es_marca(valor: Any) -> bool:
+    return valor is not None and str(valor).strip().lower() == "x"
+
+
+def _opcion_marcada(ws, r: int, c: int) -> Optional[str]:
+    """Etiqueta de la opción a la que pertenece la «x» de (r, c): la celda con texto más
+    cercana a su IZQUIERDA en la misma fila (la casilla va a la derecha de su opción);
+    si no hay ninguna, la más cercana a la derecha."""
+    for cc in list(range(c - 1, _COLS_UNIDAD.start - 1, -1)) + list(range(c + 1, _COLS_UNIDAD.stop)):
+        valor = ws.cell(row=r, column=cc).value
+        if _es_marca(valor):
+            continue
+        cand = _texto(valor)
+        if cand:
+            return cand
+    return None
+
+
 def _leer_unidad(ws) -> Optional[str]:
     """Unidad de medida de la ficha.
 
     Layout observado en planes reales (SDP gobierno): bajo el rótulo «Unidad de
-    medida» hay un listado de opciones y una fila «¿Cuál?» para la unidad
+    medida» hay una cuadrícula de opciones y una fila «¿Cuál?» para la unidad
     personalizada. La unidad seleccionada se determina así:
-      1) Si alguna opción está marcada con «x», esa opción es la unidad.
-      2) Si no, se toma la respuesta escrita junto a «¿Cuál?» (unidad libre,
-         p. ej. «Puntaje», «Componentes»).
+      1) Si alguna opción está marcada con «x», esa opción es la unidad: la que
+         está pegada a la casilla marcada (ver `_opcion_marcada`). Si la marcada
+         es «otro», la unidad es la respuesta escrita junto a «¿Cuál?».
+      2) Si no hay marca, se toma la respuesta escrita junto a «¿Cuál?» (unidad
+         libre, p. ej. «Puntaje», «Componentes»).
     El bloque se acota hasta el siguiente rótulo (Territorialización/Enfoque)
-    para no invadir otras secciones de la ficha."""
+    para no invadir otras secciones de la ficha.
+
+    Hasta la 0.19.0 la marca solo se buscaba en las columnas 1 a 6 y se devolvía
+    primero la etiqueta de la columna 3: con «Porcentaje» marcado (casilla en la
+    col 6) la ficha entregaba «Personas», y las opciones de la tercera columna
+    («Tasa», «Unidad productiva rural») no se leían."""
     fila_u = None
     for r in range(1, 16):
         v = ws.cell(row=r, column=1).value
@@ -109,27 +151,37 @@ def _leer_unidad(ws) -> Optional[str]:
             r_fin = r - 1
             break
 
-    # 1) Opción estándar marcada con «x»: la etiqueta de la opción está en la
-    #    col 3 o en una columna vecina (se descarta la propia «x» y «¿cuál?»).
-    for r in range(fila_u, r_fin + 1):
-        for c in range(1, 7):
-            v = ws.cell(row=r, column=c).value
-            if v is not None and str(v).strip().lower() == "x":
-                for cc in (3, c - 1, c + 1, 2):
-                    cand = _texto(ws.cell(row=r, column=cc).value)
-                    if cand and _norm(cand) not in ("x", "cual", "cual?", "otro", "otra"):
-                        return cand
+    def respuesta_a_cual() -> Optional[str]:
+        """Lo escrito junto a «¿Cuál?» (unidad personalizada)."""
+        for r in range(fila_u, r_fin + 1):
+            for c in range(1, 7):
+                v = ws.cell(row=r, column=c).value
+                if v and "cual" in _norm(v):
+                    for cc in range(c + 1, c + 5):
+                        vr = _texto(ws.cell(row=r, column=cc).value)
+                        if vr and not _es_marca(vr):
+                            return vr
+        return None
 
-    # 2) Respuesta a «¿Cuál?» (unidad personalizada).
+    # 1) Opción marcada con «x». Si hay varias marcas manda la primera en orden de
+    #    lectura; una marca en «otro» remite a la respuesta de «¿Cuál?».
     for r in range(fila_u, r_fin + 1):
-        for c in range(1, 7):
-            v = ws.cell(row=r, column=c).value
-            if v and "cual" in _norm(v):
-                for cc in range(c + 1, c + 5):
-                    vr = _texto(ws.cell(row=r, column=cc).value)
-                    if vr:
-                        return vr
-    return None
+        for c in _COLS_UNIDAD:
+            if not _es_marca(ws.cell(row=r, column=c).value):
+                continue
+            opcion = _opcion_marcada(ws, r, c)
+            if not opcion:
+                continue
+            n = _norm(opcion)
+            if n in _ES_OTRO or "cual" in n:
+                libre = respuesta_a_cual()
+                if libre:
+                    return libre
+                continue
+            return opcion
+
+    # 2) Sin marca: respuesta a «¿Cuál?».
+    return respuesta_a_cual()
 
 
 def leer_fichas(wb) -> dict[str, dict]:
