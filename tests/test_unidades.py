@@ -180,18 +180,121 @@ def test_vigencia_sin_metas():
     assert calcular_vigencia({}, 2025) == (None, None, None, None)
 
 
-# ── lector_fichas.codigo_de_hoja_ficha (5 convenciones de nombre) ──
+# ── lector_fichas.codigo_de_hoja_ficha (6 convenciones de nombre) ──
 @pytest.mark.parametrize("nombre,esperado", [
     ("Ficha técnica IR#1.1", "1.1"),
     ("Ficha técnica IP#1.1.1", "1.1.1"),
     ("R. 1.1", "1.1"),
     ("IR_1.1", "1.1"),
     ("1.1.1. Descripción del producto", "1.1.1"),
+    # Juventud abrevia «Ficha» como «F» y cierra el código con punto.
+    ("F IR#1.1.", "1.1"),
+    ("F IP#7.4.5.", "7.4.5"),
+    ("F IR#3.2", "3.2"),
+    ("f ip#1.1.1", "1.1.1"),
     ("Plan de acción", None),
     ("Instructivo", None),
+    # Una hoja que solo empieza por «F» no es una ficha.
+    ("Formato 2024", None),
+    ("Fuentes 1.2", None),
+    ("F1.2", None),
 ])
 def test_codigo_de_hoja_ficha(nombre, esperado):
     assert codigo_de_hoja_ficha(nombre) == esperado
+
+
+def test_fichas_con_el_prefijo_abreviado_f_enriquecen_los_indicadores(tmp_path):
+    """Plan con las hojas de ficha nombradas como en Juventud («F IR#1.1.», «F IP#1.1.1.»):
+    `leer_fichas` las reconoce y entrega sus campos por código. Antes devolvía un
+    diccionario vacío y el plan entero quedaba «sin ficha técnica»."""
+    import openpyxl
+
+    from extractor_pa.lector_fichas import leer_fichas
+
+    wb = openpyxl.Workbook()
+    wb.active.title = "Plan de acción"
+    for nombre, metodologia in (("F IR#1.1.", "Encuesta anual"), ("F IP#1.1.1.", "Registro administrativo")):
+        ws = wb.create_sheet(nombre)
+        ws.cell(row=3, column=1, value="Metodología de medición")
+        ws.cell(row=3, column=2, value=metodologia)
+        ws.cell(row=4, column=1, value="Días de rezago")
+        ws.cell(row=4, column=2, value="30")
+    wb.create_sheet("Formato 2024").cell(row=3, column=1, value="Metodología de medición")
+    ruta = tmp_path / "plan_fichas_f.xlsx"
+    wb.save(ruta)
+
+    fichas = leer_fichas(openpyxl.load_workbook(ruta))
+    assert set(fichas) == {"1.1", "1.1.1"}
+    assert fichas["1.1"] == {"metodologia": "Encuesta anual", "dias_rezago": 30}
+    assert fichas["1.1.1"]["metodologia"] == "Registro administrativo"
+
+
+# ── lector_fichas._leer_unidad (cuadrícula de opciones con la casilla a la derecha) ──
+def _hoja_unidad(marcas=(), cual=None, celdas=()):
+    """Hoja con el bloque «Unidad de medida» del formato real: tres opciones por fila
+    (cols 3, 5 y 8), cada una con su casilla a la derecha (cols 4, 6 y 9)."""
+    import openpyxl
+
+    ws = openpyxl.Workbook().active
+    ws.cell(row=6, column=1, value="Unidad de medida")
+    for fila, (a, b, c) in enumerate((("Kilómetros", "kilos", "Tasa"),
+                                      ("Hectáreas", "Metros", "Unidad productiva rural"),
+                                      ("Personas", "Porcentaje", "otro")), start=8):
+        ws.cell(row=fila, column=3, value=a)
+        ws.cell(row=fila, column=5, value=b)
+        ws.cell(row=fila, column=8, value=c)
+    ws.cell(row=12, column=2, value="Cuál?")
+    if cual:
+        ws.cell(row=12, column=3, value=cual)
+    ws.cell(row=14, column=1, value="Territorialización del indicador")
+    ws.cell(row=16, column=4, value="X")            # una marca de OTRA sección: no cuenta
+    for fila, columna in marcas:
+        ws.cell(row=fila, column=columna, value="X")
+    for fila, columna, valor in celdas:
+        ws.cell(row=fila, column=columna, value=valor)
+    return ws
+
+
+@pytest.mark.parametrize("marcas,cual,esperado", [
+    ([(10, 4)], None, "Personas"),                   # casilla de la primera columna
+    # Hasta la 0.19.0 estas tres daban «Personas», None y None:
+    ([(10, 6)], None, "Porcentaje"),                 # casilla de la segunda columna
+    ([(8, 9)], None, "Tasa"),                        # casilla de la tercera columna
+    ([(9, 9)], None, "Unidad productiva rural"),
+    ([(8, 6)], None, "kilos"),
+    # «otro» marcado: la unidad es lo escrito en «¿Cuál?».
+    ([(10, 9)], "Puntaje", "Puntaje"),
+    ([(10, 10)], "Componentes", "Componentes"),      # la «x» una celda más allá de «otro»
+    ([(10, 9)], None, None),                         # «otro» marcado y sin respuesta
+    # Sin ninguna marca: la respuesta a «¿Cuál?», como antes.
+    ([], "Hogares", "Hogares"),
+    ([], None, None),
+    # Dos marcas: manda la primera en orden de lectura.
+    ([(10, 6), (10, 9)], "Otra cosa", "Porcentaje"),
+])
+def test_leer_unidad_toma_la_opcion_pegada_a_la_casilla_marcada(marcas, cual, esperado):
+    from extractor_pa.lector_fichas import _leer_unidad
+    assert _leer_unidad(_hoja_unidad(marcas, cual)) == esperado
+
+
+def test_leer_unidad_con_una_opcion_por_fila_y_la_casilla_a_la_izquierda():
+    """Otras plantillas ponen la casilla ANTES de su opción («x  Otro  ¿Cuál?  Empresas»)
+    o no tienen nada a la izquierda de la marca: se toma la opción más cercana."""
+    import openpyxl
+
+    from extractor_pa.lector_fichas import _leer_unidad
+
+    ws = openpyxl.Workbook().active
+    ws.cell(row=6, column=1, value="Unidad de medida")
+    ws.cell(row=8, column=2, value="x")
+    ws.cell(row=8, column=3, value="Hectáreas")
+    assert _leer_unidad(ws) == "Hectáreas"
+
+    ws = openpyxl.Workbook().active
+    ws.cell(row=6, column=1, value="Unidad de medida")
+    for columna, valor in ((2, "Otro"), (3, "X"), (4, "Cuál?"), (5, "Empresas")):
+        ws.cell(row=8, column=columna, value=valor)
+    assert _leer_unidad(ws) == "Empresas"
 
 
 # ── pipeline._es_nombre_politica (C1: nombre vs decreto/CONPES/'No aplica') ──

@@ -128,9 +128,12 @@ varias tablas), `--excel` (varias hojas). Código de salida ≠0 si la extracci�
   (año explícito → año actual → anterior más cercano → primero). Sin
   `anio_vigencia` se usa el año del reloj; el usado queda en
   `metadatos.anio_corte`, y pasarlo de nuevo reproduce la extracción.
-- **Fichas técnicas (Fase 4a):** lee las hojas «Ficha técnica IR#/IP#» y completa
-  `metodologia`, `unidad_medida`, `fuente_datos`, `dias_rezago`, `descripcion`,
-  `observaciones`. Unidad por casilla «x» o por «¿Cuál?» (unidad libre).
+- **Fichas técnicas (Fase 4a):** lee las hojas de ficha («Ficha técnica IR#/IP#»,
+  «F IR#/IP#», «R./P.», «IR_/IP_» o el código solo) y completa `metodologia`,
+  `unidad_medida`, `fuente_datos`, `dias_rezago`, `descripcion`, `observaciones`.
+  La unidad es la opción pegada a la casilla marcada con «x» en la cuadrícula
+  (tres opciones por fila, cada una con su casilla a la derecha); «otro» marcado,
+  o ninguna marca, remite a lo escrito en «¿Cuál?» (unidad libre).
 - **Formato antiguo / bloque financiero (Fase 4b):** detecta la variante con
   bloque financiero (`MAPEO_ANTIGUO`), resuelve IR/IP **por ancla** y extrae el
   bloque financiero (`RegistroFinanciero`: costo, recurso, fuente, proyecto, por año).
