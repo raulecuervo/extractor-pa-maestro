@@ -25,7 +25,7 @@ from collections import defaultdict
 from typing import Optional
 
 from .alertas import crear_alerta
-from .utilidades import _norm, a_float, elegir_peso_objetivo
+from .utilidades import _norm, a_float, elegir_peso_objetivo, fecha_de_valor
 
 EPSILON = 0.5  # tolerancia de sumas de ponderación (en puntos porcentuales)
 
@@ -72,55 +72,16 @@ def _leer_peso(valor) -> tuple[Optional[float], bool]:
     return a_float(valor), isinstance(valor, str) and valor.strip().endswith("%")
 
 
-_EPOCH_EXCEL = _dt.date(1899, 12, 30)   # base de serie de fechas de Excel
-
-
 def _parse_fecha(v) -> Optional[_dt.date]:
-    """Parsea una fecha tolerando varios formatos reales de los planes:
-    datetime/date, AÑO suelto (entero o '2019'), serial de Excel, 'YYYY-MM-DD',
+    """Parsea una fecha tolerando los formatos reales de los planes: datetime/
+    date, AÑO suelto (entero o '2019'), serial de Excel, 'YYYY-MM-DD',
     'DD/MM/YYYY', 'DD/MM/YY' (2 dígitos) y 'MM/DD/YYYY' (formato US).
     Devuelve None ante fechas genuinamente inválidas (p. ej. 31/06, 31/02) o
-    basura — son hallazgos reales que deben quedar como `fecha_invalida`."""
-    if isinstance(v, _dt.datetime):
-        return v.date()
-    if isinstance(v, _dt.date):
-        return v
-    if isinstance(v, (int, float)):
-        y = int(v)
-        # 1900..2100 → año suelto (p. ej. CTI usa 2019..2038 en columnas de fecha).
-        if 1900 <= y <= 2100:
-            return _dt.date(y, 1, 1)
-        # Serial de Excel (rango ~2018..2060 ≈ 43000..58000).
-        if 1 < y <= 80000:
-            try:
-                return _EPOCH_EXCEL + _dt.timedelta(days=y)
-            except (OverflowError, ValueError):
-                return None
-        return None
-    s = str(v or "").strip()
-    if not s:
-        return None
-    # 'YYYY' (año suelto en texto).
-    if re.fullmatch(r"(19|20)\d{2}", s):
-        return _dt.date(int(s), 1, 1)
-    # 'YYYY-MM-DD' (con o sin hora).
-    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
-        try:
-            return _dt.date(int(s[:4]), int(s[5:7]), int(s[8:10]))
-        except ValueError:
-            return None
-    # 'D/M/Y' con día/mes de 1-2 dígitos y año de 2 o 4 dígitos.
-    m = re.match(r"^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2}|\d{4})$", s)
-    if m:
-        a, b, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        if y < 100:                      # año de 2 dígitos → 2000+
-            y += 2000
-        for d, mo in ((a, b), (b, a)):   # DD/MM primero; si falla, MM/DD (US)
-            try:
-                return _dt.date(y, mo, d)
-            except ValueError:
-                continue
-    return None
+    basura — son hallazgos reales que deben quedar como `fecha_invalida`.
+
+    Es :func:`utilidades.fecha_de_valor`, la misma lectura que usa la capa de
+    seguimiento."""
+    return fecha_de_valor(v)
 
 
 def _add(alertas, tipo, desc, ind=None, *, archivo="", politica="", campo=None, valor=None,

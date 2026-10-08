@@ -14,7 +14,6 @@ los reporta como alertas.
 
 from __future__ import annotations
 
-import datetime as _dt
 import os
 import re
 from collections import Counter
@@ -22,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..alertas import crear_alerta
-from ..utilidades import a_int, extraer_codigo, limpiar, limpiar_texto
+from ..utilidades import a_int, extraer_codigo, fecha_de_valor, limpiar, limpiar_texto
 from . import loader, metadatos as meta_mod, resolutor as R
 from .modelo import IndicadorSeguimiento, MetadatosSeguimiento, ResultadoSeguimiento
 
@@ -36,24 +35,24 @@ def _series(fila: dict, col: Optional[int]):
 
 
 def _fecha(valor):
-    """Convierte un serial de Excel (o texto) a fecha ISO 'YYYY-MM-DD'.
+    """Convierte una fecha de la celda a ISO 'YYYY-MM-DD' con
+    :func:`utilidades.fecha_de_valor`, la misma lectura del plan.
 
     Un entero entre 1900 y 2100 es un año escrito suelto ("2024"), no el serial
     2024, que sería el 16 de julio de 1905: se toma como el 1 de enero de ese
-    año, igual que ``validacion._parse_fecha`` en el plan y
-    ``metricas.periodo_de_fecha``.
+    año. Una fecha escrita como texto día/mes/año («01/01/2024», Educación
+    3.1.5 en S1-2026) también se convierte; antes quedaba como texto y el
+    aplicativo la trataba como si no hubiera fecha. Un texto que no es fecha
+    se conserva, para que la validación lo señale; un número fuera de rango
+    queda vacío.
     """
     if valor is None or valor == "":
         return None
-    if isinstance(valor, (int, float)) and float(valor).is_integer() and 1900 <= valor <= 2100:
-        return f"{int(valor)}-01-01"
+    d = fecha_de_valor(valor)
+    if d is not None and 1900 <= d.year <= 2100:
+        return d.isoformat()
     if isinstance(valor, (int, float)):
-        try:
-            d = _dt.datetime(1899, 12, 30) + _dt.timedelta(days=float(valor))
-            if 1900 <= d.year <= 2100:
-                return d.date().isoformat()
-        except (ValueError, OverflowError):
-            return None
+        return None
     return limpiar(valor)
 
 

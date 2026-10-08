@@ -37,7 +37,7 @@ CONTRATO = [
     ("extractor_pa.seguimiento.validacion_seg", "limites_de_semaforo"),
     # alertas-seguimientos/motor_calculo.py reexporta estas fórmulas de metricas.
     *[("extractor_pa.seguimiento.metricas", n) for n in (
-        "safe_float", "parse_lb", "anio_de_serial_excel", "periodo_de_fecha", "hay_meta",
+        "safe_float", "parse_lb", "anio_de_serial_excel", "periodo_de_fecha", "fecha_de_valor", "hay_meta",
         "trimestre_exigible", "trimestre_efectivo", "trimestres_reportados", "calc_mes",
         "sin_iniciar_al_corte", "lb_de_indicador", "calc_lb_ficticia_decreciente",
         "calc_meta_periodo", "calc_meta_acum", "calc_sum_metas_prev",

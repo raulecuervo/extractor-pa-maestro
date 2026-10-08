@@ -120,6 +120,12 @@ def test_el_aviso_nombra_el_error_de_formula(tmp_path):
     (46387.0, "2026-12-31"),
     ("2023-10-01", "2023-10-01"),
     (None, None),
+    # Fecha escrita como texto día/mes/año (Educación 3.1.5, S1-2026).
+    ("01/01/2024", "2024-01-01"),
+    ("15/05/2024", "2024-05-15"),
+    ("1/7/2025", "2025-07-01"),
+    ("2024/05/01", "2024-05-01"),
+    ("sin fecha", "sin fecha"),    # el texto que no es fecha se conserva
 ])
 def test_fecha(valor, esperado):
     assert _fecha(valor) == esperado
