@@ -27,8 +27,10 @@ rompería el gate de paridad con Alertas-Seguimientos.
 from __future__ import annotations
 
 import unicodedata
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any, Optional
+
+from ..utilidades import fecha_de_valor   # se reexporta: la usan los consumidores
 
 
 # ─────────────────────────── conversión numérica ───────────────────────────
@@ -64,33 +66,18 @@ def anio_de_serial_excel(serial: Any) -> Optional[int]:
 
 
 def periodo_de_fecha(raw: Any) -> Optional[tuple]:
-    """``(año, trimestre)`` de una fecha: serial de Excel, ``'YYYY-MM-DD'`` o
-    ``datetime``/``date``. ``None`` si no se reconoce.
+    """``(año, trimestre)`` de una fecha en cualquier formato de
+    :func:`fecha_de_valor` (serial de Excel, año suelto, ``'YYYY-MM-DD'``,
+    ``'DD/MM/YYYY'``, ``datetime``/``date``). ``None`` si no se reconoce.
 
     El extractor maestro entrega las fechas como texto ISO; los archivos
-    legados, como serial. Leer solo el serial dejaba sin fecha de inicio a
-    todo lo cargado con el maestro."""
-    if raw is None or raw == "":
-        return None
-    if isinstance(raw, (datetime, date)):
-        return raw.year, (raw.month - 1) // 3 + 1
-    try:
-        s = float(raw)
-    except (TypeError, ValueError):
-        s = None
-    if s is not None:
-        if s <= 0:
-            return None
-        if s.is_integer() and 1900 <= s <= 2100:
-            return int(s), 1      # un año suelto, no un serial de 1905
-        d = datetime(1899, 12, 30) + timedelta(days=s)
+    legados, como serial. Una fecha que se guardó como texto «01/01/2024»
+    antes de que el extractor la convirtiera también se lee. Un texto que solo
+    empieza por el año se toma como el primer trimestre de ese año."""
+    d = fecha_de_valor(raw)
+    if d is not None:
         return d.year, (d.month - 1) // 3 + 1
-    txt = str(raw).strip()
-    try:
-        d = datetime.strptime(txt[:10], "%Y-%m-%d")
-        return d.year, (d.month - 1) // 3 + 1
-    except ValueError:
-        pass
+    txt = "" if raw is None else str(raw).strip()
     if len(txt) >= 4 and txt[:4].isdigit():
         return int(txt[:4]), 1
     return None

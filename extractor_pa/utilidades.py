@@ -12,10 +12,13 @@ Combina las mejores versiones encontradas en el análisis comparativo:
                     sispp-gobierno).
 - `leer_celda_escala`  lectura de metas respetando el number_format de Excel
                     (de generador-seguimiento: 0.0736 con formato % -> 7.36).
+- `fecha_de_valor`  lectura de fechas en todos los formatos de los planes y
+                    seguimientos (serial, año suelto, ISO, día/mes/año).
 """
 
 from __future__ import annotations
 
+import datetime as _dt
 import re
 import unicodedata
 from typing import Any, Optional
@@ -216,3 +219,60 @@ def leer_celda_escala(cell: Any) -> tuple[Optional[float], bool]:
             return None, False
     f = a_float(s)
     return f, False
+
+
+_EPOCH_EXCEL = _dt.date(1899, 12, 30)   # base de serie de fechas de Excel
+_RE_NUMERO = re.compile(r"[+-]?\d+(?:\.\d+)?")
+_RE_DMY = re.compile(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2}|\d{4})")
+
+
+def fecha_de_valor(valor: Any) -> Optional[_dt.date]:
+    """Fecha de una celda en cualquiera de los formatos de los planes y los
+    seguimientos; ``None`` si no se reconoce o no existe (31/06, 31/02).
+
+    - ``datetime`` / ``date``;
+    - un entero entre 1900 y 2100 (número o texto) es un **año suelto**: el 1 de
+      enero de ese año, no el serial de Excel, que caería en 1905;
+    - otro número (o texto numérico) es un **serial de Excel**;
+    - ``AAAA-MM-DD`` (con o sin hora) y ``AAAA/MM/DD``;
+    - ``D/M/AAAA`` con «/», «-» o «.» y año de 2 o 4 dígitos: **día primero**,
+      como lo muestra Excel en español; si así no existe, mes primero (US).
+
+    Antes la capa de seguimiento solo leía el serial y ``AAAA-MM-DD``: una
+    fecha de inicio escrita como texto «01/01/2024» quedaba sin fecha
+    (Educación 3.1.5, S1-2026), y «2024/05/01» caía en el primer trimestre."""
+    if valor is None or isinstance(valor, bool):
+        return None
+    if isinstance(valor, _dt.datetime):
+        return valor.date()
+    if isinstance(valor, _dt.date):
+        return valor
+    s = valor if isinstance(valor, (int, float)) else str(valor).strip()
+    if isinstance(s, str):
+        if not s:
+            return None
+        if _RE_NUMERO.fullmatch(s):
+            s = float(s)
+    if isinstance(s, (int, float)):
+        if float(s).is_integer() and 1900 <= s <= 2100:
+            return _dt.date(int(s), 1, 1)
+        if 1 < s <= 80000:
+            return _EPOCH_EXCEL + _dt.timedelta(days=int(s))
+        return None
+    m = re.match(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:$|[ T])", s)
+    if m:
+        try:
+            return _dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError:
+            return None
+    m = _RE_DMY.fullmatch(s.split(" ")[0])
+    if m:
+        a, b, anio = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if anio < 100:                       # año de 2 dígitos → 2000+
+            anio += 2000
+        for dia, mes in ((a, b), (b, a)):    # día primero; si no existe, mes primero
+            try:
+                return _dt.date(anio, mes, dia)
+            except ValueError:
+                continue
+    return None

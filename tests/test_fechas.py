@@ -39,6 +39,42 @@ def test_parse_fecha_invalidas(entrada):
     assert _parse_fecha(entrada) is None
 
 
+@pytest.mark.parametrize("entrada,esperado", [
+    ("01/01/2024", dt.date(2024, 1, 1)),
+    ("1/7/2025", dt.date(2025, 7, 1)),
+    ("01-07-2025", dt.date(2025, 7, 1)),
+    ("01.07.2025", dt.date(2025, 7, 1)),
+    ("01/02/2024", dt.date(2024, 2, 1)),     # día primero, como Excel en español
+    ("2024/05/01", dt.date(2024, 5, 1)),
+    ("2024-05-01 00:00:00", dt.date(2024, 5, 1)),
+    ("2024-05-01T08:30", dt.date(2024, 5, 1)),
+    ("45292", dt.date(2024, 1, 1)),          # serial de Excel escrito como texto
+    (45292.75, dt.date(2024, 1, 1)),
+    (2024.0, dt.date(2024, 1, 1)),
+])
+def test_fecha_de_valor(entrada, esperado):
+    from extractor_pa.utilidades import fecha_de_valor
+    assert fecha_de_valor(entrada) == esperado
+
+
+@pytest.mark.parametrize("entrada", [None, "", True, "sin fecha", "2024/13/01", -5, 0])
+def test_fecha_de_valor_invalidas(entrada):
+    from extractor_pa.utilidades import fecha_de_valor
+    assert fecha_de_valor(entrada) is None
+
+
+def test_plan_y_seguimiento_leen_igual_las_fechas():
+    """El plan (`validacion._parse_fecha`) y el seguimiento
+    (`metricas.periodo_de_fecha`) usan la misma lectura."""
+    from extractor_pa.seguimiento.metricas import fecha_de_valor as en_metricas, periodo_de_fecha
+    from extractor_pa.utilidades import fecha_de_valor
+    assert en_metricas is fecha_de_valor
+    for v in ("15/05/2024", "2024-05-15", 45427, "2024"):
+        d = _parse_fecha(v)
+        assert d == fecha_de_valor(v)
+        assert periodo_de_fecha(v) == (d.year, (d.month - 1) // 3 + 1)
+
+
 def test_escala_mezclada_no_marca_conteos_pequenos():
     """Metas 1, 2, 3 (conteos) NO deben marcarse como escala mezclada."""
     from extractor_pa.modelo import IndicadorProducto

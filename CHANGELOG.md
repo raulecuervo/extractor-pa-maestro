@@ -13,7 +13,28 @@ decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
 objetivo y en «2.86%», planes antiguos 2021–2025) · 0.20.0 (unidad de medida
 de las fichas técnicas; fichas de Juventud) ·
 0.21.0 (años sueltos en las fechas, tolerancia de los acumulados, formatos sin
-bloques de %).
+bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año).
+
+## [0.22.0] — Fechas escritas como texto día/mes/año
+
+### Corregido
+
+- **Una fecha escrita como texto «01/01/2024» ya no queda sin fecha**
+  (`seguimiento/extractor.py::_fecha`, `seguimiento/metricas.py::periodo_de_fecha`).
+  La capa de seguimiento solo leía el serial de Excel, el año suelto y el texto
+  «AAAA-MM-DD»; un texto día/mes/año se guardaba tal cual y el aplicativo
+  trataba el indicador como si no tuviera fecha de inicio: no sabía si ya había
+  iniciado ni le ponía semáforo (Educación 3.1.5, S1-2026). Ahora `_fecha` lo
+  convierte a ISO al leer el archivo y `periodo_de_fecha` también lo reconoce
+  si ya está guardado como texto. Día primero, como lo muestra Excel en
+  español; si así la fecha no existe, mes primero (US). También se leen «-» y
+  «.» como separadores y «AAAA/MM/DD», que antes caía siempre en el primer
+  trimestre.
+- **Una sola lectura de fechas** (`utilidades.fecha_de_valor`): la usan el plan
+  (`validacion._parse_fecha`, que ya leía día/mes/año) y el seguimiento. Se
+  reexporta desde `seguimiento.metricas` para los aplicativos.
+- `_fecha` devuelve la fecha ISO también cuando la celda llega como `datetime`
+  (antes quedaba el objeto tal cual).
 
 ## [0.21.0] — Lo que apareció al cruzar las actas de revisión de S1-2026 con el motor
 

@@ -161,6 +161,17 @@ def test_periodo_de_fecha_serial_iso_y_datetime():
     assert periodo_de_fecha("sin fecha") is None
 
 
+def test_periodo_de_fecha_texto_dia_mes_anio():
+    """Una fecha guardada como texto día/mes/año también se lee (Educación
+    3.1.5 quedaba sin fecha de inicio); «AAAA/MM/DD» ya no pierde el mes."""
+    assert periodo_de_fecha("01/01/2024") == (2024, 1)
+    assert periodo_de_fecha("15/05/2024") == (2024, 2)
+    assert periodo_de_fecha("1/10/2025") == (2025, 4)
+    assert periodo_de_fecha("01-07-2026") == (2026, 3)
+    assert periodo_de_fecha("2024/05/01") == (2024, 2)
+    assert periodo_de_fecha("2024-05-01 00:00:00") == (2024, 2)
+
+
 def test_sin_iniciar_hasta_su_primer_reporte_exigible():
     # Anual que inicia en enero de 2026: a junio aún no reporta → fuera del cálculo
     assert sin_iniciar_al_corte("2026-01-01", "Anual", 2026, 2)
