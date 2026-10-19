@@ -15,6 +15,101 @@ de las fichas técnicas; fichas de Juventud) ·
 0.21.0 (años sueltos en las fechas, tolerancia de los acumulados, formatos sin
 bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año).
 
+## [0.23.0] — El listado oficial de entidades y sectores vive en la librería
+
+No cambia cifras. Cambia qué sectores y entidades se consideran oficiales (regla
+V4) y cómo se sugiere la grafía correcta.
+
+### Añadido
+
+- **`extractor_pa/data/entidades_distrito.json`**, versión **1.0.0** del
+  listado (2026-10-14): 18 sectores y 67 entidades del Distrito con sigla,
+  etiqueta («Nombre, SIGLA»), sector, tipo (distrital, nacional, regional,
+  categoría genérica), estado (`activa`) y alias. Lo consolidó
+  alertas-seguimientos a partir de los ocho catálogos que tenían los
+  aplicativos. Es la **fuente única** de sectores y entidades de la librería:
+  viaja dentro del paquete (`package-data`) y cambia solo con versión.
+- **`extractor_pa/catalogo_entidades.py`**: `cargar(ruta=None) -> Listado`
+  (caché por ruta, mtime y tamaño; `huella` = sha256 del JSON canónico);
+  `Sector`, `Entidad` y `Listado` (con `entidad()`, `sector()` y `sector_de()`);
+  `normalizar` (la regla única: sin tildes, minúsculas, sin puntuación, espacios
+  colapsados) y `clave_compacta` (sin espacios, para los desplegables tipo
+  «IntegraciónSocial»); `canonizar_entidad` / `canonizar_sector` (exacta
+  normalizada contra etiqueta, nombre, sigla y alias; si no, por clave compacta;
+  **sin coincidencia difusa**: lo desconocido devuelve `None`); `sector_de`;
+  `entidad_sector_norm()` (el mapa que se inyecta a
+  `validacion_seg.validar_consistencia`); `sectores_oficiales()` y
+  `entidades_oficiales()`; `integridad(listado)` (nombres y alias repetidos,
+  sector inexistente, sigla repetida, grafía compartida con un sector ajeno,
+  `nombre_normalizado` desactualizado). La variable de entorno
+  `EXTRACTOR_PA_LISTADO` apunta a otro JSON como camino de urgencia.
+  `extractor_pa` exporta `catalogo_entidades`, `cargar_listado`,
+  `canonizar_entidad`, `canonizar_sector`, `sector_de`, `entidad_sector_norm`,
+  `normalizar`, `Listado`, `Entidad` y `Sector`.
+- `scripts/gen_entidad_sector.py` regenera el derivado `data/entidad_sector.json`.
+
+### Cambiado
+
+- **`catalogo_oficial.py` ya no tiene listas escritas en código.**
+  `SECTORES_OFICIALES` (de 16 a 18: se suman «Concejo de Bogotá» y «Entidades
+  no distritales»; «Entes de Control» se mantiene) y `ENTIDADES_OFICIALES`
+  (nombre, etiqueta y sigla de cada entidad del listado) se calculan al importar
+  desde el JSON. `CatalogoOficial`, `CATALOGO_OFICIAL_DEFECTO`,
+  `sugerencias_normalizacion`, `aplicar_normalizacion`, `norm_entidad`,
+  `ENTIDAD_SECTOR` y `sector_oficial_de` siguen existiendo con la misma firma.
+  La membresía (`es_sector_oficial` / `es_entidad_oficial`) ignora ahora
+  también la puntuación, y las sugerencias salen de equivalencias conocidas:
+  acentos y caso, clave compacta y alias del listado («Secretaría de Integración
+  Social» → «Secretaría Distrital de Integración Social»).
+- `norm_entidad` es la regla única `catalogo_entidades.normalizar`; produce lo
+  mismo que antes.
+- `data/entidad_sector.json` pasa a ser un **derivado** del listado
+  ({etiqueta: sector}; de 25 a 67 entidades). La librería ya no lo lee; se
+  conserva porque los `.spec` de PyInstaller de sispp-gobierno y sispp-SDP lo
+  nombran por ruta. Una prueba lo mantiene sincronizado.
+- Si el JSON del listado no está (un ejecutable congelado que no lo empaquetó),
+  `import extractor_pa` falla con un mensaje que dice qué incluir, en vez de
+  validar en silencio contra una lista vacía.
+
+### Retirado
+
+- La **normalización difusa** con `rapidfuzz` y el extra `fuzzy` de
+  `pyproject.toml`: `pip install extractor-pa[fuzzy]` ya no hace falta y `dev`
+  ya no lo instala. `CatalogoOficial(umbral_fuzzy=…)` se acepta y se ignora.
+  «Secretaria de Movilidad» ya no se corrige por parecido: si una grafía debe
+  reconocerse, se agrega como alias en la versión siguiente del listado.
+
+### Cómo migrar
+
+- Los consumidores que importaban `SECTORES_OFICIALES`, `ENTIDADES_OFICIALES`,
+  `CatalogoOficial` o `norm_entidad` siguen funcionando sin cambios.
+- Para reconocer variantes de grafía, `canonizar_entidad(texto)` y
+  `canonizar_sector(texto)` (devuelven la `Entidad` o el `Sector`, o `None`) y
+  `sector_de(texto)`; para la regla ADVERTENCIA_SECTOR_ENTIDAD,
+  `validar_consistencia(base, nuevo, entidad_sector=entidad_sector_norm())`.
+- Una grafía nueva no se arregla editando el JSON en el aplicativo: allí se
+  administra como equivalencia propia y se propone como alias para la versión
+  siguiente del listado (README, «Listado oficial de entidades y sectores»).
+- PyInstaller: empaquetar `extractor_pa/data/entidades_distrito.json` (o toda
+  la carpeta `extractor_pa/data/`).
+
+### Pruebas
+
+- `tests/test_catalogo_entidades.py` (nuevo): integridad del JSON publicado,
+  versión 1.0.0 y tamaño, huella estable entre cargas y sensible a un alias
+  (no al formato), caché que recoge el archivo cambiado, normalización y clave
+  compacta, canonización de ICBF («ICBF», «Nacional-ICBF», «Instituto
+  Colombiano de Bienestar Familiar ICBF»), de Invest in Bogotá y de los
+  sectores pegados («IntegraciónSocial», «Gestiónpública»), coincidencia exacta
+  y ausencia de difusa, entidades inactivas, `EXTRACTOR_PA_LISTADO`, errores
+  claros, `entidad_sector_norm`, `sectores_oficiales` / `entidades_oficiales`
+  e `integridad` con cada tipo de problema.
+- `tests/test_catalogo_oficial.py`: `test_sugerencia_fuzzy` pasa a
+  `test_sugerencias_deterministas` (su aserción «Secretaria de Movilidad» → SDM
+  dependía de rapidfuzz; ahora se afirma que **no** se sugiere) y se añaden las
+  listas desde el JSON, V4 con sugerencia sin fuzzy, un catálogo propio sin los
+  alias del listado y el derivado `entidad_sector.json` sincronizado.
+
 ## [0.22.0] — Fechas escritas como texto día/mes/año
 
 ### Corregido

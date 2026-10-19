@@ -79,14 +79,14 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 |---|---|
 | `pip install` desde git en su CI | alertas-seguimientos, sispp-gobierno |
 | `pip install` desde git en el Dockerfile (por eso la imagen lleva git) | sispp-sdis |
-| PyInstaller empaqueta los submódulos y los datos (`data/entidad_sector.json`) | sispp-gobierno, sispp-SDP (`sispp_pipeline.spec`) |
+| PyInstaller empaqueta los submódulos y los datos (`data/entidad_sector.json`; desde la 0.23.0 debe incluir también `data/entidades_distrito.json`, el listado oficial, o toda la carpeta `data/`: sin él `import extractor_pa` falla) | sispp-gobierno, sispp-SDP (`sispp_pipeline.spec`) |
 | Comprueba al arrancar que el intérprete tenga `extractor_pa` | sispp-gobierno, sispp-SDP (`app/runner.py`) |
 
 ## Lo que ningún aplicativo usa
 
 Existe en la librería, pero ningún aplicativo lo llama:
 - `incluir_reglas_negocio=True` y `validar_reglas` (reglas V0–V18): el validador corre sus propias reglas.
-- `catalogo_oficial` (V4) y la normalización difusa.
+- `catalogo_oficial` (V4) y las sugerencias de normalización (la difusa se retiró en la 0.23.0). El listado oficial de sectores y entidades (`catalogo_entidades`, 0.23.0) está por adoptar: cada aplicativo sigue con su lista propia.
 - Gobernanza de alertas (`RegistroGobernanza`) y decisiones humanas (`RegistroDecisiones`).
 - Exportadores (`exportar_*`, `tablas`, `a_dataframes`), tablero HTML y CLI.
 - `cruzar_con_plan`, `consolidar` y `semaforo_de` del seguimiento.
