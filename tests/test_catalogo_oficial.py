@@ -40,12 +40,14 @@ def test_membresia_y_normalizacion():
     # La sigla es grafía oficial; un alias se reconoce (se sugiere) pero no es oficial.
     assert c.es_entidad_oficial("SDIS") is True
     assert c.es_entidad_oficial("Secretaría de Integración Social") is False
+    # Una errata del listado tampoco es oficial: se reconoce para sugerir la corrección.
+    assert c.es_entidad_oficial("Secretaria Distrial de Integración Social") is False
 
 
 def test_sugerencias_deterministas():
     """Antes de la 0.23.0 las sugerencias venían de rapidfuzz (parecidos); ahora
     salen de equivalencias conocidas: acentos/caso/puntuación, clave compacta y
-    alias del listado. Lo que no es una equivalencia no se sugiere."""
+    alias o erratas del listado. Lo que no es una equivalencia no se sugiere."""
     c = CatalogoOficial()
     assert c.sugerir_sector("GestiónPública") == "Gestión Pública"               # clave compacta
     assert c.sugerir_sector("Mujer") == "Mujeres"                                # alias del listado
@@ -53,7 +55,11 @@ def test_sugerencias_deterministas():
     assert c.sugerir_entidad("SECRETARIA DISTRITAL DE MOVILIDAD") == "Secretaría Distrital de Movilidad"
     assert c.sugerir_entidad("Secretaría de Integración Social") == "Secretaría Distrital de Integración Social"
     assert c.sugerir_entidad("SDIS") is None                                     # sigla oficial: no se corrige
-    assert c.sugerir_entidad("Secretaria de Movilidad") == "Secretaría Distrital de Movilidad"   # alias del listado 1.0.1
+    # «Secretaría de Movilidad» es alias de la SDM desde el listado 1.0.1: se sugiere
+    # por equivalencia, no por parecido. Una errata del listado también se corrige.
+    assert c.sugerir_entidad("Secretaria de Movilidad") == "Secretaría Distrital de Movilidad"
+    assert c.sugerir_entidad("Secretaria Distrial de Integración Social") == "Secretaría Distrital de Integración Social"
+    assert c.sugerir_entidad("Secretaria de Mobilidad") is None                  # parecido, no equivalencia
 
 
 def test_umbral_fuzzy_se_acepta_y_se_ignora():

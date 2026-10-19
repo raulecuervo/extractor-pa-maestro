@@ -11,7 +11,7 @@ Desde la 0.23.0 aquí no hay listas escritas en código: `SECTORES_OFICIALES` y
 `data/entidades_distrito.json` (módulo `catalogo_entidades`), para que esta
 librería y los aplicativos validen contra la misma fuente. La normalización
 difusa con `rapidfuzz` se retiró: una sugerencia sale solo de una equivalencia
-conocida (alias del listado o clave compacta), nunca de un parecido.
+conocida (alias o errata del listado, o clave compacta), nunca de un parecido.
 """
 
 from __future__ import annotations
@@ -36,7 +36,8 @@ class CatalogoOficial:
     """Catálogo de sectores/entidades oficiales con sugerencias deterministas.
 
     Sin argumentos usa el listado oficial completo: la membresía la dan las grafías
-    oficiales y las sugerencias salen también de los alias del listado. Con
+    oficiales y las sugerencias salen también de los alias y las erratas del
+    listado (`catalogo_entidades.clasificar_entidad` dice cuál fue). Con
     `sectores` o `entidades` propios, la membresía y las sugerencias se limitan a
     esa lista (coincidencia normalizada y por clave compacta).
 
@@ -85,7 +86,7 @@ class CatalogoOficial:
         if oficial is None:
             oficial = compacta.get(n.replace(" ", ""))   # «GestiónPública»
         if oficial is None and canonizar is not None:
-            obj = canonizar(valor)                       # alias del listado → nombre oficial
+            obj = canonizar(valor)                       # alias o errata del listado → nombre oficial
             oficial = obj.nombre if obj is not None else None
         return oficial if oficial is not None and oficial != str(valor).strip() else None
 

@@ -46,7 +46,7 @@ from .catalogo_oficial import (
 from . import catalogo_entidades
 from .catalogo_entidades import (
     Listado, Entidad, Sector, cargar_listado, canonizar_entidad, canonizar_sector,
-    sector_de, entidad_sector_norm, normalizar,
+    clasificar_entidad, clasificar_sector, sector_de, entidad_sector_norm, normalizar,
 )
 from .exportadores import (
     tablas,
@@ -102,6 +102,8 @@ __all__ = [
     "cargar_listado",
     "canonizar_entidad",
     "canonizar_sector",
+    "clasificar_entidad",
+    "clasificar_sector",
     "sector_de",
     "entidad_sector_norm",
     "normalizar",

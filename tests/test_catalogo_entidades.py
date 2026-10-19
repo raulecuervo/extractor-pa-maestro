@@ -4,7 +4,9 @@
 El listado es la fuente única de `SECTORES_OFICIALES`, `ENTIDADES_OFICIALES` y
 del mapa entidad → sector. Estas pruebas fijan lo que los aplicativos pueden dar
 por sentado: el JSON publicado es íntegro y versionado, la canonización es
-determinista (sin coincidencia difusa) y la huella cambia si cambian los datos.
+determinista (sin coincidencia difusa), los alias y las erratas van separados
+—y `clasificar_*` dice con cuál coincidió una grafía— y la huella cambia si
+cambian los datos.
 """
 
 import json
@@ -12,11 +14,15 @@ import json
 import pytest
 
 from extractor_pa.catalogo_entidades import (
-    RUTA_LISTADO, VARIABLE_RUTA, Entidad, Listado, Sector,
-    canonizar_entidad, canonizar_sector, cargar, clave_compacta, construir,
-    entidad_sector_norm, entidades_oficiales, integridad, normalizar, sector_de,
-    sectores_oficiales,
+    ALIAS, ERRATA, OFICIAL, RUTA_LISTADO, VARIABLE_RUTA, Entidad, Listado, Sector,
+    canonizar_entidad, canonizar_sector, cargar, clasificar_entidad, clasificar_sector,
+    clave_compacta, construir, entidad_sector_norm, entidades_oficiales, integridad,
+    normalizar, sector_de, sectores_oficiales,
 )
+
+#: Versión del listado que viaja en el paquete. Cambia solo con una versión nueva
+#: del listado (y de la librería).
+VERSION = "1.0.1"
 
 
 def _json_publicado() -> dict:
@@ -34,12 +40,15 @@ def test_el_listado_publicado_es_integro():
     assert integridad(cargar()) == []
 
 
-def test_version_publicada_y_tamano():
-    """Cambian solo con una versión nueva del listado (y de la librería)."""
+def test_version_publicada():
+    """La versión cambia solo con una versión nueva del listado (y de la librería).
+    El número de sectores y entidades no se fija aquí: lo que importa es que el
+    listado sea íntegro, no su tamaño."""
     lst = cargar()
-    assert lst.version == "1.0.1"
-    assert len(lst.sectores) == 18 and len(lst.entidades) == 67
+    assert lst.version == VERSION
     assert lst.fecha and lst.fuente
+    assert lst.sectores and lst.entidades
+    assert integridad(lst) == []
 
 
 def test_huella_estable_entre_cargas():
@@ -114,7 +123,10 @@ def test_icbf_resuelve_por_sigla_alias_y_etiqueta(grafia):
 
 @pytest.mark.parametrize("grafia", ["Invest In Bogota", "Invest in Bogotá", "INVEST IN BOGOTÁ"])
 def test_invest_in_bogota_es_la_corporacion(grafia):
-    e = canonizar_entidad(grafia)
+    """Resuelve por la sigla («Invest in Bogotá»): ya no hace falta un alias que
+    la repita sin tilde, porque la comparación normaliza."""
+    clase, e = clasificar_entidad(grafia)
+    assert clase == OFICIAL
     assert e.nombre == "Corporación para el Desarrollo y la Productividad Bogotá Región"
     assert e.sector == "Desarrollo Económico, Industria y Turismo"
 
@@ -131,6 +143,7 @@ def test_coincidencia_exacta():
     assert (e.id, e.sigla, e.sector) == ("SDA", "SDA", "Ambiente")
     assert canonizar_entidad("Secretaría Distrital de Ambiente, SDA") is e   # etiqueta
     assert canonizar_entidad("sda") is e                                      # sigla
+    assert canonizar_entidad("Secretaría de Ambiente") is e                   # alias (1.0.1)
     assert canonizar_sector("Ambiente").nombre == "Ambiente"
 
 
@@ -143,6 +156,8 @@ def test_sin_coincidencia_difusa(grafia):
     assert canonizar_entidad(grafia) is None
     assert canonizar_sector(grafia) is None
     assert sector_de(grafia) is None
+    assert clasificar_entidad(grafia) == (None, None)
+    assert clasificar_sector(grafia) == (None, None)
 
 
 def test_entidad_inactiva_sigue_resolviendo():
@@ -159,6 +174,136 @@ def test_metodos_del_listado():
     assert lst.sector_de("nadie") is None
 
 
+# ─────────────────────────── alias y erratas ───────────────────────────
+# Un alias es otra forma legítima de escribir el mismo nombre: se reconoce sin
+# avisar. Una errata es una grafía mal escrita que apareció en formatos reales:
+# se reconoce para agrupar bien, pero el Validador debe avisar. Desde el listado
+# 1.0.1 van en campos separados.
+
+ERRATAS_DE_SECTOR = [
+    ("Cultura, Recrecación y Deporte", "Cultura, Recreación y Deporte"),
+    ("Desarrollo Econimico", "Desarrollo Económico, Industria y Turismo"),
+    ("Secretaría, Convivencia y Justicia", "Seguridad, Convivencia y Justicia"),
+    ("Entidades No Distrtitales", "Entidades no distritales"),
+]
+
+ERRATAS_DE_ENTIDAD = [
+    ("Instituto Disitrital de Gestión de Riesgos y Cambio Climático IDIGER", "IDIGER"),
+    ("Instituto Disitrital de Protección y Bienestar Animal", "IDPYBA"),
+    ("Corporación para el Desarollo y la productividad Bogotá Región Invest In Bogotá", "INVEST"),
+    ("Agencia Distrital para la Eduacción Superior, la Ciencia y la Tecnología", "ATENEA"),
+    ("Secretaría de Educación del Distrital", "SED"),
+    ("Secretaría de Educación del Distrito (SDE)", "SED"),
+    ("Insituto Distrital de la Participación y Acción Comunal - IDPAC", "IDPAC"),
+    ("Secretaría Disrital de Gobierno", "SDG"),
+    ("Unidad Administrativa Especial de Serecios Publicos - UAESP", "UAESP"),
+    ("Secretaria Distrial de Integración Social", "SDIS"),
+    ("Entidades No Distrtitales", "NO_DISTRITALES"),
+]
+
+
+@pytest.mark.parametrize("grafia,sector", ERRATAS_DE_SECTOR)
+def test_la_errata_de_sector_resuelve_pero_se_clasifica_como_errata(grafia, sector):
+    assert canonizar_sector(grafia).nombre == sector
+    clase, s = clasificar_sector(grafia)
+    assert clase == ERRATA and s.nombre == sector
+    assert grafia in s.erratas and grafia not in s.alias
+
+
+@pytest.mark.parametrize("grafia,id_entidad", ERRATAS_DE_ENTIDAD)
+def test_la_errata_de_entidad_resuelve_pero_se_clasifica_como_errata(grafia, id_entidad):
+    assert canonizar_entidad(grafia).id == id_entidad
+    clase, e = clasificar_entidad(grafia)
+    assert clase == ERRATA and e.id == id_entidad
+    assert grafia in e.erratas and grafia not in e.alias
+    assert sector_de(grafia) == e.sector                      # agrupa, aunque avise
+
+
+def test_toda_grafia_del_listado_se_clasifica_con_su_dueno():
+    """Lo que vale para las grafías de arriba vale para todas las del JSON: cada
+    nombre oficial, alias y errata resuelve a su dueño con su clase, de modo que
+    ninguna errata queda tapada por un alias igual ni al revés."""
+    lst = cargar()
+    for s in lst.sectores:
+        assert clasificar_sector(s.nombre) == (OFICIAL, s)
+        for g in s.alias:
+            assert clasificar_sector(g) == (ALIAS, s), g
+        for g in s.erratas:
+            assert clasificar_sector(g) == (ERRATA, s), g
+    for e in lst.entidades:
+        for g in e.nombres_oficiales():
+            assert clasificar_entidad(g) == (OFICIAL, e), g
+        for g in e.alias:
+            assert clasificar_entidad(g) == (ALIAS, e), g
+        for g in e.erratas:
+            assert clasificar_entidad(g) == (ERRATA, e), g
+
+
+def test_clasificar_entidad_distingue_oficial_alias_y_errata():
+    sdm = canonizar_entidad("SDM")
+    assert clasificar_entidad("SDM") == (OFICIAL, sdm)
+    assert clasificar_entidad("Secretaría Distrital de Movilidad, SDM") == (OFICIAL, sdm)
+    assert clasificar_entidad("Secretaría de Movilidad") == (ALIAS, sdm)            # alias nuevo en 1.0.1
+    assert clasificar_entidad("SecretaríaDistritalDeMovilidad") == (ALIAS, sdm)     # clave compacta del nombre
+    assert clasificar_entidad("Secretaría de Ambiente") == (ALIAS, canonizar_entidad("SDA"))
+    assert clasificar_entidad("Secretaria Distrial de Integración Social") == (ERRATA, canonizar_entidad("SDIS"))
+    assert clasificar_entidad("SecretariaDistrialDeIntegraciónSocial")[0] == ERRATA  # compacta de una errata
+    assert clasificar_entidad("Metrovivienda")[0] == OFICIAL                         # inactiva, pero oficial
+
+
+def test_clasificar_sector_distingue_oficial_alias_y_errata():
+    social = canonizar_sector("Integración Social")
+    assert clasificar_sector("Integración Social") == (OFICIAL, social)
+    assert clasificar_sector("Sector Social") == (ALIAS, social)
+    assert clasificar_sector("IntegraciónSocial") == (ALIAS, social)                 # clave compacta
+    assert clasificar_sector("Cultura, Recrecación y Deporte")[0] == ERRATA
+
+
+def test_sdh_es_hacienda_y_no_habitat():
+    """«SDH» es la sigla de Hacienda. La SDHT tenía el alias «Secretaría Distrital
+    del Hábitat (SDH)», que una búsqueda por sigla confundiría; se retiró."""
+    assert clasificar_entidad("SDH")[1].sector == "Hacienda"
+    habitat = canonizar_entidad("SDHT")
+    assert habitat.sector == "Hábitat"
+    assert all("sdh" not in normalizar(g).split() for g in habitat.grafias())
+
+
+def test_nacional_icbf_es_la_entidad_icbf_y_no_un_sector():
+    """«Nacional-ICBF» es una grafía de la entidad ICBF; no es un sector, así que
+    ya no está entre los alias del sector «Entidades no distritales»."""
+    assert clasificar_entidad("Nacional-ICBF") == (ALIAS, canonizar_entidad("ICBF"))
+    assert clasificar_sector("Nacional-ICBF") == (None, None)
+    assert canonizar_sector("Nacional").nombre == "Entidades no distritales"   # ese alias sí queda
+
+
+def test_ningun_alias_repite_una_grafia_oficial_de_su_dueno():
+    """Un alias que repite el nombre, la etiqueta o la sigla de su propia entidad
+    (o el nombre de su propio sector) sobra: `integridad` lo denuncia y el JSON
+    publicado no lo tiene."""
+    lst = cargar()
+    for e in lst.entidades:
+        propias = {normalizar(g) for g in e.nombres_oficiales()}
+        assert not propias & {normalizar(a) for a in e.alias}, e.id
+    for s in lst.sectores:
+        assert normalizar(s.nombre) not in {normalizar(a) for a in s.alias}, s.nombre
+
+
+def test_un_listado_1_0_0_sin_erratas_carga_igual(tmp_path):
+    """El campo `erratas` llegó en el listado 1.0.1; un JSON 1.0.0 (sin él) carga
+    con erratas vacías, íntegro, y simplemente no reconoce las grafías mal escritas."""
+    datos = _json_publicado()
+    for x in datos["sectores"] + datos["entidades"]:
+        del x["erratas"]
+    datos["version"] = "1.0.0"
+    lst = cargar(_escribir(tmp_path / "listado_100.json", datos))
+    assert lst.version == "1.0.0" and len(lst.entidades) == len(cargar().entidades)
+    assert all(x.erratas == () for x in lst.sectores + lst.entidades)
+    assert integridad(lst) == []
+    assert clasificar_entidad("SDIS", lst) == (OFICIAL, lst.entidad("SDIS"))
+    assert canonizar_entidad("Secretaria Distrial de Integración Social", lst) is None
+    assert canonizar_sector("Desarrollo Econimico", lst) is None
+
+
 # ─────────────────────────── vistas para los consumidores ───────────────────────────
 
 def test_entidad_sector_norm_tiene_las_variantes():
@@ -168,22 +313,26 @@ def test_entidad_sector_norm_tiene_las_variantes():
     assert mapa[normalizar("Secretaría Distrital de Integración Social, SDIS")] == "Integración Social"
     assert mapa["sdis"] == "Integración Social"
     assert mapa["eru"] == "Hábitat"                               # alias histórico de Renobo
+    assert mapa[normalizar("Secretaria Distrial de Integración Social")] == "Integración Social"   # errata
+    assert mapa[normalizar("Secretaría Disrital de Gobierno")] == "Gobierno"                     # errata
     assert all(k and k == normalizar(k) for k in mapa)            # claves ya normalizadas
     assert set(mapa.values()) <= sectores_oficiales()
 
 
 def test_sectores_oficiales_son_los_del_json():
     esperados = {s["nombre"] for s in _json_publicado()["sectores"]}
-    assert sectores_oficiales() == esperados and len(esperados) == 18
+    assert sectores_oficiales() == esperados
     assert {"Entes de Control", "Concejo de Bogotá", "Entidades no distritales"} <= esperados
     assert "Órganos de Control" not in esperados                   # alias, no nombre oficial
+    assert "Desarrollo Econimico" not in esperados                 # errata, menos aún
 
 
-def test_entidades_oficiales_incluyen_nombre_etiqueta_y_sigla_pero_no_alias():
+def test_entidades_oficiales_incluyen_nombre_etiqueta_y_sigla_pero_no_alias_ni_erratas():
     oficiales = entidades_oficiales()
     assert {"Secretaría Distrital de Integración Social",
             "Secretaría Distrital de Integración Social, SDIS", "SDIS"} <= oficiales
     assert "Secretaría de Integración Social" not in oficiales      # alias
+    assert "Secretaria Distrial de Integración Social" not in oficiales   # errata
     assert "Metrovivienda" in oficiales                             # inactiva, pero oficial
 
 
@@ -205,14 +354,14 @@ def test_variable_de_entorno_cambia_el_listado(tmp_path, monkeypatch):
     assert canonizar_entidad("ICBF") is None               # ya no es el listado del paquete
     assert sectores_oficiales() == {"Sector de Prueba"}
     assert integridad(lst) == []
-    assert cargar(RUTA_LISTADO).version == "1.0.1"         # una ruta explícita manda
+    assert cargar(RUTA_LISTADO).version == VERSION         # una ruta explícita manda
     monkeypatch.delenv(VARIABLE_RUTA)
-    assert cargar().version == "1.0.1"
+    assert cargar().version == VERSION
 
 
 def test_variable_vacia_se_ignora(monkeypatch):
     monkeypatch.setenv(VARIABLE_RUTA, "   ")
-    assert cargar().version == "1.0.1"
+    assert cargar().version == VERSION
 
 
 def test_archivo_inexistente_falla_con_un_mensaje_claro(tmp_path, monkeypatch):
@@ -239,15 +388,16 @@ def _lst(sectores, entidades) -> Listado:
                    entidades=tuple(entidades), huella="")
 
 
-def _sec(nombre, *alias) -> Sector:
-    return Sector(nombre=nombre, nombre_normalizado=normalizar(nombre), alias=tuple(alias))
+def _sec(nombre, *alias, erratas=()) -> Sector:
+    return Sector(nombre=nombre, nombre_normalizado=normalizar(nombre), alias=tuple(alias),
+                  erratas=tuple(erratas))
 
 
-def _ent(id, nombre, sector, sigla="", *alias) -> Entidad:
+def _ent(id, nombre, sector, sigla="", *alias, erratas=()) -> Entidad:
     return Entidad(id=id, nombre=nombre, sigla=sigla,
                    etiqueta=f"{nombre}, {sigla}" if sigla else nombre, sector=sector,
                    tipo="distrital", activa=True, alias=tuple(alias),
-                   nombre_normalizado=normalizar(nombre))
+                   nombre_normalizado=normalizar(nombre), erratas=tuple(erratas))
 
 
 def test_integridad_denuncia_cada_problema():
@@ -269,10 +419,46 @@ def test_integridad_denuncia_cada_problema():
     assert "es a la vez la entidad E" in problemas
 
 
+def test_integridad_denuncia_alias_redundantes_y_erratas_contradictorias():
+    """De la distinción alias/errata depende que el Validador avise o calle: un
+    alias que repite una grafía oficial de su dueño sobra; una errata que repite
+    un nombre oficial o un alias (propio o ajeno) se contradice; una errata en
+    dos entidades o dos sectores es ambigua."""
+    lst = _lst(
+        [_sec("Salud", "salud"),                                      # alias que repite su nombre
+         _sec("Ambiente", erratas=("Ambeinte",)),
+         _sec("Hábitat", erratas=("Ambeinte",)),                      # la misma errata en dos sectores
+         _sec("Gobierno", erratas=("Mujer",)),                        # errata = alias de otro sector (que viene después)
+         _sec("Mujeres", "Mujer")],
+        [_ent("A", "Entidad A", "Salud", "EA", "EA", "Entidad A, EA"),        # alias = sigla, alias = etiqueta
+         _ent("B", "Entidad B", "Salud", "EB", erratas=("Entidad B", "Alias de C")),   # errata = su nombre; = alias ajeno
+         _ent("C", "Entidad C", "Salud", "EC", "Alias de C", erratas=("Entidad Z",)),
+         _ent("D", "Entidad D", "Salud", "ED", erratas=("Entidad Z",))],    # la misma errata en dos entidades
+    )
+    problemas = "\n".join(integridad(lst))
+    assert "Sector «Salud»: el alias «salud» repite su propio nombre" in problemas
+    assert "La errata «Ambeinte» apunta a dos sectores: «Ambiente» y «Hábitat»" in problemas
+    assert "Sector «Gobierno»: la errata «Mujer» repite el nombre o un alias del sector «Mujeres»" in problemas
+    assert "Entidad A: el alias «EA» repite su propio nombre, etiqueta o sigla" in problemas
+    assert "Entidad A: el alias «Entidad A, EA» repite su propio nombre, etiqueta o sigla" in problemas
+    assert "Entidad B: la errata «Entidad B» repite el nombre oficial de la misma entidad" in problemas
+    assert "Entidad B: la errata «Alias de C» repite un alias de C" in problemas
+    assert "La errata «Entidad Z» apunta a dos entidades: C y D" in problemas
+
+
+def test_integridad_acepta_alias_y_erratas_distintos():
+    lst = _lst([_sec("Salud", "Sector Salud", erratas=("Salut",))],
+               [_ent("A", "Entidad A", "Salud", "EA", "La A", erratas=("Entidá A",))])
+    assert integridad(lst) == []
+    assert clasificar_entidad("Entidá A", lst) == (ERRATA, lst.entidades[0])
+    assert clasificar_sector("Salut", lst) == (ERRATA, lst.sectores[0])
+
+
 def test_integridad_tolera_la_grafia_compartida_con_el_propio_sector():
-    """«Nacional-ICBF» es alias del sector «Entidades no distritales» y de la entidad
-    ICBF, que pertenece a ese sector: la columna de sector y la de entidad traen el
-    mismo texto y no hay ambigüedad. Solo se denuncia si el sector es otro."""
+    """Si un sector y una entidad que pertenece a él comparten una grafía (en el
+    listado 1.0.0 «Nacional-ICBF» era alias de los dos), no hay ambigüedad: la
+    columna de sector y la de entidad traen el mismo texto. Solo se denuncia si
+    el sector es otro."""
     lst = _lst([_sec("Entidades no distritales", "Nacional-ICBF")],
                [_ent("ICBF", "Instituto Colombiano de Bienestar Familiar",
                      "Entidades no distritales", "ICBF", "Nacional-ICBF")])
@@ -292,7 +478,8 @@ def test_construir_rellena_los_campos_opcionales():
     lst = construir({"sectores": [{"nombre": "Salud"}],
                      "entidades": [{"id": "X", "nombre": "Entidad X", "sector": "Salud"}]})
     e = lst.entidades[0]
-    assert (e.etiqueta, e.sigla, e.tipo, e.activa, e.alias, e.nota_revision) == (
-        "Entidad X", "", "", True, (), "")
-    assert lst.sectores[0].nombre_normalizado == "salud" and e.nombre_normalizado == "entidad x"
+    assert (e.etiqueta, e.sigla, e.tipo, e.activa, e.alias, e.erratas, e.nota_revision) == (
+        "Entidad X", "", "", True, (), (), "")
+    assert lst.sectores[0].nombre_normalizado == "salud" and lst.sectores[0].erratas == ()
+    assert e.nombre_normalizado == "entidad x"
     assert lst.version == "" and integridad(lst) == []
