@@ -62,34 +62,53 @@ usa un aplicativo.
 
 Los sectores y las entidades del Distrito que la librería considera oficiales
 viven en **un solo archivo**, `extractor_pa/data/entidades_distrito.json`
-(versión `1.0.0`: 18 sectores y 67 entidades, con sigla, etiqueta «Nombre, SIGLA»,
-sector, tipo, estado y alias). Es la fuente de `SECTORES_OFICIALES`,
+(versión `1.0.1`: 18 sectores y 67 entidades, con sigla, etiqueta «Nombre, SIGLA»,
+sector, tipo, estado, alias y erratas). Es la fuente de `SECTORES_OFICIALES`,
 `ENTIDADES_OFICIALES` y del mapa entidad → sector, y se consulta con
 `extractor_pa.catalogo_entidades`:
 ```python
-from extractor_pa import cargar_listado, canonizar_entidad, canonizar_sector, sector_de, entidad_sector_norm
-lst = cargar_listado()                          # Listado(version='1.0.0', …), en caché
+from extractor_pa import cargar_listado, canonizar_entidad, canonizar_sector, clasificar_entidad, sector_de, entidad_sector_norm
+lst = cargar_listado()                          # Listado(version='1.0.1', …), en caché
 canonizar_entidad("Nacional-ICBF")              # Entidad(id='ICBF', nombre='Instituto Colombiano de Bienestar Familiar', sector='Entidades no distritales', …)
 canonizar_sector("IntegraciónSocial").nombre    # 'Integración Social' (clave compacta)
 sector_de("Invest in Bogota")                   # 'Desarrollo Económico, Industria y Turismo'
 canonizar_entidad("Instituto de Cosas Raras")   # None: no hay coincidencia difusa
+clasificar_entidad("Secretaría de Gobierno")            # ('alias', Entidad(id='SDG', …)): grafía legítima, sin aviso
+clasificar_entidad("Secretaría Disrital de Gobierno")   # ('errata', Entidad(id='SDG', …)): se agrupa, pero el Validador avisa
+clasificar_entidad("SDG")                               # ('oficial', Entidad(id='SDG', …)); (None, None) si no coincide
 
 from extractor_pa.seguimiento import validar_consistencia
 validar_consistencia(base, nuevo, entidad_sector=entidad_sector_norm())   # regla ADVERTENCIA_SECTOR_ENTIDAD
 ```
 La coincidencia es exacta tras normalizar (sin tildes, minúsculas, sin puntuación)
-contra etiqueta, nombre, sigla y alias, o por clave compacta (sin espacios). Lo que
-no coincide devuelve `None`: decide el aplicativo.
+contra etiqueta, nombre, sigla y alias, después contra las erratas, o por clave
+compacta (sin espacios). Lo que no coincide devuelve `None`: decide el aplicativo.
+
+**Alias y erratas.** Un *alias* es otra forma legítima de escribir el mismo
+nombre: un nombre corto («Secretaría de Gobierno»), un nombre anterior («ERU»),
+una sigla con variantes, el texto de un desplegable sin espacios. El aplicativo
+lo reconoce sin avisar. Una *errata* es una grafía mal escrita que apareció en
+formatos reales («Secretaría Disrital de Gobierno»): el aplicativo la reconoce
+para agrupar bien, pero el Validador debe avisar para que la entidad corrija su
+formato. `canonizar_*` resuelve las dos; `clasificar_*` dice cuál fue. Un alias
+no puede repetir el nombre, la etiqueta o la sigla de su dueño, y una errata no
+puede repetir un nombre oficial ni un alias (propio o ajeno): `integridad` lo
+denuncia.
 
 **Cómo cambia el listado.** El núcleo oficial es estable y cambia **solo con
 versión** de la librería: una entidad o un sector nuevo, un cambio de nombre o de
 sector, una grafía que deba reconocerse, se proponen como cambio al JSON (con su
-`version`) y salen en la versión siguiente de extractor-pa. Ningún aplicativo edita
-el JSON por su cuenta: las grafías nuevas que aparecen en los formatos las
-administra cada aplicativo como equivalencias propias y se consolidan aquí en
-bloque, como `alias`. `integridad(cargar_listado())` debe devolver `[]` (lo
-comprueba `tests/test_catalogo_entidades.py`). Quién administra el listado y
-aprueba sus cambios está **por definir con el usuario**.
+`version` y su `fecha`) y salen en la versión siguiente de extractor-pa. Ningún
+aplicativo edita el JSON por su cuenta: las grafías nuevas que aparecen en los
+formatos las administra cada aplicativo como equivalencias propias y se
+consolidan aquí en bloque, como `alias` si son legítimas o como `erratas` si
+están mal escritas. Para proponer un cambio: anotar la grafía tal como aparece en
+el formato, la entidad o el sector al que corresponde y si es alias o errata;
+editar el JSON en una rama subiendo `version` y `fecha` (1.0.1, por ejemplo, fue
+la primera revisión de alias y erratas sobre la 1.0.0), y comprobar que
+`integridad(cargar_listado())` devuelve `[]` (lo comprueba
+`tests/test_catalogo_entidades.py`). Quién administra el listado y aprueba sus
+cambios está **por definir con el usuario**.
 
 **Camino de urgencia.** La variable de entorno `EXTRACTOR_PA_LISTADO` hace que
 `cargar_listado()` lea otro JSON con la misma estructura. Es para un error del

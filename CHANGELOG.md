@@ -22,30 +22,69 @@ V4) y cómo se sugiere la grafía correcta.
 
 ### Añadido
 
-- **`extractor_pa/data/entidades_distrito.json`**, versión **1.0.0** del
-  listado (2026-10-14): 18 sectores y 67 entidades del Distrito con sigla,
-  etiqueta («Nombre, SIGLA»), sector, tipo (distrital, nacional, regional,
-  categoría genérica), estado (`activa`) y alias. Lo consolidó
-  alertas-seguimientos a partir de los ocho catálogos que tenían los
-  aplicativos. Es la **fuente única** de sectores y entidades de la librería:
-  viaja dentro del paquete (`package-data`) y cambia solo con versión.
+- **`extractor_pa/data/entidades_distrito.json`**, el listado: 18 sectores y
+  67 entidades del Distrito con sigla, etiqueta («Nombre, SIGLA»), sector, tipo
+  (distrital, nacional, regional, categoría genérica), estado (`activa`), alias
+  y erratas. Lo consolidó alertas-seguimientos a partir de los ocho catálogos
+  que tenían los aplicativos (versión 1.0.0, 2026-10-14) y se publica en la
+  versión **1.0.1** (2026-10-19). Es la **fuente única** de sectores y
+  entidades de la librería: viaja dentro del paquete (`package-data`) y cambia
+  solo con versión.
+- **Listado 1.0.1: las erratas van aparte de los alias.** Un alias es otra
+  forma legítima de escribir el mismo nombre (nombre corto, nombre anterior,
+  sigla con variantes, texto del desplegable sin espacios) y se reconoce sin
+  avisar; una errata es una grafía mal escrita que apareció en formatos reales:
+  se reconoce para agrupar bien, pero el Validador debe avisar para que la
+  entidad corrija su formato. Pasan de `alias` a `erratas`: en los sectores,
+  «Cultura, Recrecación y Deporte», «Desarrollo Econimico», «Secretaría,
+  Convivencia y Justicia» y «Entidades No Distrtitales»; en las entidades,
+  «Instituto Disitrital de Gestión de Riesgos y Cambio Climático IDIGER»
+  (IDIGER), «Instituto Disitrital de Protección y Bienestar Animal» (IDPYBA),
+  «Corporación para el Desarollo y la productividad Bogotá Región Invest In
+  Bogotá» (Invest in Bogotá), «Agencia Distrital para la Eduacción Superior,
+  la Ciencia y la Tecnología» (ATENEA), «Secretaría de Educación del
+  Distrital» y «Secretaría de Educación del Distrito (SDE)» (SED), «Insituto
+  Distrital de la Participación y Acción Comunal - IDPAC» (IDPAC), «Secretaría
+  Disrital de Gobierno» (SDG), «Unidad Administrativa Especial de Serecios
+  Publicos - UAESP» (UAESP), «Secretaria Distrial de Integración Social» (SDIS)
+  y «Entidades No Distrtitales» (entidad genérica). Correcciones del dato:
+  alias «Secretaría de Movilidad» (SDM) y «Secretaría de Ambiente» (SDA); se
+  retiran los alias que, normalizados, repetían el nombre, la etiqueta o la
+  sigla de su propia entidad (SCRD, Invest in Bogotá ×2, Alcaldías Locales,
+  Renobo, FONCEP, Transmilenio ×2, IDCBIS, SDSCJ y ATENEA) y «Cultura
+  Recreación y Deporte», que repetía el nombre del sector sin la coma;
+  «Nacional-ICBF» deja de ser alias del sector «Entidades no distritales» (es
+  una grafía de la entidad ICBF, no un sector); y se retira «Secretaría
+  Distrital del Hábitat (SDH)» de la SDHT, porque «SDH» es la sigla de Hacienda
+  y una búsqueda por sigla la confundiría. **Pendiente**: el sector 16 sigue
+  llamándose «Entes de Control» («Órganos de Control», el nombre del formato,
+  queda como alias) hasta que el usuario decida entre los dos.
 - **`extractor_pa/catalogo_entidades.py`**: `cargar(ruta=None) -> Listado`
   (caché por ruta, mtime y tamaño; `huella` = sha256 del JSON canónico);
-  `Sector`, `Entidad` y `Listado` (con `entidad()`, `sector()` y `sector_de()`);
-  `normalizar` (la regla única: sin tildes, minúsculas, sin puntuación, espacios
-  colapsados) y `clave_compacta` (sin espacios, para los desplegables tipo
-  «IntegraciónSocial»); `canonizar_entidad` / `canonizar_sector` (exacta
-  normalizada contra etiqueta, nombre, sigla y alias; si no, por clave compacta;
-  **sin coincidencia difusa**: lo desconocido devuelve `None`); `sector_de`;
-  `entidad_sector_norm()` (el mapa que se inyecta a
-  `validacion_seg.validar_consistencia`); `sectores_oficiales()` y
-  `entidades_oficiales()`; `integridad(listado)` (nombres y alias repetidos,
-  sector inexistente, sigla repetida, grafía compartida con un sector ajeno,
-  `nombre_normalizado` desactualizado). La variable de entorno
-  `EXTRACTOR_PA_LISTADO` apunta a otro JSON como camino de urgencia.
+  `Sector`, `Entidad` (los dos con `alias` y `erratas`) y `Listado` (con
+  `entidad()`, `sector()` y `sector_de()`); `normalizar` (la regla única: sin
+  tildes, minúsculas, sin puntuación, espacios colapsados) y `clave_compacta`
+  (sin espacios, para los desplegables tipo «IntegraciónSocial»);
+  `canonizar_entidad` / `canonizar_sector` (exacta normalizada contra etiqueta,
+  nombre, sigla y alias, después contra las erratas; si no, por clave compacta;
+  **sin coincidencia difusa**: lo desconocido devuelve `None`);
+  `clasificar_entidad` / `clasificar_sector`, que devuelven `(clase, objeto)`:
+  `"oficial"` (nombre, etiqueta o sigla), `"alias"` (un alias, o la clave
+  compacta de un nombre oficial o de un alias), `"errata"` (una errata) o
+  `(None, None)` si no coincide —lo que necesita el Validador para avisar y no
+  solo agrupar—; `sector_de`; `entidad_sector_norm()` (el mapa que se inyecta a
+  `validacion_seg.validar_consistencia`; incluye las erratas);
+  `sectores_oficiales()` y `entidades_oficiales()`; `integridad(listado)`
+  (nombres y alias repetidos, sector inexistente, sigla repetida, grafía
+  compartida con un sector ajeno, `nombre_normalizado` desactualizado, alias que
+  repite el nombre, la etiqueta o la sigla de su propia entidad, errata que
+  repite un nombre oficial o un alias —propio o ajeno— y errata en dos entidades
+  o dos sectores). `construir` acepta un JSON 1.0.0, sin `erratas`. La variable
+  de entorno `EXTRACTOR_PA_LISTADO` apunta a otro JSON como camino de urgencia.
   `extractor_pa` exporta `catalogo_entidades`, `cargar_listado`,
-  `canonizar_entidad`, `canonizar_sector`, `sector_de`, `entidad_sector_norm`,
-  `normalizar`, `Listado`, `Entidad` y `Sector`.
+  `canonizar_entidad`, `canonizar_sector`, `clasificar_entidad`,
+  `clasificar_sector`, `sector_de`, `entidad_sector_norm`, `normalizar`,
+  `Listado`, `Entidad` y `Sector`.
 - `scripts/gen_entidad_sector.py` regenera el derivado `data/entidad_sector.json`.
 
 ### Cambiado
@@ -59,8 +98,9 @@ V4) y cómo se sugiere la grafía correcta.
   `ENTIDAD_SECTOR` y `sector_oficial_de` siguen existiendo con la misma firma.
   La membresía (`es_sector_oficial` / `es_entidad_oficial`) ignora ahora
   también la puntuación, y las sugerencias salen de equivalencias conocidas:
-  acentos y caso, clave compacta y alias del listado («Secretaría de Integración
-  Social» → «Secretaría Distrital de Integración Social»).
+  acentos y caso, clave compacta y alias o erratas del listado («Secretaría de
+  Integración Social» y «Secretaria Distrial de Integración Social» →
+  «Secretaría Distrital de Integración Social»).
 - `norm_entidad` es la regla única `catalogo_entidades.normalizar`; produce lo
   mismo que antes.
 - `data/entidad_sector.json` pasa a ser un **derivado** del listado
@@ -76,8 +116,10 @@ V4) y cómo se sugiere la grafía correcta.
 - La **normalización difusa** con `rapidfuzz` y el extra `fuzzy` de
   `pyproject.toml`: `pip install extractor-pa[fuzzy]` ya no hace falta y `dev`
   ya no lo instala. `CatalogoOficial(umbral_fuzzy=…)` se acepta y se ignora.
-  «Secretaria de Movilidad» ya no se corrige por parecido: si una grafía debe
-  reconocerse, se agrega como alias en la versión siguiente del listado.
+  Nada se corrige por parecido: si una grafía debe reconocerse, se agrega al
+  listado en la versión siguiente, como alias si es legítima o como errata si
+  está mal escrita. «Secretaría de Movilidad» se sigue sugiriendo porque el
+  listado 1.0.1 la trae como alias de la SDM, no porque se parezca.
 
 ### Cómo migrar
 
@@ -87,28 +129,43 @@ V4) y cómo se sugiere la grafía correcta.
   `canonizar_sector(texto)` (devuelven la `Entidad` o el `Sector`, o `None`) y
   `sector_de(texto)`; para la regla ADVERTENCIA_SECTOR_ENTIDAD,
   `validar_consistencia(base, nuevo, entidad_sector=entidad_sector_norm())`.
+- Para avisar de una grafía mal escrita sin dejar de agruparla,
+  `clasificar_entidad(texto)` / `clasificar_sector(texto)`: `("errata", e)`
+  pide corregir el formato; `("oficial", e)` y `("alias", e)` no.
 - Una grafía nueva no se arregla editando el JSON en el aplicativo: allí se
-  administra como equivalencia propia y se propone como alias para la versión
-  siguiente del listado (README, «Listado oficial de entidades y sectores»).
+  administra como equivalencia propia y se propone, como alias o como errata,
+  para la versión siguiente del listado (README, «Listado oficial de entidades
+  y sectores»).
 - PyInstaller: empaquetar `extractor_pa/data/entidades_distrito.json` (o toda
   la carpeta `extractor_pa/data/`).
 
 ### Pruebas
 
 - `tests/test_catalogo_entidades.py` (nuevo): integridad del JSON publicado,
-  versión 1.0.0 y tamaño, huella estable entre cargas y sensible a un alias
-  (no al formato), caché que recoge el archivo cambiado, normalización y clave
-  compacta, canonización de ICBF («ICBF», «Nacional-ICBF», «Instituto
-  Colombiano de Bienestar Familiar ICBF»), de Invest in Bogotá y de los
-  sectores pegados («IntegraciónSocial», «Gestiónpública»), coincidencia exacta
-  y ausencia de difusa, entidades inactivas, `EXTRACTOR_PA_LISTADO`, errores
-  claros, `entidad_sector_norm`, `sectores_oficiales` / `entidades_oficiales`
-  e `integridad` con cada tipo de problema.
+  versión 1.0.1 (sin fijar el número de sectores y entidades), huella estable
+  entre cargas y sensible a un alias (no al formato), caché que recoge el
+  archivo cambiado, normalización y clave compacta, canonización de ICBF
+  («ICBF», «Nacional-ICBF», «Instituto Colombiano de Bienestar Familiar
+  ICBF»), de Invest in Bogotá y de los sectores pegados («IntegraciónSocial»,
+  «Gestiónpública»), coincidencia exacta y ausencia de difusa, entidades
+  inactivas, `EXTRACTOR_PA_LISTADO`, errores claros, `entidad_sector_norm`,
+  `sectores_oficiales` / `entidades_oficiales` e `integridad` con cada tipo de
+  problema. Alias y erratas: cada grafía movida a `erratas` sigue resolviendo
+  a su sector o entidad y `clasificar_*` la devuelve como «errata»; toda
+  grafía del JSON se clasifica con su dueño y su clase; «Secretaría de
+  Movilidad» → SDM como «alias», «SDM» → «oficial», «IntegraciónSocial» →
+  «alias»; «SDH» → Hacienda y no Hábitat; «Nacional-ICBF» → entidad ICBF y
+  como sector `None`; ningún alias repite una grafía oficial de su dueño; un
+  JSON 1.0.0 sin `erratas` carga igual; e `integridad` denuncia el alias que
+  repite el nombre oficial, la errata que repite un nombre o un alias (propio
+  o ajeno) y la errata duplicada.
 - `tests/test_catalogo_oficial.py`: `test_sugerencia_fuzzy` pasa a
   `test_sugerencias_deterministas` (su aserción «Secretaria de Movilidad» → SDM
-  dependía de rapidfuzz; ahora se afirma que **no** se sugiere) y se añaden las
-  listas desde el JSON, V4 con sugerencia sin fuzzy, un catálogo propio sin los
-  alias del listado y el derivado `entidad_sector.json` sincronizado.
+  dependía de rapidfuzz; ahora se sugiere porque el listado 1.0.1 la trae como
+  alias, una errata del listado también se corrige y un parecido, «Secretaria
+  de Mobilidad», no) y se añaden las listas desde el JSON, V4 con sugerencia
+  sin fuzzy, un catálogo propio sin los alias del listado, la errata que no es
+  oficial y el derivado `entidad_sector.json` sincronizado.
 
 ## [0.22.0] — Fechas escritas como texto día/mes/año
 
