@@ -56,9 +56,9 @@ V4) y cómo se sugiere la grafía correcta.
   «Nacional-ICBF» deja de ser alias del sector «Entidades no distritales» (es
   una grafía de la entidad ICBF, no un sector); y se retira «Secretaría
   Distrital del Hábitat (SDH)» de la SDHT, porque «SDH» es la sigla de Hacienda
-  y una búsqueda por sigla la confundiría. **Pendiente**: el sector 16 sigue
-  llamándose «Entes de Control» («Órganos de Control», el nombre del formato,
-  queda como alias) hasta que el usuario decida entre los dos.
+  y una búsqueda por sigla la confundiría. Decidido el 2026-10-19: el sector 16
+  se llama «Entes de Control»; «Órganos de Control», el nombre que trae la hoja
+  «Listas» del formato de la SDP, queda como alias.
 - **`extractor_pa/catalogo_entidades.py`**: `cargar(ruta=None) -> Listado`
   (caché por ruta, mtime y tamaño; `huella` = sha256 del JSON canónico);
   `Sector`, `Entidad` (los dos con `alias` y `erratas`) y `Listado` (con
