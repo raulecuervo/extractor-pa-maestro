@@ -53,7 +53,7 @@ def test_sugerencias_deterministas():
     assert c.sugerir_entidad("SECRETARIA DISTRITAL DE MOVILIDAD") == "Secretaría Distrital de Movilidad"
     assert c.sugerir_entidad("Secretaría de Integración Social") == "Secretaría Distrital de Integración Social"
     assert c.sugerir_entidad("SDIS") is None                                     # sigla oficial: no se corrige
-    assert c.sugerir_entidad("Secretaria de Movilidad") is None                  # parecido, no equivalencia
+    assert c.sugerir_entidad("Secretaria de Movilidad") == "Secretaría Distrital de Movilidad"   # alias del listado 1.0.1
 
 
 def test_umbral_fuzzy_se_acepta_y_se_ignora():

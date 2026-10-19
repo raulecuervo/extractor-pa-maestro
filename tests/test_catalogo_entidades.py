@@ -37,7 +37,7 @@ def test_el_listado_publicado_es_integro():
 def test_version_publicada_y_tamano():
     """Cambian solo con una versión nueva del listado (y de la librería)."""
     lst = cargar()
-    assert lst.version == "1.0.0"
+    assert lst.version == "1.0.1"
     assert len(lst.sectores) == 18 and len(lst.entidades) == 67
     assert lst.fecha and lst.fuente
 
@@ -205,14 +205,14 @@ def test_variable_de_entorno_cambia_el_listado(tmp_path, monkeypatch):
     assert canonizar_entidad("ICBF") is None               # ya no es el listado del paquete
     assert sectores_oficiales() == {"Sector de Prueba"}
     assert integridad(lst) == []
-    assert cargar(RUTA_LISTADO).version == "1.0.0"         # una ruta explícita manda
+    assert cargar(RUTA_LISTADO).version == "1.0.1"         # una ruta explícita manda
     monkeypatch.delenv(VARIABLE_RUTA)
-    assert cargar().version == "1.0.0"
+    assert cargar().version == "1.0.1"
 
 
 def test_variable_vacia_se_ignora(monkeypatch):
     monkeypatch.setenv(VARIABLE_RUTA, "   ")
-    assert cargar().version == "1.0.0"
+    assert cargar().version == "1.0.1"
 
 
 def test_archivo_inexistente_falla_con_un_mensaje_claro(tmp_path, monkeypatch):
