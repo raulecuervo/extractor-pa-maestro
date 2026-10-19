@@ -43,6 +43,11 @@ from .catalogo_oficial import (
     CatalogoOficial, CATALOGO_OFICIAL_DEFECTO, SECTORES_OFICIALES, ENTIDADES_OFICIALES,
     sugerencias_normalizacion, aplicar_normalizacion,
 )
+from . import catalogo_entidades
+from .catalogo_entidades import (
+    Listado, Entidad, Sector, cargar_listado, canonizar_entidad, canonizar_sector,
+    sector_de, entidad_sector_norm, normalizar,
+)
 from .exportadores import (
     tablas,
     tablas_consolidadas,
@@ -56,7 +61,7 @@ from .exportadores import (
     a_dataframes_consolidado,
 )
 
-__version__ = "0.22.0"
+__version__ = "0.23.0"
 
 __all__ = [
     "extraer_plan_accion",
@@ -90,6 +95,16 @@ __all__ = [
     "ENTIDADES_OFICIALES",
     "sugerencias_normalizacion",
     "aplicar_normalizacion",
+    "catalogo_entidades",
+    "Listado",
+    "Entidad",
+    "Sector",
+    "cargar_listado",
+    "canonizar_entidad",
+    "canonizar_sector",
+    "sector_de",
+    "entidad_sector_norm",
+    "normalizar",
     "tablas",
     "tablas_consolidadas",
     "exportar_json",
