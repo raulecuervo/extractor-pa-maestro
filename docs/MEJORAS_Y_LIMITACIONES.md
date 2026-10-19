@@ -22,7 +22,7 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja.
 
 | # | Alertas | Prio | Por qué falta |
 |---|---|:---:|---|
-| B1 | ✅ **V4** `sector_no_oficial`/`entidad_no_oficial` + normalización difusa (v0.9.10) | — | **Opcional**: `extraer_plan_accion(..., catalogo_oficial=CatalogoOficial())`. Sin catálogo no se ejecuta. |
+| B1 | ✅ **V4** `sector_no_oficial`/`entidad_no_oficial` + sugerencias de normalización (v0.9.10; difusas hasta la 0.22.0, desde la 0.23.0 deterministas sobre el listado oficial `catalogo_entidades`) | — | **Opcional**: `extraer_plan_accion(..., catalogo_oficial=CatalogoOficial())`. Sin catálogo no se ejecuta. |
 | B2 | ✅ `objetivo_sin_resultados`, `jerarquia_ip` (v0.9.11) | — | **`Objetivo`** como entidad (capturada aunque no tenga IR) + validación de jerarquía N.N.N⊂N.N. 74 planes reales: 0 espurios. |
 | B3 | `formato_no_compatible`, `metadatos` (gate de plantilla del plan) | 🟢 | Bloqueo de plantillas incompatibles + nombre de política del formato antiguo. |
 | B4 | **Operativas** (`sispp-sdis`): vencimiento, sin responsable, sin seguimiento, rezago, sobrecumplimiento, variación anómala, CRP sobreasignado | 🟠 | **Dependen del contexto de operación** (períodos, usuarios, BD), no de un archivo → pertenecen a la app, no al extractor. |

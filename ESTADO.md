@@ -16,6 +16,10 @@ los cambios por versión, en [`CHANGELOG.md`](CHANGELOG.md).
 - **Seguimiento (.xlsb y .xlsx 3.4):** extracción, cruce con el plan,
   consolidación por período, métricas al corte (PAF, TID, PAV, MES, brecha), las
   15 alertas de consistencia y el semáforo con los umbrales de cada aplicativo.
+- **Listado oficial de sectores y entidades (0.23.0):** un solo JSON versionado
+  dentro del paquete (`catalogo_entidades`, 18 sectores y 67 entidades con alias),
+  canonización determinista y mapa entidad → sector; `SECTORES_OFICIALES` y
+  `ENTIDADES_OFICIALES` salen de él y la normalización difusa se retiró.
 - **Salidas:** JSON, CSV, Excel y DataFrame, por plan o consolidadas; tablero HTML.
 - **Migración (Fase 8):** los aplicativos extraen con el maestro.
   `python scripts/pines_consumidores.py` muestra qué versión fija cada uno.
@@ -40,6 +44,7 @@ Prioridad: 🔴 alta · 🟠 media · 🟢 baja.
 | 7b | Los golden no cubren los datos de ficha (unidad, metodología, días de rezago): por eso el error de la unidad pasó inadvertido en 39 planes. Agregar a la huella al menos el conteo de fichas leídas y de unidades por valor. | 🟠 |
 | 7c | `dias_rezago` se reduce al primer entero del texto: «1 mes» queda como 1, igual que «1 día». Conservar el texto o normalizar la unidad de tiempo. | 🟢 |
 | 8 | Seguimiento: respaldo a posiciones fijas si faltan las anclas y un único criterio de escala. | 🟢 |
+| 9 | **Adoptar el listado oficial en los aplicativos** (alertas-seguimientos, sispp, validador): consultar `canonizar_entidad` / `entidad_sector_norm()` en lugar de sus listas propias y proponer sus grafías como alias de la versión siguiente. Quién administra el listado queda por definir con el usuario. sispp-gobierno y sispp-SDP deben empaquetar `data/entidades_distrito.json` en su `.spec`. | 🟠 |
 
 ## Documentos
 

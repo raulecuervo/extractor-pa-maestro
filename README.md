@@ -51,26 +51,88 @@ entre sí.
 |---|---|---|
 | `extraer_plan_accion` y el modelo canónico (`ResultadoExtraccion`, IR, IP, `Objetivo`) | Estable | validador, extractor-planes-accion, creador, seguimiento-pp-sdis, sispp-gobierno, sispp-SDP, sispp-sdis |
 | `extractor_pa.seguimiento`: extracción, cruce, `metricas`, `validacion_seg` | Estable. Lo que importan los aplicativos está fijado en `tests/test_contrato_consumidores.py` | alertas-seguimientos, generador-seguimiento, sispp-gobierno, sispp-SDP, sispp-sdis |
+| `catalogo_entidades`: listado oficial de sectores y entidades | Estable: el JSON cambia solo con versión de la librería | Por adoptar en los aplicativos, que hoy tienen listas propias |
 | Reglas V0–V18, catálogo oficial (V4), gobernanza, decisiones, exportadores, tablero y CLI | Disponibles, sin aplicativos que las usen: pueden cambiar entre versiones menores | scripts de este repo |
 
 Antes de renombrar o mover algo de las dos primeras filas, búsquelo en
 `tests/test_contrato_consumidores.py`: esa prueba falla si desaparece un nombre que
 usa un aplicativo.
 
+## Listado oficial de entidades y sectores
+
+Los sectores y las entidades del Distrito que la librería considera oficiales
+viven en **un solo archivo**, `extractor_pa/data/entidades_distrito.json`
+(versión `1.0.1`: 18 sectores y 67 entidades, con sigla, etiqueta «Nombre, SIGLA»,
+sector, tipo, estado, alias y erratas). Es la fuente de `SECTORES_OFICIALES`,
+`ENTIDADES_OFICIALES` y del mapa entidad → sector, y se consulta con
+`extractor_pa.catalogo_entidades`:
+```python
+from extractor_pa import cargar_listado, canonizar_entidad, canonizar_sector, clasificar_entidad, sector_de, entidad_sector_norm
+lst = cargar_listado()                          # Listado(version='1.0.1', …), en caché
+canonizar_entidad("Nacional-ICBF")              # Entidad(id='ICBF', nombre='Instituto Colombiano de Bienestar Familiar', sector='Entidades no distritales', …)
+canonizar_sector("IntegraciónSocial").nombre    # 'Integración Social' (clave compacta)
+sector_de("Invest in Bogota")                   # 'Desarrollo Económico, Industria y Turismo'
+canonizar_entidad("Instituto de Cosas Raras")   # None: no hay coincidencia difusa
+clasificar_entidad("Secretaría de Gobierno")            # ('alias', Entidad(id='SDG', …)): grafía legítima, sin aviso
+clasificar_entidad("Secretaría Disrital de Gobierno")   # ('errata', Entidad(id='SDG', …)): se agrupa, pero el Validador avisa
+clasificar_entidad("SDG")                               # ('oficial', Entidad(id='SDG', …)); (None, None) si no coincide
+
+from extractor_pa.seguimiento import validar_consistencia
+validar_consistencia(base, nuevo, entidad_sector=entidad_sector_norm())   # regla ADVERTENCIA_SECTOR_ENTIDAD
+```
+La coincidencia es exacta tras normalizar (sin tildes, minúsculas, sin puntuación)
+contra etiqueta, nombre, sigla y alias, después contra las erratas, o por clave
+compacta (sin espacios). Lo que no coincide devuelve `None`: decide el aplicativo.
+
+**Alias y erratas.** Un *alias* es otra forma legítima de escribir el mismo
+nombre: un nombre corto («Secretaría de Gobierno»), un nombre anterior («ERU»),
+una sigla con variantes, el texto de un desplegable sin espacios. El aplicativo
+lo reconoce sin avisar. Una *errata* es una grafía mal escrita que apareció en
+formatos reales («Secretaría Disrital de Gobierno»): el aplicativo la reconoce
+para agrupar bien, pero el Validador debe avisar para que la entidad corrija su
+formato. `canonizar_*` resuelve las dos; `clasificar_*` dice cuál fue. Un alias
+no puede repetir el nombre, la etiqueta o la sigla de su dueño, y una errata no
+puede repetir un nombre oficial ni un alias (propio o ajeno): `integridad` lo
+denuncia.
+
+**Cómo cambia el listado.** El núcleo oficial es estable y cambia **solo con
+versión** de la librería: una entidad o un sector nuevo, un cambio de nombre o de
+sector, una grafía que deba reconocerse, se proponen como cambio al JSON (con su
+`version` y su `fecha`) y salen en la versión siguiente de extractor-pa. Ningún
+aplicativo edita el JSON por su cuenta: las grafías nuevas que aparecen en los
+formatos las administra cada aplicativo como equivalencias propias y se
+consolidan aquí en bloque, como `alias` si son legítimas o como `erratas` si
+están mal escritas. Para proponer un cambio: anotar la grafía tal como aparece en
+el formato, la entidad o el sector al que corresponde y si es alias o errata;
+editar el JSON en una rama subiendo `version` y `fecha` (1.0.1, por ejemplo, fue
+la primera revisión de alias y erratas sobre la 1.0.0), y comprobar que
+`integridad(cargar_listado())` devuelve `[]` (lo comprueba
+`tests/test_catalogo_entidades.py`). Quién administra el listado y aprueba sus
+cambios está **por definir con el usuario**.
+
+**Camino de urgencia.** La variable de entorno `EXTRACTOR_PA_LISTADO` hace que
+`cargar_listado()` lea otro JSON con la misma estructura. Es para un error del
+listado que no puede esperar a la versión siguiente, no para agregar entidades.
+
 ## Catálogo oficial / V4 (opcional)
 
-La validación de **sector/entidad oficial** (regla V4) y la **normalización difusa**
-son opt-in: solo se activan si se inyecta un catálogo.
+La validación de **sector/entidad oficial** (regla V4) y las **sugerencias de
+normalización** son opt-in: solo se activan si se inyecta un catálogo, que por
+defecto es el listado oficial.
 ```python
 from extractor_pa import extraer_plan_accion, CatalogoOficial, sugerencias_normalizacion
 res = extraer_plan_accion("plan.xlsx", incluir_reglas_negocio=True,
                           catalogo_oficial=CatalogoOficial())   # dispara V4
 sugerencias_normalizacion(res)   # [{'campo':'sector_responsable','original':'GestiónPública','sugerido':'Gestión Pública'},…]
 ```
-El fuzzy requiere `pip install extractor-pa[fuzzy]` (RapidFuzz). Sin catálogo, V4 no se ejecuta.
+Las sugerencias son deterministas: acentos y caso, clave compacta («GestiónPública»)
+y alias del listado («Secretaría de Integración Social» → «Secretaría Distrital de
+Integración Social»). No hay coincidencia difusa: el extra `fuzzy` (RapidFuzz) se
+retiró en la 0.23.0. Sin catálogo, V4 no se ejecuta.
 
 **Reaplicar correcciones aprobadas (F2)**: una vez que un humano aprueba las
-sugerencias, se persisten y se reaplican determinista en cada corrida (sin fuzzy):
+sugerencias, se persisten y se reaplican determinista en cada corrida (sin
+consultar el listado):
 ```python
 from extractor_pa import RegistroDecisiones, aplicar_decisiones
 reg = RegistroDecisiones("decisiones/entidades.json")
@@ -230,7 +292,8 @@ extractor_pa/
   lector_fichas.py       fichas técnicas: metodología, unidad, días de rezago (Fase 4a)
   consistencia.py        inconsistencias entre filas del IR + IP duplicados (Fase 5)
   catalogo.py            catálogo consolidado de alertas (fuente única)
-  catalogo_oficial.py    sectores/entidades oficiales: regla V4 + normalización difusa
+  catalogo_entidades.py  listado oficial de sectores y entidades (data/entidades_distrito.json): carga, canonización, integridad
+  catalogo_oficial.py    regla V4 y sugerencias de normalización sobre el listado oficial
   validacion.py          motor de reglas de negocio V0–V18 sobre el modelo canónico
   gobernanza.py          triage persistente de alertas: clave estable + estados + reconciliación/autocierre + auditoría
   decisiones.py          decisiones humanas de entidad/sector: store + auditoría + reaplicación (puente desde B1)

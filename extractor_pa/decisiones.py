@@ -2,9 +2,10 @@
 """
 Decisiones humanas de normalización de entidad/sector (F2).
 
-Complementa B1 (`catalogo_oficial`): mientras B1 **sugiere** normalizaciones con
-fuzzy, este módulo **persiste la decisión humana aprobada** y la **reaplica** de
-forma determinista en cada corrida — sin depender del fuzzy ni del catálogo.
+Complementa B1 (`catalogo_oficial`): mientras B1 **sugiere** normalizaciones desde
+el listado oficial (alias y clave compacta), este módulo **persiste la decisión
+humana aprobada** y la **reaplica** de forma determinista en cada corrida — sin
+depender del listado ni del catálogo.
 
 Flujo:  B1 sugiere  →  un humano decide (aprobar / nombre_nuevo / ignorar /
         eliminar)  →  `RegistroDecisiones` lo guarda  →  `aplicar_decisiones`

@@ -1,0 +1,1185 @@
+{
+  "version": "1.0.1",
+  "fecha": "2026-10-19",
+  "fuente": "Consolidado de 8 catálogos en C:/Users/RaulEsteban/Proyectos (alertas-seguimientos, generador-seguimiento, rag-chat, sispp-SDP, sispp-gobierno, Dashboard_Politicas, validador_plan_accion, Sistema_Seguimiento). Directorio base: secretariageneral.gov.co (sep 2025).",
+  "sectores": [
+    {
+      "nombre": "Ambiente",
+      "nombre_normalizado": "ambiente",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Cultura, Recreación y Deporte",
+      "nombre_normalizado": "cultura recreacion y deporte",
+      "alias": [
+        "culturarecreaciónydeporte",
+        "Cultura",
+        "Cultura, Recreación y Deportes"
+      ],
+      "erratas": [
+        "Cultura, Recrecación y Deporte"
+      ]
+    },
+    {
+      "nombre": "Desarrollo Económico, Industria y Turismo",
+      "nombre_normalizado": "desarrollo economico industria y turismo",
+      "alias": [
+        "desarrolloeconómicoindustriayturismo",
+        "Desarrollo Económico"
+      ],
+      "erratas": [
+        "Desarrollo Econimico"
+      ]
+    },
+    {
+      "nombre": "Educación",
+      "nombre_normalizado": "educacion",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Gestión Jurídica",
+      "nombre_normalizado": "gestion juridica",
+      "alias": [
+        "GestiónJurídica"
+      ],
+      "erratas": []
+    },
+    {
+      "nombre": "Gestión Pública",
+      "nombre_normalizado": "gestion publica",
+      "alias": [
+        "Gestiónpública"
+      ],
+      "erratas": []
+    },
+    {
+      "nombre": "Gobierno",
+      "nombre_normalizado": "gobierno",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Hábitat",
+      "nombre_normalizado": "habitat",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Hacienda",
+      "nombre_normalizado": "hacienda",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Integración Social",
+      "nombre_normalizado": "integracion social",
+      "alias": [
+        "integraciónsocial",
+        "Sector Social"
+      ],
+      "erratas": []
+    },
+    {
+      "nombre": "Movilidad",
+      "nombre_normalizado": "movilidad",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Mujeres",
+      "nombre_normalizado": "mujeres",
+      "alias": [
+        "Mujer"
+      ],
+      "erratas": []
+    },
+    {
+      "nombre": "Planeación",
+      "nombre_normalizado": "planeacion",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Salud",
+      "nombre_normalizado": "salud",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Seguridad, Convivencia y Justicia",
+      "nombre_normalizado": "seguridad convivencia y justicia",
+      "alias": [
+        "seguridadconvivenciayjusticia",
+        "Seguridad y Convivencia",
+        "Seguridad"
+      ],
+      "erratas": [
+        "Secretaría, Convivencia y Justicia"
+      ]
+    },
+    {
+      "nombre": "Entes de Control",
+      "nombre_normalizado": "entes de control",
+      "alias": [
+        "Órganos de Control",
+        "OrganosdeControl",
+        "Organismos de Control"
+      ],
+      "erratas": []
+    },
+    {
+      "nombre": "Concejo de Bogotá",
+      "nombre_normalizado": "concejo de bogota",
+      "alias": [],
+      "erratas": []
+    },
+    {
+      "nombre": "Entidades no distritales",
+      "nombre_normalizado": "entidades no distritales",
+      "alias": [
+        "entidadesnodistritales",
+        "Nacional"
+      ],
+      "erratas": [
+        "Entidades No Distrtitales"
+      ]
+    }
+  ],
+  "entidades": [
+    {
+      "id": "SDA",
+      "sector": "Ambiente",
+      "nombre": "Secretaría Distrital de Ambiente",
+      "sigla": "SDA",
+      "etiqueta": "Secretaría Distrital de Ambiente, SDA",
+      "nombre_normalizado": "secretaria distrital de ambiente",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría de Ambiente"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "JBB",
+      "sector": "Ambiente",
+      "nombre": "Jardín Botánico José Celestino Mutis",
+      "sigla": "JBB",
+      "etiqueta": "Jardín Botánico José Celestino Mutis, JBB",
+      "nombre_normalizado": "jardin botanico jose celestino mutis",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Jardín Botánico",
+        "Jardín Botánico - JBB",
+        "Jardín Botánico de Bogotá",
+        "Jardín Botánico de Bogotá (JBB) José Celestino Mutis",
+        "Jardín Botánico de Bogotá José Celestino Mutis"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDIGER",
+      "sector": "Ambiente",
+      "nombre": "Instituto Distrital de Gestión de Riesgos y Cambio Climático",
+      "sigla": "IDIGER",
+      "etiqueta": "Instituto Distrital de Gestión de Riesgos y Cambio Climático, IDIGER",
+      "nombre_normalizado": "instituto distrital de gestion de riesgos y cambio climatico",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [
+        "Instituto Disitrital de Gestión de Riesgos y Cambio Climático IDIGER"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDPYBA",
+      "sector": "Ambiente",
+      "nombre": "Instituto Distrital de Protección y Bienestar Animal",
+      "sigla": "IDPYBA",
+      "etiqueta": "Instituto Distrital de Protección y Bienestar Animal, IDPYBA",
+      "nombre_normalizado": "instituto distrital de proteccion y bienestar animal",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto de protección y bienestar animal IDPYBA"
+      ],
+      "erratas": [
+        "Instituto Disitrital de Protección y Bienestar Animal"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "SCRD",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Secretaría de Cultura, Recreación y Deporte",
+      "sigla": "SCRD",
+      "etiqueta": "Secretaría de Cultura, Recreación y Deporte, SCRD",
+      "nombre_normalizado": "secretaria de cultura recreacion y deporte",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría Distrital de Cultura, Recreación y Deporte",
+        "Secretaría Distrital de Cultura, Recreación y Deporte (SDCRD)",
+        "Secretaría Distrital de Cultura, Recreación y Deporte - SCRD",
+        "Secretaría Distrital de Cultura, Recreación y Deportes",
+        "Secretaría de Cultura"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDRD",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Instituto Distrital de Recreación y Deporte",
+      "sigla": "IDRD",
+      "etiqueta": "Instituto Distrital de Recreación y Deporte, IDRD",
+      "nombre_normalizado": "instituto distrital de recreacion y deporte",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto Distrital de Recreación y Deportes - IDRD",
+        "Instituto Distrital de Recreación, Cultura y Deporte - IDRD"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "OFB",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Orquesta Filarmónica de Bogotá",
+      "sigla": "OFB",
+      "etiqueta": "Orquesta Filarmónica de Bogotá, OFB",
+      "nombre_normalizado": "orquesta filarmonica de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDPC",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Instituto Distrital de Patrimonio Cultural",
+      "sigla": "IDPC",
+      "etiqueta": "Instituto Distrital de Patrimonio Cultural, IDPC",
+      "nombre_normalizado": "instituto distrital de patrimonio cultural",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto Distrital del Patrimonio Cultural IDPC"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "FUGA",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Fundación Gilberto Alzate Avendaño",
+      "sigla": "FUGA",
+      "etiqueta": "Fundación Gilberto Alzate Avendaño, FUGA",
+      "nombre_normalizado": "fundacion gilberto alzate avendano",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDARTES",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Instituto Distrital de las Artes",
+      "sigla": "IDARTES",
+      "etiqueta": "Instituto Distrital de las Artes, IDARTES",
+      "nombre_normalizado": "instituto distrital de las artes",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "CANAL_CAPITAL",
+      "sector": "Cultura, Recreación y Deporte",
+      "nombre": "Canal Capital",
+      "sigla": "",
+      "etiqueta": "Canal Capital",
+      "nombre_normalizado": "canal capital",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDDE",
+      "sector": "Desarrollo Económico, Industria y Turismo",
+      "nombre": "Secretaría Distrital de Desarrollo Económico",
+      "sigla": "SDDE",
+      "etiqueta": "Secretaría Distrital de Desarrollo Económico, SDDE",
+      "nombre_normalizado": "secretaria distrital de desarrollo economico",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría Distrital de Desarrollo Económico, Industria y Turismo",
+        "Secretaría de Desarrollo Económico"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IPES",
+      "sector": "Desarrollo Económico, Industria y Turismo",
+      "nombre": "Instituto para la Economía Social",
+      "sigla": "IPES",
+      "etiqueta": "Instituto para la Economía Social, IPES",
+      "nombre_normalizado": "instituto para la economia social",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto Popular para la Economía Social"
+      ],
+      "erratas": [],
+      "nota_revision": "En sispp-SDP figuraba como 'Instituto Popular para la Economía Social'; se dejó el nombre oficial actual."
+    },
+    {
+      "id": "IDT",
+      "sector": "Desarrollo Económico, Industria y Turismo",
+      "nombre": "Instituto Distrital de Turismo",
+      "sigla": "IDT",
+      "etiqueta": "Instituto Distrital de Turismo, IDT",
+      "nombre_normalizado": "instituto distrital de turismo",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto Distrital de Turismo de Bogotá"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "INVEST",
+      "sector": "Desarrollo Económico, Industria y Turismo",
+      "nombre": "Corporación para el Desarrollo y la Productividad Bogotá Región",
+      "sigla": "Invest in Bogotá",
+      "etiqueta": "Corporación para el Desarrollo y la Productividad Bogotá Región, Invest in Bogotá",
+      "nombre_normalizado": "corporacion para el desarrollo y la productividad bogota region",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [
+        "Corporación para el Desarollo y la productividad Bogotá Región Invest In Bogotá"
+      ],
+      "nota_revision": "En alertas-seguimientos estaba duplicada como dos entidades ('Invest in Bogota' y la Corporación); se fusionaron."
+    },
+    {
+      "id": "SED",
+      "sector": "Educación",
+      "nombre": "Secretaría de Educación del Distrito",
+      "sigla": "SED",
+      "etiqueta": "Secretaría de Educación del Distrito, SED",
+      "nombre_normalizado": "secretaria de educacion del distrito",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "SED Bogotá",
+        "Secretaría Distrital de Educación",
+        "Secretaría de Educación",
+        "Secretaría de Educación Distrital",
+        "Secretaría de Educación Distrital, SED"
+      ],
+      "erratas": [
+        "Secretaría de Educación del Distrital",
+        "Secretaría de Educación del Distrito (SDE)"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDEP",
+      "sector": "Educación",
+      "nombre": "Instituto para la Investigación Educativa y el Desarrollo Pedagógico",
+      "sigla": "IDEP",
+      "etiqueta": "Instituto para la Investigación Educativa y el Desarrollo Pedagógico, IDEP",
+      "nombre_normalizado": "instituto para la investigacion educativa y el desarrollo pedagogico",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto de Investigación Educativa y Desarrollo Pedagógico"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "UDFJC",
+      "sector": "Educación",
+      "nombre": "Universidad Distrital Francisco José de Caldas",
+      "sigla": "UDFJC",
+      "etiqueta": "Universidad Distrital Francisco José de Caldas, UDFJC",
+      "nombre_normalizado": "universidad distrital francisco jose de caldas",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "UD",
+        "Universidad Distrital"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "ATENEA",
+      "sector": "Educación",
+      "nombre": "Agencia Distrital para la Educación Superior, la Ciencia y la Tecnología",
+      "sigla": "ATENEA",
+      "etiqueta": "Agencia Distrital para la Educación Superior, la Ciencia y la Tecnología, ATENEA",
+      "nombre_normalizado": "agencia distrital para la educacion superior la ciencia y la tecnologia",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Agencia Atenea",
+        "Agencia para Educación Superior, la Ciencia y la Tecnología - ATENEA"
+      ],
+      "erratas": [
+        "Agencia Distrital para la Eduacción Superior, la Ciencia y la Tecnología"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "SJD",
+      "sector": "Gestión Jurídica",
+      "nombre": "Secretaría Jurídica Distrital",
+      "sigla": "SJD",
+      "etiqueta": "Secretaría Jurídica Distrital, SJD",
+      "nombre_normalizado": "secretaria juridica distrital",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SG",
+      "sector": "Gestión Pública",
+      "nombre": "Secretaría General de la Alcaldía Mayor de Bogotá",
+      "sigla": "SG",
+      "etiqueta": "Secretaría General de la Alcaldía Mayor de Bogotá, SG",
+      "nombre_normalizado": "secretaria general de la alcaldia mayor de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría General",
+        "Secretaría General Alcaldía Mayor de Bogotá",
+        "Secretaría General de la Alcaldía Mayor",
+        "Secretaría General de la Alcaldía Mayor de Bogotá, Secretaría General",
+        "Secretaría General de la Alcaldía de Bogotá"
+      ],
+      "erratas": [],
+      "nota_revision": "Sigla: en unos proyectos 'SG', en otros 'Secretaría General'. Se dejó SG."
+    },
+    {
+      "id": "DASCD",
+      "sector": "Gestión Pública",
+      "nombre": "Departamento Administrativo del Servicio Civil Distrital",
+      "sigla": "DASCD",
+      "etiqueta": "Departamento Administrativo del Servicio Civil Distrital, DASCD",
+      "nombre_normalizado": "departamento administrativo del servicio civil distrital",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Dpto. Admitivo. del Servicio Civil Distrital - DASCD"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "DDRI",
+      "sector": "Gestión Pública",
+      "nombre": "Dirección Distrital de Relaciones Internacionales",
+      "sigla": "DDRI",
+      "etiqueta": "Dirección Distrital de Relaciones Internacionales, DDRI",
+      "nombre_normalizado": "direccion distrital de relaciones internacionales",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": "Es dependencia de la Secretaría General; aparece en los formatos como responsable."
+    },
+    {
+      "id": "DDA",
+      "sector": "Gestión Pública",
+      "nombre": "Dirección Distrital de Archivo",
+      "sigla": "DDA",
+      "etiqueta": "Dirección Distrital de Archivo, DDA",
+      "nombre_normalizado": "direccion distrital de archivo",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Dirección Distrital de Archivo de Bogotá"
+      ],
+      "erratas": [],
+      "nota_revision": "Es dependencia de la Secretaría General; aparece en los formatos como responsable."
+    },
+    {
+      "id": "SDG",
+      "sector": "Gobierno",
+      "nombre": "Secretaría Distrital de Gobierno",
+      "sigla": "SDG",
+      "etiqueta": "Secretaría Distrital de Gobierno, SDG",
+      "nombre_normalizado": "secretaria distrital de gobierno",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría de Gobierno"
+      ],
+      "erratas": [
+        "Secretaría Disrital de Gobierno"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "DADEP",
+      "sector": "Gobierno",
+      "nombre": "Departamento Administrativo de la Defensoría del Espacio Público",
+      "sigla": "DADEP",
+      "etiqueta": "Departamento Administrativo de la Defensoría del Espacio Público, DADEP",
+      "nombre_normalizado": "departamento administrativo de la defensoria del espacio publico",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Dpto Admitivo. de la Defensoría del Espacio Público DADEP"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDPAC",
+      "sector": "Gobierno",
+      "nombre": "Instituto Distrital de la Participación y Acción Comunal",
+      "sigla": "IDPAC",
+      "etiqueta": "Instituto Distrital de la Participación y Acción Comunal, IDPAC",
+      "nombre_normalizado": "instituto distrital de la participacion y accion comunal",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto Distrital de Participación y Acción Comunal - IDPAC",
+        "Instituto Distrital de la Participación Comunal",
+        "Instituto Distrital de la Participación y la Acción Comunal",
+        "Instituto Distrital para la Participación y la Acción Comunal"
+      ],
+      "erratas": [
+        "Insituto Distrital de la Participación y Acción Comunal - IDPAC"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "ALCALDIAS_LOCALES",
+      "sector": "Gobierno",
+      "nombre": "Alcaldías Locales",
+      "sigla": "",
+      "etiqueta": "Alcaldías Locales",
+      "nombre_normalizado": "alcaldias locales",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Fondos de Desarrollo Local"
+      ],
+      "erratas": [],
+      "nota_revision": "Solo estaba en alertas-seguimientos."
+    },
+    {
+      "id": "SDHT",
+      "sector": "Hábitat",
+      "nombre": "Secretaría Distrital del Hábitat",
+      "sigla": "SDHT",
+      "etiqueta": "Secretaría Distrital del Hábitat, SDHT",
+      "nombre_normalizado": "secretaria distrital del habitat",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría Distrital de Hábitat"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "CVP",
+      "sector": "Hábitat",
+      "nombre": "Caja de la Vivienda Popular",
+      "sigla": "CVP",
+      "etiqueta": "Caja de la Vivienda Popular, CVP",
+      "nombre_normalizado": "caja de la vivienda popular",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Caja de Vivienda Popular",
+        "Caja de Vivienda Popular, CVP"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "UAESP",
+      "sector": "Hábitat",
+      "nombre": "Unidad Administrativa Especial de Servicios Públicos",
+      "sigla": "UAESP",
+      "etiqueta": "Unidad Administrativa Especial de Servicios Públicos, UAESP",
+      "nombre_normalizado": "unidad administrativa especial de servicios publicos",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Unidad Administrativa Especial - UAESP"
+      ],
+      "erratas": [
+        "Unidad Administrativa Especial de Serecios Publicos - UAESP"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "RENOBO",
+      "sector": "Hábitat",
+      "nombre": "Renobo",
+      "sigla": "",
+      "etiqueta": "Renobo",
+      "nombre_normalizado": "renobo",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "ERU",
+        "Empresa de Renovación y Desarrollo Urbano",
+        "Empresa de Renovación y Desarrollo Urbano de Bogotá",
+        "Empresa de Renovación y Desarrollo Urbano de Bogotá - RenoBo",
+        "Empresa de Renovación y Desarrollo Urbano de Bogotá D.C.",
+        "Empresa de Renovación y Desarrollo Urbano de Bogotá, ERU"
+      ],
+      "erratas": [],
+      "nota_revision": "Antes Empresa de Renovación y Desarrollo Urbano de Bogotá (ERU); los nombres anteriores quedan como alias."
+    },
+    {
+      "id": "METROVIVIENDA",
+      "sector": "Hábitat",
+      "nombre": "Metrovivienda",
+      "sigla": "",
+      "etiqueta": "Metrovivienda",
+      "nombre_normalizado": "metrovivienda",
+      "tipo": "distrital",
+      "activa": false,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": "Se fusionó con la ERU, hoy Renobo (Acuerdo 643 de 2016). Se deja inactiva para que datos históricos sigan resolviendo."
+    },
+    {
+      "id": "EAAB",
+      "sector": "Hábitat",
+      "nombre": "Empresa de Acueducto y Alcantarillado de Bogotá",
+      "sigla": "EAAB",
+      "etiqueta": "Empresa de Acueducto y Alcantarillado de Bogotá, EAAB",
+      "nombre_normalizado": "empresa de acueducto y alcantarillado de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Acueducto de Bogotá",
+        "Empresa de Acueducto y Alcantarillado de Bogotá EAAB - ESP",
+        "Empresa de Acueducto y Alcantarillado de Bogotá EAAB – ESP"
+      ],
+      "erratas": [],
+      "nota_revision": "Solo estaba en alertas-seguimientos."
+    },
+    {
+      "id": "SDH",
+      "sector": "Hacienda",
+      "nombre": "Secretaría Distrital de Hacienda",
+      "sigla": "SDH",
+      "etiqueta": "Secretaría Distrital de Hacienda, SDH",
+      "nombre_normalizado": "secretaria distrital de hacienda",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría de Hacienda"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "UAECD",
+      "sector": "Hacienda",
+      "nombre": "Unidad Administrativa Especial de Catastro Distrital",
+      "sigla": "UAECD",
+      "etiqueta": "Unidad Administrativa Especial de Catastro Distrital, UAECD",
+      "nombre_normalizado": "unidad administrativa especial de catastro distrital",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Catastro Distrital",
+        "UAE de Catastro Distrital - UAECD",
+        "Unidad Administrativa Especial de Catastro - UAECD"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "LOTERIA",
+      "sector": "Hacienda",
+      "nombre": "Lotería de Bogotá",
+      "sigla": "",
+      "etiqueta": "Lotería de Bogotá",
+      "nombre_normalizado": "loteria de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "FONCEP",
+      "sector": "Hacienda",
+      "nombre": "Fondo de Prestaciones Económicas, Cesantías y Pensiones",
+      "sigla": "FONCEP",
+      "etiqueta": "Fondo de Prestaciones Económicas, Cesantías y Pensiones, FONCEP",
+      "nombre_normalizado": "fondo de prestaciones economicas cesantias y pensiones",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Fondo de Prestaciones Económicas, Cesantías y Pensiones de Bogotá, Foncep"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDIS",
+      "sector": "Integración Social",
+      "nombre": "Secretaría Distrital de Integración Social",
+      "sigla": "SDIS",
+      "etiqueta": "Secretaría Distrital de Integración Social, SDIS",
+      "nombre_normalizado": "secretaria distrital de integracion social",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría de Integración Social"
+      ],
+      "erratas": [
+        "Secretaria Distrial de Integración Social"
+      ],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDIPRON",
+      "sector": "Integración Social",
+      "nombre": "Instituto Distrital para la Protección de la Niñez y la Juventud",
+      "sigla": "IDIPRON",
+      "etiqueta": "Instituto Distrital para la Protección de la Niñez y la Juventud, IDIPRON",
+      "nombre_normalizado": "instituto distrital para la proteccion de la ninez y la juventud",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Instituto para la Protección de la Niñez y la Juventud IDIPRON"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDM",
+      "sector": "Movilidad",
+      "nombre": "Secretaría Distrital de Movilidad",
+      "sigla": "SDM",
+      "etiqueta": "Secretaría Distrital de Movilidad, SDM",
+      "nombre_normalizado": "secretaria distrital de movilidad",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría de Movilidad"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDU",
+      "sector": "Movilidad",
+      "nombre": "Instituto de Desarrollo Urbano",
+      "sigla": "IDU",
+      "etiqueta": "Instituto de Desarrollo Urbano, IDU",
+      "nombre_normalizado": "instituto de desarrollo urbano",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": "Confirmado sector Movilidad (sispp-SDP, sispp-gobierno y Dashboard_Politicas lo tenían en Hábitat)."
+    },
+    {
+      "id": "UAERMV",
+      "sector": "Movilidad",
+      "nombre": "Unidad Administrativa Especial de Rehabilitación y Mantenimiento Vial",
+      "sigla": "UAERMV",
+      "etiqueta": "Unidad Administrativa Especial de Rehabilitación y Mantenimiento Vial, UAERMV",
+      "nombre_normalizado": "unidad administrativa especial de rehabilitacion y mantenimiento vial",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": "Confirmado sector Movilidad (sispp-SDP, sispp-gobierno y Dashboard_Politicas la tenían en Hábitat)."
+    },
+    {
+      "id": "TRANSMILENIO",
+      "sector": "Movilidad",
+      "nombre": "Empresa de Transporte del Tercer Milenio Transmilenio S.A.",
+      "sigla": "TRANSMILENIO",
+      "etiqueta": "Empresa de Transporte del Tercer Milenio Transmilenio S.A., TRANSMILENIO",
+      "nombre_normalizado": "empresa de transporte del tercer milenio transmilenio s a",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Empresa de Transporte del Tercer Milenio Transmilenio",
+        "Empresa de Transporte del Tercer Milenio Transmilenio, TRANSMILENIO",
+        "TRANSMILENIO S.A."
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "EMB",
+      "sector": "Movilidad",
+      "nombre": "Empresa Metro de Bogotá",
+      "sigla": "EMB",
+      "etiqueta": "Empresa Metro de Bogotá, EMB",
+      "nombre_normalizado": "empresa metro de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Metro",
+        "Metro de Bogotá"
+      ],
+      "erratas": [],
+      "nota_revision": "Sigla: sispp-SDP usaba 'Metro'. Se dejó EMB."
+    },
+    {
+      "id": "TERMINAL",
+      "sector": "Movilidad",
+      "nombre": "Terminal de Transporte S.A.",
+      "sigla": "",
+      "etiqueta": "Terminal de Transporte S.A.",
+      "nombre_normalizado": "terminal de transporte s a",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Terminal de Transporte"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDMUJER",
+      "sector": "Mujeres",
+      "nombre": "Secretaría Distrital de la Mujer",
+      "sigla": "SDMujer",
+      "etiqueta": "Secretaría Distrital de la Mujer, SDMujer",
+      "nombre_normalizado": "secretaria distrital de la mujer",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría Distrital de Mujer",
+        "Secretaría de la Mujer"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDP",
+      "sector": "Planeación",
+      "nombre": "Secretaría Distrital de Planeación",
+      "sigla": "SDP",
+      "etiqueta": "Secretaría Distrital de Planeación, SDP",
+      "nombre_normalizado": "secretaria distrital de planeacion",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría de Planeación"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDS",
+      "sector": "Salud",
+      "nombre": "Secretaría Distrital de Salud",
+      "sigla": "SDS",
+      "etiqueta": "Secretaría Distrital de Salud, SDS",
+      "nombre_normalizado": "secretaria distrital de salud",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría Distrital de Salud de Bogotá",
+        "Secretaría de Salud"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "FFDS",
+      "sector": "Salud",
+      "nombre": "Fondo Financiero Distrital de Salud",
+      "sigla": "FFDS",
+      "etiqueta": "Fondo Financiero Distrital de Salud, FFDS",
+      "nombre_normalizado": "fondo financiero distrital de salud",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "CAPITAL_SALUD",
+      "sector": "Salud",
+      "nombre": "Capital Salud EPS-S",
+      "sigla": "",
+      "etiqueta": "Capital Salud EPS-S",
+      "nombre_normalizado": "capital salud eps s",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Capital Salud"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SUBRED_NORTE",
+      "sector": "Salud",
+      "nombre": "Subred Integrada de Servicios de Salud Norte E.S.E.",
+      "sigla": "Subred Norte",
+      "etiqueta": "Subred Integrada de Servicios de Salud Norte E.S.E., Subred Norte",
+      "nombre_normalizado": "subred integrada de servicios de salud norte e s e",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Subred Integrada de Servicios de Salud Norte"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SUBRED_CENTRO_ORIENTE",
+      "sector": "Salud",
+      "nombre": "Subred Integrada de Servicios de Salud Centro Oriente E.S.E.",
+      "sigla": "Subred Centro Oriente",
+      "etiqueta": "Subred Integrada de Servicios de Salud Centro Oriente E.S.E., Subred Centro Oriente",
+      "nombre_normalizado": "subred integrada de servicios de salud centro oriente e s e",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Subred Integrada de Servicios de Salud Centro Oriente"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SUBRED_SUR",
+      "sector": "Salud",
+      "nombre": "Subred Integrada de Servicios de Salud Sur E.S.E.",
+      "sigla": "Subred Sur",
+      "etiqueta": "Subred Integrada de Servicios de Salud Sur E.S.E., Subred Sur",
+      "nombre_normalizado": "subred integrada de servicios de salud sur e s e",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Subred Integrada de Servicios de Salud Sur"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SUBRED_SUR_OCCIDENTE",
+      "sector": "Salud",
+      "nombre": "Subred Integrada de Servicios de Salud Sur Occidente E.S.E.",
+      "sigla": "Subred Sur Occidente",
+      "etiqueta": "Subred Integrada de Servicios de Salud Sur Occidente E.S.E., Subred Sur Occidente",
+      "nombre_normalizado": "subred integrada de servicios de salud sur occidente e s e",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Subred Integrada de Servicios de Salud Sur Occidente"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "IDCBIS",
+      "sector": "Salud",
+      "nombre": "Instituto Distrital de Ciencia, Biotecnología e Innovación en Salud",
+      "sigla": "IDCBIS",
+      "etiqueta": "Instituto Distrital de Ciencia, Biotecnología e Innovación en Salud, IDCBIS",
+      "nombre_normalizado": "instituto distrital de ciencia biotecnologia e innovacion en salud",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SDSCJ",
+      "sector": "Seguridad, Convivencia y Justicia",
+      "nombre": "Secretaría Distrital de Seguridad, Convivencia y Justicia",
+      "sigla": "SDSCJ",
+      "etiqueta": "Secretaría Distrital de Seguridad, Convivencia y Justicia, SDSCJ",
+      "nombre_normalizado": "secretaria distrital de seguridad convivencia y justicia",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Secretaría Distrital de Seguridad, Justicia y Convivencia",
+        "Secretaría de Seguridad, Convivencia y Justicia",
+        "Sector Seguridad, Convivencia y Justicia - Secretaría Distrital de Seguridad, Convivencia y Justicia"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "UAECOB",
+      "sector": "Seguridad, Convivencia y Justicia",
+      "nombre": "Unidad Administrativa Especial Cuerpo Oficial de Bomberos",
+      "sigla": "UAECOB",
+      "etiqueta": "Unidad Administrativa Especial Cuerpo Oficial de Bomberos, UAECOB",
+      "nombre_normalizado": "unidad administrativa especial cuerpo oficial de bomberos",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Bomberos Bogotá",
+        "UAE Cuerpo Oficial de Bomberos de Bogotá",
+        "Unidad Administrativa Especial Cuerpo Oficial de Bomberos de Bogotá"
+      ],
+      "erratas": [],
+      "nota_revision": "Confirmado sector Seguridad, Convivencia y Justicia (sispp-SDP la tenía en Gobierno)."
+    },
+    {
+      "id": "CONTRALORIA",
+      "sector": "Entes de Control",
+      "nombre": "Contraloría de Bogotá",
+      "sigla": "",
+      "etiqueta": "Contraloría de Bogotá",
+      "nombre_normalizado": "contraloria de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Contraloría Distrital"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "PERSONERIA",
+      "sector": "Entes de Control",
+      "nombre": "Personería de Bogotá",
+      "sigla": "",
+      "etiqueta": "Personería de Bogotá",
+      "nombre_normalizado": "personeria de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "VEEDURIA",
+      "sector": "Entes de Control",
+      "nombre": "Veeduría Distrital",
+      "sigla": "",
+      "etiqueta": "Veeduría Distrital",
+      "nombre_normalizado": "veeduria distrital",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [
+        "Veeduría"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "CONCEJO",
+      "sector": "Concejo de Bogotá",
+      "nombre": "Concejo de Bogotá",
+      "sigla": "",
+      "etiqueta": "Concejo de Bogotá",
+      "nombre_normalizado": "concejo de bogota",
+      "tipo": "distrital",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": "Corporación político-administrativa; queda como entidad aparte, fuera de Entes de Control."
+    },
+    {
+      "id": "DEFENSORIA",
+      "sector": "Entidades no distritales",
+      "nombre": "Defensoría del Pueblo",
+      "sigla": "",
+      "etiqueta": "Defensoría del Pueblo",
+      "nombre_normalizado": "defensoria del pueblo",
+      "tipo": "nacional",
+      "activa": true,
+      "alias": [],
+      "erratas": [],
+      "nota_revision": "Sector en conflicto: unos proyectos la ponían en Entes de Control. Es entidad nacional."
+    },
+    {
+      "id": "ICBF",
+      "sector": "Entidades no distritales",
+      "nombre": "Instituto Colombiano de Bienestar Familiar",
+      "sigla": "ICBF",
+      "etiqueta": "Instituto Colombiano de Bienestar Familiar, ICBF",
+      "nombre_normalizado": "instituto colombiano de bienestar familiar",
+      "tipo": "nacional",
+      "activa": true,
+      "alias": [
+        "Nacional-ICBF"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "SENA",
+      "sector": "Entidades no distritales",
+      "nombre": "Servicio Nacional de Aprendizaje SENA Regional Bogotá",
+      "sigla": "SENA",
+      "etiqueta": "Servicio Nacional de Aprendizaje SENA Regional Bogotá, SENA",
+      "nombre_normalizado": "servicio nacional de aprendizaje sena regional bogota",
+      "tipo": "nacional",
+      "activa": true,
+      "alias": [
+        "Servicio Nacional de Aprendizaje"
+      ],
+      "erratas": [],
+      "nota_revision": ""
+    },
+    {
+      "id": "RAPE",
+      "sector": "Entidades no distritales",
+      "nombre": "Región Administrativa y de Planeación Especial",
+      "sigla": "RAP-E",
+      "etiqueta": "Región Administrativa y de Planeación Especial, RAP-E",
+      "nombre_normalizado": "region administrativa y de planeacion especial",
+      "tipo": "regional",
+      "activa": true,
+      "alias": [
+        "RAP-E Región Central",
+        "Región Central"
+      ],
+      "erratas": [],
+      "nota_revision": "Confirmada como entidad no distrital (alertas-seguimientos la tenía en Planeación)."
+    },
+    {
+      "id": "NO_DISTRITALES",
+      "sector": "Entidades no distritales",
+      "nombre": "Entidades no distritales",
+      "sigla": "",
+      "etiqueta": "Entidades no distritales",
+      "nombre_normalizado": "entidades no distritales",
+      "tipo": "categoria_generica",
+      "activa": true,
+      "alias": [],
+      "erratas": [
+        "Entidades No Distrtitales"
+      ],
+      "nota_revision": "Valor genérico que usan los formatos; no es una entidad."
+    }
+  ]
+}
