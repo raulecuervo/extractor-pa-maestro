@@ -15,7 +15,7 @@ de las fichas técnicas; fichas de Juventud) ·
 0.21.0 (años sueltos en las fechas, tolerancia de los acumulados, formatos sin
 bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año).
 
-## [Sin publicar] — Listado 1.0.2: grafías de los planes de sispp-gobierno
+## [0.23.1] — Listado 1.0.2: grafías de los planes de sispp-gobierno y sispp-SDP
 
 No cambia cifras. Agrega grafías que aparecieron en los planes de acción
 vigentes de sispp-gobierno (oct-2026) y que hasta la 1.0.1 el aplicativo solo
