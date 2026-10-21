@@ -31,20 +31,27 @@ sigla cambia; `integridad` sigue en `[]`.
   (TRANSMILENIO; pa negra-afro), «Secretaría de Cultura Recreación y Deportes»
   (SCRD; pa LEO, LGBTI y DRAFE, también con «Recreaciòn» y «deportes» en
   minúscula), «Secretaría Distrital de Integración - SDIS» (SDIS; pa acción
-  comunal) y «Region Administrativa de Planeación Especial» (RAP-E; pa
-  servicios públicos). Alias nuevos (se reconocen sin avisar): «Secretaría
-  del Hábitat» y «Secretaría Distrital de Hábitat y Territorio» (SDHT; pa
-  servicios públicos), «Empresa Metro» (EMB; pa negra-afro) y «Secretaría
+  comunal), «Region Administrativa de Planeación Especial» (RAP-E; pa
+  servicios públicos) y «Secretaría Distrital de Hábitat y Territorio» (SDHT;
+  pa servicios públicos: no es un nombre de la Secretaría). Alias nuevos (se
+  reconocen sin avisar): «Secretaría del Hábitat» (SDHT; pa servicios
+  públicos), «Empresa Metro» (EMB; pa negra-afro) y «Secretaría
   Distrital de Seguridad y Convivencia» (SDSCJ; pa LEO); en los sectores,
   «Desarrollo Económico y Turismo» (pa LEO), «Integración» (pa acción comunal)
   y «Sector Planeación» (pa LGBTI). Todas vienen de columnas de corresponsable.
-- De los planes de sispp-SDP: errata «Unidad Administrativa de Servicios
-  Públicos» (UAESP; pa habitabilidad en calle) y, en los sectores, «Desarrollo
-  Econimico Industria y Turismo» (pa adultez); alias «Instituto Distrital de
-  Recreación y Deportes» (IDRD; pa familias y habitabilidad en calle) y
+- De los planes de sispp-SDP: erratas «Unidad Administrativa de Servicios
+  Públicos» (UAESP; pa habitabilidad en calle), «Instituto Distrital de
+  Recreación y Deportes» (IDRD; pa familias y habitabilidad en calle) y, en los
+  sectores, «Desarrollo Econimico Industria y Turismo» (pa adultez); alias
   «Sector Desarrollo Económico» (pa habitabilidad en calle). «Secretaría
   Distrital del Hábitat (SDH)» (pa adultez) no se agrega: la 1.0.1 la retiró
   porque «SDH» es la sigla de Hacienda.
+- **Una sola regla para «Deportes».** «Deportes» por «Deporte» es una errata
+  en todas sus grafías, también en las que la 1.0.1 tenía como alias: el
+  sector «Cultura, Recreación y Deportes», «Secretaría Distrital de Cultura,
+  Recreación y Deportes» (SCRD) e «Instituto Distrital de Recreación y
+  Deportes - IDRD» (IDRD). Siguen resolviendo a la misma entidad o sector; lo
+  que cambia es que el Validador avisa.
 
 ### Pruebas
 
@@ -52,7 +59,7 @@ sigla cambia; `integridad` sigue en `[]`.
   resuelve a su entidad y se clasifica como «errata»; cada alias nuevo, como
   «alias» (los de sector no resuelven como entidad); la errata con acento
   grave («Recreaciòn») da la misma clave; «Secretaría Distrital del Hábitat
-  (SDH)» sigue sin resolver.
+  (SDH)» sigue sin resolver; ninguna grafía con «Deportes» queda como alias.
 
 ## [0.23.0] — El listado oficial de entidades y sectores vive en la librería
 

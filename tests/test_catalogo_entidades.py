@@ -187,6 +187,9 @@ ERRATAS_DE_SECTOR = [
     ("Entidades No Distrtitales", "Entidades no distritales"),
     ("Desarrollo Econimico Industria y Turismo",
      "Desarrollo Económico, Industria y Turismo"),                  # 1.0.2, sispp-SDP
+    # 1.0.2: «Deportes» en plural es una errata en todas sus grafías (en la
+    # 1.0.1 algunas estaban como alias).
+    ("Cultura, Recreación y Deportes", "Cultura, Recreación y Deporte"),
 ]
 
 ERRATAS_DE_ENTIDAD = [
@@ -208,8 +211,14 @@ ERRATAS_DE_ENTIDAD = [
     ("Secretaría de Cultura Recreación y Deportes", "SCRD"),
     ("Secretaría Distrital de Integración - SDIS", "SDIS"),
     ("Region Administrativa de Planeación Especial", "RAPE"),
+    ("Secretaría Distrital de Hábitat y Territorio", "SDHT"),     # no es un nombre de la SDHT
     # Listado 1.0.2: planes de acción de sispp-SDP (oct-2026).
     ("Unidad Administrativa de Servicios Públicos", "UAESP"),       # el plan trae punto final
+    ("Instituto Distrital de Recreación y Deportes", "IDRD"),
+    # 1.0.2: «Deportes» en plural es una errata en todas sus grafías (en la
+    # 1.0.1 estas estaban como alias).
+    ("Secretaría Distrital de Cultura, Recreación y Deportes", "SCRD"),
+    ("Instituto Distrital de Recreación y Deportes - IDRD", "IDRD"),
 ]
 
 
@@ -236,10 +245,8 @@ def test_la_errata_de_entidad_resuelve_pero_se_clasifica_como_errata(grafia, id_
 ALIAS_1_0_2_DE_ENTIDAD = [
     ("Secretaría del Hábitat", "SDHT"),
     ("Secretaría del Habitat", "SDHT"),                       # como viene en el plan
-    ("Secretaría Distrital de Hábitat y Territorio", "SDHT"),
     ("Empresa Metro", "EMB"),
     ("Secretaría Distrital de Seguridad y Convivencia", "SDSCJ"),
-    ("Instituto Distrital de Recreación y Deportes", "IDRD"),         # sispp-SDP
 ]
 
 ALIAS_1_0_2_DE_SECTOR = [
@@ -540,3 +547,11 @@ def test_construir_rellena_los_campos_opcionales():
     assert lst.sectores[0].nombre_normalizado == "salud" and lst.sectores[0].erratas == ()
     assert e.nombre_normalizado == "entidad x"
     assert lst.version == "" and integridad(lst) == []
+
+
+def test_deportes_en_plural_es_errata_en_todas_sus_grafias():
+    """Una sola regla para el mismo error: «Deportes» por «Deporte» es una
+    errata (el Validador avisa), nunca un alias."""
+    lst = cargar()
+    for o in list(lst.sectores) + list(lst.entidades):
+        assert not [a for a in o.alias if "deportes" in a.lower()], o.nombre

@@ -14,11 +14,11 @@
       "nombre_normalizado": "cultura recreacion y deporte",
       "alias": [
         "culturarecreaciónydeporte",
-        "Cultura",
-        "Cultura, Recreación y Deportes"
+        "Cultura"
       ],
       "erratas": [
-        "Cultura, Recrecación y Deporte"
+        "Cultura, Recrecación y Deporte",
+        "Cultura, Recreación y Deportes"
       ]
     },
     {
@@ -233,11 +233,11 @@
         "Secretaría Distrital de Cultura, Recreación y Deporte",
         "Secretaría Distrital de Cultura, Recreación y Deporte (SDCRD)",
         "Secretaría Distrital de Cultura, Recreación y Deporte - SCRD",
-        "Secretaría Distrital de Cultura, Recreación y Deportes",
         "Secretaría de Cultura"
       ],
       "erratas": [
-        "Secretaría de Cultura Recreación y Deportes"
+        "Secretaría de Cultura Recreación y Deportes",
+        "Secretaría Distrital de Cultura, Recreación y Deportes"
       ],
       "nota_revision": ""
     },
@@ -251,11 +251,12 @@
       "tipo": "distrital",
       "activa": true,
       "alias": [
+        "Instituto Distrital de Recreación, Cultura y Deporte - IDRD"
+      ],
+      "erratas": [
         "Instituto Distrital de Recreación y Deportes - IDRD",
-        "Instituto Distrital de Recreación, Cultura y Deporte - IDRD",
         "Instituto Distrital de Recreación y Deportes"
       ],
-      "erratas": [],
       "nota_revision": ""
     },
     {
@@ -612,10 +613,11 @@
       "activa": true,
       "alias": [
         "Secretaría Distrital de Hábitat",
-        "Secretaría del Hábitat",
+        "Secretaría del Hábitat"
+      ],
+      "erratas": [
         "Secretaría Distrital de Hábitat y Territorio"
       ],
-      "erratas": [],
       "nota_revision": ""
     },
     {
