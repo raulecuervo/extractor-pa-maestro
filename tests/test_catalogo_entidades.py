@@ -185,6 +185,8 @@ ERRATAS_DE_SECTOR = [
     ("Desarrollo Econimico", "Desarrollo Económico, Industria y Turismo"),
     ("Secretaría, Convivencia y Justicia", "Seguridad, Convivencia y Justicia"),
     ("Entidades No Distrtitales", "Entidades no distritales"),
+    ("Desarrollo Econimico Industria y Turismo",
+     "Desarrollo Económico, Industria y Turismo"),                  # 1.0.2, sispp-SDP
 ]
 
 ERRATAS_DE_ENTIDAD = [
@@ -206,6 +208,8 @@ ERRATAS_DE_ENTIDAD = [
     ("Secretaría de Cultura Recreación y Deportes", "SCRD"),
     ("Secretaría Distrital de Integración - SDIS", "SDIS"),
     ("Region Administrativa de Planeación Especial", "RAPE"),
+    # Listado 1.0.2: planes de acción de sispp-SDP (oct-2026).
+    ("Unidad Administrativa de Servicios Públicos", "UAESP"),       # el plan trae punto final
 ]
 
 
@@ -235,12 +239,14 @@ ALIAS_1_0_2_DE_ENTIDAD = [
     ("Secretaría Distrital de Hábitat y Territorio", "SDHT"),
     ("Empresa Metro", "EMB"),
     ("Secretaría Distrital de Seguridad y Convivencia", "SDSCJ"),
+    ("Instituto Distrital de Recreación y Deportes", "IDRD"),         # sispp-SDP
 ]
 
 ALIAS_1_0_2_DE_SECTOR = [
     ("Desarrollo Económico y Turismo", "Desarrollo Económico, Industria y Turismo"),
     ("Integración", "Integración Social"),
     ("Sector Planeación", "Planeación"),
+    ("Sector Desarrollo Económico", "Desarrollo Económico, Industria y Turismo"),   # sispp-SDP
 ]
 
 
@@ -255,6 +261,13 @@ def test_alias_de_sector_1_0_2(grafia, sector):
     clase, s = clasificar_sector(grafia)
     assert (clase, s.nombre) == (ALIAS, sector)
     assert canonizar_entidad(grafia) is None          # no es una entidad
+
+
+def test_la_sdht_con_la_sigla_de_hacienda_sigue_sin_resolver():
+    """«Secretaría Distrital del Hábitat (SDH)» aparece en un plan de sispp-SDP,
+    pero no se agrega: la 1.0.1 la retiró porque «SDH» es la sigla de Hacienda.
+    El aplicativo la resuelve por su cuenta (el nombre dice Hábitat)."""
+    assert canonizar_entidad("Secretaría Distrital del Hábitat (SDH)") is None
 
 
 def test_la_errata_con_otros_acentos_tambien_resuelve():

@@ -27,10 +27,12 @@
       "alias": [
         "desarrolloeconómicoindustriayturismo",
         "Desarrollo Económico",
-        "Desarrollo Económico y Turismo"
+        "Desarrollo Económico y Turismo",
+        "Sector Desarrollo Económico"
       ],
       "erratas": [
-        "Desarrollo Econimico"
+        "Desarrollo Econimico",
+        "Desarrollo Econimico Industria y Turismo"
       ]
     },
     {
@@ -250,7 +252,8 @@
       "activa": true,
       "alias": [
         "Instituto Distrital de Recreación y Deportes - IDRD",
-        "Instituto Distrital de Recreación, Cultura y Deporte - IDRD"
+        "Instituto Distrital de Recreación, Cultura y Deporte - IDRD",
+        "Instituto Distrital de Recreación y Deportes"
       ],
       "erratas": [],
       "nota_revision": ""
@@ -644,7 +647,8 @@
         "Unidad Administrativa Especial - UAESP"
       ],
       "erratas": [
-        "Unidad Administrativa Especial de Serecios Publicos - UAESP"
+        "Unidad Administrativa Especial de Serecios Publicos - UAESP",
+        "Unidad Administrativa de Servicios Públicos"
       ],
       "nota_revision": ""
     },

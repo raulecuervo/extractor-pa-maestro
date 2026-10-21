@@ -38,13 +38,21 @@ sigla cambia; `integridad` sigue en `[]`.
   Distrital de Seguridad y Convivencia» (SDSCJ; pa LEO); en los sectores,
   «Desarrollo Económico y Turismo» (pa LEO), «Integración» (pa acción comunal)
   y «Sector Planeación» (pa LGBTI). Todas vienen de columnas de corresponsable.
+- De los planes de sispp-SDP: errata «Unidad Administrativa de Servicios
+  Públicos» (UAESP; pa habitabilidad en calle) y, en los sectores, «Desarrollo
+  Econimico Industria y Turismo» (pa adultez); alias «Instituto Distrital de
+  Recreación y Deportes» (IDRD; pa familias y habitabilidad en calle) y
+  «Sector Desarrollo Económico» (pa habitabilidad en calle). «Secretaría
+  Distrital del Hábitat (SDH)» (pa adultez) no se agrega: la 1.0.1 la retiró
+  porque «SDH» es la sigla de Hacienda.
 
 ### Pruebas
 
 - `tests/test_catalogo_entidades.py`: versión 1.0.2; cada errata nueva
   resuelve a su entidad y se clasifica como «errata»; cada alias nuevo, como
   «alias» (los de sector no resuelven como entidad); la errata con acento
-  grave («Recreaciòn») da la misma clave.
+  grave («Recreaciòn») da la misma clave; «Secretaría Distrital del Hábitat
+  (SDH)» sigue sin resolver.
 
 ## [0.23.0] — El listado oficial de entidades y sectores vive en la librería
 
