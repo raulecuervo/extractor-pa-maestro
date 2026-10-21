@@ -22,7 +22,7 @@ from extractor_pa.catalogo_entidades import (
 
 #: Versión del listado que viaja en el paquete. Cambia solo con una versión nueva
 #: del listado (y de la librería).
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 
 def _json_publicado() -> dict:
@@ -185,6 +185,11 @@ ERRATAS_DE_SECTOR = [
     ("Desarrollo Econimico", "Desarrollo Económico, Industria y Turismo"),
     ("Secretaría, Convivencia y Justicia", "Seguridad, Convivencia y Justicia"),
     ("Entidades No Distrtitales", "Entidades no distritales"),
+    ("Desarrollo Econimico Industria y Turismo",
+     "Desarrollo Económico, Industria y Turismo"),                  # 1.0.2, sispp-SDP
+    # 1.0.2: «Deportes» en plural es una errata en todas sus grafías (en la
+    # 1.0.1 algunas estaban como alias).
+    ("Cultura, Recreación y Deportes", "Cultura, Recreación y Deporte"),
 ]
 
 ERRATAS_DE_ENTIDAD = [
@@ -199,6 +204,21 @@ ERRATAS_DE_ENTIDAD = [
     ("Unidad Administrativa Especial de Serecios Publicos - UAESP", "UAESP"),
     ("Secretaria Distrial de Integración Social", "SDIS"),
     ("Entidades No Distrtitales", "NO_DISTRITALES"),
+    # Listado 1.0.2: planes de acción de sispp-gobierno (oct-2026).
+    ("Secretaría Distrittal de Gobierno", "SDG"),
+    ("Instituto Distrital de la Participacón y Acción Comunal", "IDPAC"),
+    ("TRANSMILENO S.A", "TRANSMILENIO"),
+    ("Secretaría de Cultura Recreación y Deportes", "SCRD"),
+    ("Secretaría Distrital de Integración - SDIS", "SDIS"),
+    ("Region Administrativa de Planeación Especial", "RAPE"),
+    ("Secretaría Distrital de Hábitat y Territorio", "SDHT"),     # no es un nombre de la SDHT
+    # Listado 1.0.2: planes de acción de sispp-SDP (oct-2026).
+    ("Unidad Administrativa de Servicios Públicos", "UAESP"),       # el plan trae punto final
+    ("Instituto Distrital de Recreación y Deportes", "IDRD"),
+    # 1.0.2: «Deportes» en plural es una errata en todas sus grafías (en la
+    # 1.0.1 estas estaban como alias).
+    ("Secretaría Distrital de Cultura, Recreación y Deportes", "SCRD"),
+    ("Instituto Distrital de Recreación y Deportes - IDRD", "IDRD"),
 ]
 
 
@@ -217,6 +237,50 @@ def test_la_errata_de_entidad_resuelve_pero_se_clasifica_como_errata(grafia, id_
     assert clase == ERRATA and e.id == id_entidad
     assert grafia in e.erratas and grafia not in e.alias
     assert sector_de(grafia) == e.sector                      # agrupa, aunque avise
+
+
+# Listado 1.0.2: grafías legítimas que aparecieron en los planes de acción de
+# sispp-gobierno (oct-2026) y que hasta la 1.0.1 solo resolvía el fuzzy del
+# aplicativo. Se reconocen sin avisar.
+ALIAS_1_0_2_DE_ENTIDAD = [
+    ("Secretaría del Hábitat", "SDHT"),
+    ("Secretaría del Habitat", "SDHT"),                       # como viene en el plan
+    ("Empresa Metro", "EMB"),
+    ("Secretaría Distrital de Seguridad y Convivencia", "SDSCJ"),
+]
+
+ALIAS_1_0_2_DE_SECTOR = [
+    ("Desarrollo Económico y Turismo", "Desarrollo Económico, Industria y Turismo"),
+    ("Integración", "Integración Social"),
+    ("Sector Planeación", "Planeación"),
+    ("Sector Desarrollo Económico", "Desarrollo Económico, Industria y Turismo"),   # sispp-SDP
+]
+
+
+@pytest.mark.parametrize("grafia,id_entidad", ALIAS_1_0_2_DE_ENTIDAD)
+def test_alias_de_entidad_1_0_2(grafia, id_entidad):
+    clase, e = clasificar_entidad(grafia)
+    assert (clase, e.id) == (ALIAS, id_entidad)
+
+
+@pytest.mark.parametrize("grafia,sector", ALIAS_1_0_2_DE_SECTOR)
+def test_alias_de_sector_1_0_2(grafia, sector):
+    clase, s = clasificar_sector(grafia)
+    assert (clase, s.nombre) == (ALIAS, sector)
+    assert canonizar_entidad(grafia) is None          # no es una entidad
+
+
+def test_la_sdht_con_la_sigla_de_hacienda_sigue_sin_resolver():
+    """«Secretaría Distrital del Hábitat (SDH)» aparece en un plan de sispp-SDP,
+    pero no se agrega: la 1.0.1 la retiró porque «SDH» es la sigla de Hacienda.
+    El aplicativo la resuelve por su cuenta (el nombre dice Hábitat)."""
+    assert canonizar_entidad("Secretaría Distrital del Hábitat (SDH)") is None
+
+
+def test_la_errata_con_otros_acentos_tambien_resuelve():
+    """«Recreaciòn» (acento grave) y «deportes» en minúscula: la misma clave."""
+    assert clasificar_entidad("Secretaria de Cultura Recreaciòn y Deportes") == (
+        ERRATA, canonizar_entidad("SCRD"))
 
 
 def test_toda_grafia_del_listado_se_clasifica_con_su_dueno():
@@ -483,3 +547,11 @@ def test_construir_rellena_los_campos_opcionales():
     assert lst.sectores[0].nombre_normalizado == "salud" and lst.sectores[0].erratas == ()
     assert e.nombre_normalizado == "entidad x"
     assert lst.version == "" and integridad(lst) == []
+
+
+def test_deportes_en_plural_es_errata_en_todas_sus_grafias():
+    """Una sola regla para el mismo error: «Deportes» por «Deporte» es una
+    errata (el Validador avisa), nunca un alias."""
+    lst = cargar()
+    for o in list(lst.sectores) + list(lst.entidades):
+        assert not [a for a in o.alias if "deportes" in a.lower()], o.nombre
