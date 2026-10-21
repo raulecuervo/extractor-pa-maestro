@@ -62,13 +62,13 @@ usa un aplicativo.
 
 Los sectores y las entidades del Distrito que la librería considera oficiales
 viven en **un solo archivo**, `extractor_pa/data/entidades_distrito.json`
-(versión `1.0.1`: 18 sectores y 67 entidades, con sigla, etiqueta «Nombre, SIGLA»,
+(versión `1.0.2`: 18 sectores y 67 entidades, con sigla, etiqueta «Nombre, SIGLA»,
 sector, tipo, estado, alias y erratas). Es la fuente de `SECTORES_OFICIALES`,
 `ENTIDADES_OFICIALES` y del mapa entidad → sector, y se consulta con
 `extractor_pa.catalogo_entidades`:
 ```python
 from extractor_pa import cargar_listado, canonizar_entidad, canonizar_sector, clasificar_entidad, sector_de, entidad_sector_norm
-lst = cargar_listado()                          # Listado(version='1.0.1', …), en caché
+lst = cargar_listado()                          # Listado(version='1.0.2', …), en caché
 canonizar_entidad("Nacional-ICBF")              # Entidad(id='ICBF', nombre='Instituto Colombiano de Bienestar Familiar', sector='Entidades no distritales', …)
 canonizar_sector("IntegraciónSocial").nombre    # 'Integración Social' (clave compacta)
 sector_de("Invest in Bogota")                   # 'Desarrollo Económico, Industria y Turismo'

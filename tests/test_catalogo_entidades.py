@@ -22,7 +22,7 @@ from extractor_pa.catalogo_entidades import (
 
 #: Versión del listado que viaja en el paquete. Cambia solo con una versión nueva
 #: del listado (y de la librería).
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 
 def _json_publicado() -> dict:
@@ -199,6 +199,13 @@ ERRATAS_DE_ENTIDAD = [
     ("Unidad Administrativa Especial de Serecios Publicos - UAESP", "UAESP"),
     ("Secretaria Distrial de Integración Social", "SDIS"),
     ("Entidades No Distrtitales", "NO_DISTRITALES"),
+    # Listado 1.0.2: planes de acción de sispp-gobierno (oct-2026).
+    ("Secretaría Distrittal de Gobierno", "SDG"),
+    ("Instituto Distrital de la Participacón y Acción Comunal", "IDPAC"),
+    ("TRANSMILENO S.A", "TRANSMILENIO"),
+    ("Secretaría de Cultura Recreación y Deportes", "SCRD"),
+    ("Secretaría Distrital de Integración - SDIS", "SDIS"),
+    ("Region Administrativa de Planeación Especial", "RAPE"),
 ]
 
 
@@ -217,6 +224,43 @@ def test_la_errata_de_entidad_resuelve_pero_se_clasifica_como_errata(grafia, id_
     assert clase == ERRATA and e.id == id_entidad
     assert grafia in e.erratas and grafia not in e.alias
     assert sector_de(grafia) == e.sector                      # agrupa, aunque avise
+
+
+# Listado 1.0.2: grafías legítimas que aparecieron en los planes de acción de
+# sispp-gobierno (oct-2026) y que hasta la 1.0.1 solo resolvía el fuzzy del
+# aplicativo. Se reconocen sin avisar.
+ALIAS_1_0_2_DE_ENTIDAD = [
+    ("Secretaría del Hábitat", "SDHT"),
+    ("Secretaría del Habitat", "SDHT"),                       # como viene en el plan
+    ("Secretaría Distrital de Hábitat y Territorio", "SDHT"),
+    ("Empresa Metro", "EMB"),
+    ("Secretaría Distrital de Seguridad y Convivencia", "SDSCJ"),
+]
+
+ALIAS_1_0_2_DE_SECTOR = [
+    ("Desarrollo Económico y Turismo", "Desarrollo Económico, Industria y Turismo"),
+    ("Integración", "Integración Social"),
+    ("Sector Planeación", "Planeación"),
+]
+
+
+@pytest.mark.parametrize("grafia,id_entidad", ALIAS_1_0_2_DE_ENTIDAD)
+def test_alias_de_entidad_1_0_2(grafia, id_entidad):
+    clase, e = clasificar_entidad(grafia)
+    assert (clase, e.id) == (ALIAS, id_entidad)
+
+
+@pytest.mark.parametrize("grafia,sector", ALIAS_1_0_2_DE_SECTOR)
+def test_alias_de_sector_1_0_2(grafia, sector):
+    clase, s = clasificar_sector(grafia)
+    assert (clase, s.nombre) == (ALIAS, sector)
+    assert canonizar_entidad(grafia) is None          # no es una entidad
+
+
+def test_la_errata_con_otros_acentos_tambien_resuelve():
+    """«Recreaciòn» (acento grave) y «deportes» en minúscula: la misma clave."""
+    assert clasificar_entidad("Secretaria de Cultura Recreaciòn y Deportes") == (
+        ERRATA, canonizar_entidad("SCRD"))
 
 
 def test_toda_grafia_del_listado_se_clasifica_con_su_dueno():

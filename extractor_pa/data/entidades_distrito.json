@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
-  "fecha": "2026-10-19",
+  "version": "1.0.2",
+  "fecha": "2026-10-20",
   "fuente": "Consolidado de 8 catálogos en C:/Users/RaulEsteban/Proyectos (alertas-seguimientos, generador-seguimiento, rag-chat, sispp-SDP, sispp-gobierno, Dashboard_Politicas, validador_plan_accion, Sistema_Seguimiento). Directorio base: secretariageneral.gov.co (sep 2025).",
   "sectores": [
     {
@@ -26,7 +26,8 @@
       "nombre_normalizado": "desarrollo economico industria y turismo",
       "alias": [
         "desarrolloeconómicoindustriayturismo",
-        "Desarrollo Económico"
+        "Desarrollo Económico",
+        "Desarrollo Económico y Turismo"
       ],
       "erratas": [
         "Desarrollo Econimico"
@@ -77,7 +78,8 @@
       "nombre_normalizado": "integracion social",
       "alias": [
         "integraciónsocial",
-        "Sector Social"
+        "Sector Social",
+        "Integración"
       ],
       "erratas": []
     },
@@ -98,7 +100,9 @@
     {
       "nombre": "Planeación",
       "nombre_normalizado": "planeacion",
-      "alias": [],
+      "alias": [
+        "Sector Planeación"
+      ],
       "erratas": []
     },
     {
@@ -230,7 +234,9 @@
         "Secretaría Distrital de Cultura, Recreación y Deportes",
         "Secretaría de Cultura"
       ],
-      "erratas": [],
+      "erratas": [
+        "Secretaría de Cultura Recreación y Deportes"
+      ],
       "nota_revision": ""
     },
     {
@@ -536,7 +542,8 @@
         "Secretaría de Gobierno"
       ],
       "erratas": [
-        "Secretaría Disrital de Gobierno"
+        "Secretaría Disrital de Gobierno",
+        "Secretaría Distrittal de Gobierno"
       ],
       "nota_revision": ""
     },
@@ -571,7 +578,8 @@
         "Instituto Distrital para la Participación y la Acción Comunal"
       ],
       "erratas": [
-        "Insituto Distrital de la Participación y Acción Comunal - IDPAC"
+        "Insituto Distrital de la Participación y Acción Comunal - IDPAC",
+        "Instituto Distrital de la Participacón y Acción Comunal"
       ],
       "nota_revision": ""
     },
@@ -600,7 +608,9 @@
       "tipo": "distrital",
       "activa": true,
       "alias": [
-        "Secretaría Distrital de Hábitat"
+        "Secretaría Distrital de Hábitat",
+        "Secretaría del Hábitat",
+        "Secretaría Distrital de Hábitat y Territorio"
       ],
       "erratas": [],
       "nota_revision": ""
@@ -761,7 +771,8 @@
         "Secretaría de Integración Social"
       ],
       "erratas": [
-        "Secretaria Distrial de Integración Social"
+        "Secretaria Distrial de Integración Social",
+        "Secretaría Distrital de Integración - SDIS"
       ],
       "nota_revision": ""
     },
@@ -835,7 +846,9 @@
         "Empresa de Transporte del Tercer Milenio Transmilenio, TRANSMILENIO",
         "TRANSMILENIO S.A."
       ],
-      "erratas": [],
+      "erratas": [
+        "TRANSMILENO S.A"
+      ],
       "nota_revision": ""
     },
     {
@@ -849,7 +862,8 @@
       "activa": true,
       "alias": [
         "Metro",
-        "Metro de Bogotá"
+        "Metro de Bogotá",
+        "Empresa Metro"
       ],
       "erratas": [],
       "nota_revision": "Sigla: sispp-SDP usaba 'Metro'. Se dejó EMB."
@@ -1029,7 +1043,8 @@
       "alias": [
         "Secretaría Distrital de Seguridad, Justicia y Convivencia",
         "Secretaría de Seguridad, Convivencia y Justicia",
-        "Sector Seguridad, Convivencia y Justicia - Secretaría Distrital de Seguridad, Convivencia y Justicia"
+        "Sector Seguridad, Convivencia y Justicia - Secretaría Distrital de Seguridad, Convivencia y Justicia",
+        "Secretaría Distrital de Seguridad y Convivencia"
       ],
       "erratas": [],
       "nota_revision": ""
@@ -1163,7 +1178,9 @@
         "RAP-E Región Central",
         "Región Central"
       ],
-      "erratas": [],
+      "erratas": [
+        "Region Administrativa de Planeación Especial"
+      ],
       "nota_revision": "Confirmada como entidad no distrital (alertas-seguimientos la tenía en Planeación)."
     },
     {
