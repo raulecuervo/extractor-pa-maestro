@@ -16,8 +16,9 @@ los cambios por versión, en [`CHANGELOG.md`](CHANGELOG.md).
 - **Seguimiento (.xlsb y .xlsx 3.4):** extracción, cruce con el plan,
   consolidación por período, métricas al corte (PAF, TID, PAV, MES, brecha), las
   15 alertas de consistencia y el semáforo con los umbrales de cada aplicativo.
-- **Listado oficial de sectores y entidades (0.23.0):** un solo JSON versionado
-  dentro del paquete (`catalogo_entidades`, 18 sectores y 67 entidades con alias),
+- **Listado oficial de sectores y entidades (0.23.0; listado 1.0.2 en la 0.23.1):**
+  un solo JSON versionado dentro del paquete (`catalogo_entidades`, 18 sectores
+  y 67 entidades con alias y erratas),
   canonización determinista y mapa entidad → sector; `SECTORES_OFICIALES` y
   `ENTIDADES_OFICIALES` salen de él y la normalización difusa se retiró.
 - **Salidas:** JSON, CSV, Excel y DataFrame, por plan o consolidadas; tablero HTML.

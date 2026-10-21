@@ -28,7 +28,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | seguimiento-pp-sdis | v0.9.11 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
 | generador-seguimiento | v0.9.11 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 
-Última versión publicada: **v0.19.0**; la 0.20.0 está por etiquetar.
+Última versión publicada: **v0.23.1** (listado oficial 1.0.2).
 
 ## Qué funcionalidad usa cada uno
 
@@ -86,7 +86,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 
 Existe en la librería, pero ningún aplicativo lo llama:
 - `incluir_reglas_negocio=True` y `validar_reglas` (reglas V0–V18): el validador corre sus propias reglas.
-- `catalogo_oficial` (V4) y las sugerencias de normalización (la difusa se retiró en la 0.23.0). El listado oficial de sectores y entidades (`catalogo_entidades`, 0.23.0) está por adoptar: cada aplicativo sigue con su lista propia.
+- `catalogo_oficial` (V4) y las sugerencias de normalización (la difusa se retiró en la 0.23.0). El listado oficial de sectores y entidades (`catalogo_entidades`) sí se usa: sispp-gobierno y sispp-SDP en los pasos 1 y 3, y generador-seguimiento en su catálogo y en el emparejamiento de entidades; los demás aplicativos siguen con su lista propia.
 - Gobernanza de alertas (`RegistroGobernanza`) y decisiones humanas (`RegistroDecisiones`).
 - Exportadores (`exportar_*`, `tablas`, `a_dataframes`), tablero HTML y CLI.
 - `cruzar_con_plan`, `consolidar` y `semaforo_de` del seguimiento.
