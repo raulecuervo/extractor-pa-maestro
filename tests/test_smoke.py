@@ -397,9 +397,11 @@ def _construir_excel_codigos(ruta: str) -> None:
     - Objetivo «OE1.» (Trabajo Decente), IR «R1.1» e IP «P1.1.1» / «p 1.1.2»
       (prefijo de tipo, como en Trata).
     - Fila 14: producto sin código y resultado vacío -> el prefiltro la descarta.
-    - Fila 15: producto «2..1..1» con IR 2.1 válido -> se omite el IP.
+    - Fila 15: producto «2.1» (sin tercer nivel) con IR 2.1 válido -> se omite el IP.
     - Filas 16-17: resultado sin código (rellenado hacia abajo) -> un solo aviso.
-    - Fila 18: «.» en resultado y producto -> relleno, sin aviso."""
+    - Fila 18: «.» en resultado y producto -> relleno, sin aviso.
+    - Filas 19-21: errores de captura que se leen (Negra-Afro, Seguridad y
+      Migrantes): «4..1..1», un BOM delante de «4.1.2» y «4.1 3»."""
     wb, ws = _nuevo_ws()
     filas = {
         12: {1: "OE1. Objetivo uno", 2: 100, 3: "R1.1 Resultado uno", 4: "IR uno",
@@ -407,11 +409,15 @@ def _construir_excel_codigos(ruta: str) -> None:
         13: {22: "p 1.1.2 Producto dos", 23: "IP dos"},
         14: {22: "Producto sin código", 23: "IP huérfano"},
         15: {3: "2.1 Resultado dos", 4: "IR dos", 5: "Vigente", 6: 100,
-             22: "2..1..1 Producto mal escrito", 23: "IP mal escrito"},
+             22: "2.1 Producto mal escrito", 23: "IP mal escrito"},
         16: {3: "Resultado sin código", 4: "IR sin código",
              22: "3.1.1 Producto tres", 23: "IP tres"},
         17: {22: "3.1.2 Producto cuatro", 23: "IP cuatro"},
         18: {3: ".", 22: "."},
+        19: {3: "4.1 Resultado cuatro", 4: "IR cuatro", 5: "Vigente", 6: 100,
+             22: "4..1..1 Producto con punto doble", 23: "IP punto doble"},
+        20: {22: "\ufeff4.1.2 Producto con BOM", 23: "IP con BOM"},
+        21: {22: "4.1 3 Producto con espacio por punto", 23: "IP con espacio"},
     }
     for r, fila in filas.items():
         for c, v in fila.items():
@@ -426,18 +432,19 @@ def test_codigos_con_prefijo_y_no_reconocidos():
 
     ir = {i.codigo_ir: i for i in res.indicadores_resultado}
     ip = {i.codigo_ip: i for i in res.indicadores_producto}
-    assert set(ir) == {"1.1", "2.1"}
+    assert set(ir) == {"1.1", "2.1", "4.1"}
     assert ir["1.1"].codigo_objetivo == "1"
     assert [o.codigo for o in res.objetivos] == ["1"]
-    assert set(ip) == {"1.1.1", "1.1.2", "3.1.1", "3.1.2"}
+    assert set(ip) == {"1.1.1", "1.1.2", "3.1.1", "3.1.2", "4.1.1", "4.1.2", "4.1.3"}
     assert ip["1.1.2"].codigo_ir == "1.1"      # el prefijo no rompe el forward-fill
     assert ip["3.1.1"].codigo_ir is None
+    assert {ip[c].codigo_ir for c in ("4.1.1", "4.1.2", "4.1.3")} == {"4.1"}
 
     avisos = [(a.campo, a.codigo_ir, a.valor, a.descripcion) for a in res.alertas
               if a.tipo == "codigo_no_reconocido"]
     assert [(campo, cir, valor) for campo, cir, valor, _ in avisos] == [
         ("producto", "", "Producto sin código"),
-        ("producto", "2.1", "2..1..1 Producto mal escrito"),
+        ("producto", "2.1", "2.1 Producto mal escrito"),
         ("resultado", "", "Resultado sin código"),
     ]
     assert avisos[0][3].startswith("Fila 14:") and "se descartó" in avisos[0][3]

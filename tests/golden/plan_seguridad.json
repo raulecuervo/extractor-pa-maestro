@@ -21,7 +21,7 @@
     2038
   ],
   "n_ir": 26,
-  "n_ip": 128,
+  "n_ip": 129,
   "n_financiero": 0,
   "codigos_ir": [
     "1.1",
@@ -145,6 +145,7 @@
     "4.1.4",
     "4.1.5",
     "4.1.6",
+    "4.2.1",
     "4.2.2",
     "4.2.3",
     "4.3.1",
@@ -182,7 +183,6 @@
     "5.1.9"
   ],
   "alertas_por_tipo": {
-    "codigo_no_reconocido": 1,
     "inconsistencia_en_ir": 3
   }
 }

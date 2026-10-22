@@ -13,7 +13,62 @@ decreciente a cero) · 0.15.0 (umbrales de las alertas) · 0.16.0 (PAV) ·
 objetivo y en «2.86%», planes antiguos 2021–2025) · 0.20.0 (unidad de medida
 de las fichas técnicas; fichas de Juventud) ·
 0.21.0 (años sueltos en las fechas, tolerancia de los acumulados, formatos sin
-bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año).
+bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año) ·
+0.24.0 (códigos con punto doble, BOM o espacio por punto).
+
+## [0.24.0] — Los productos con el código mal escrito ya no se pierden
+
+### Corregido
+
+- **`utilidades.py::extraer_codigo`** lee tres errores de captura que hacían
+  omitir el indicador. Son los 4 productos que la alerta `codigo_no_reconocido`
+  destapó en la 0.19.0 y que seguían sin llegar al listado de indicadores:
+  - **punto doble**: «2..1..3 Instrumentos jurídicos…» → 2.1.3 (Negra-Afro);
+  - **marca BOM** (`\ufeff`) o un espacio de ancho cero delante del código:
+    «\ufeff4.2.1 Estrategia para la no estigmatización…» → 4.2.1 (Seguridad).
+    `str.strip()` no los quita;
+  - **espacio en lugar de un punto**, solo con `niveles>=3` y como respaldo de
+    la lectura con puntos: «2.2 10 Estrategia pedagógica…» → 2.2.10
+    (Negra-Afro), «3. 1 4. Parques…» → 3.1.4 (Migrantes) y, en sispp-SDP,
+    «5 1.1 Fortalecimiento…» → 5.1.1 (Habitabilidad en Calle). Tiene que quedar
+    al menos un punto y cada nivel leído así es un número de 1 a 3 cifras que
+    no empieza en 0: «2 3 Algo», «1.1 2024 Plan…» y «1 1.000 personas» siguen
+    sin código. Con `niveles=None` o `2` no cambia nada («2.2 10…» sigue
+    siendo 2.2).
+- **El seguimiento lee esos mismos códigos** (`seguimiento/extractor.py`). La
+  hoja no dice si la fila es de producto o de resultado, así que un código con
+  menos niveles que la mayoría del archivo se relee con esos niveles: en el
+  seguimiento de Negra-Afro «2.2 10…» llegaba como el 2.2 y en el de Migrantes
+  «3. 1 4.» como el 3.1, y ninguno cruzaba con su producto del plan. El
+  cualitativo usa los mismos niveles, para que el código empate.
+
+En los 98 planes de sispp-gobierno y sispp-SDP solo aparecen esos productos
+(Negra-Afro 2.1.3 y 2.2.10, Seguridad 4.2.1, Migrantes 3.1.4, en los dos
+aplicativos, y Habitabilidad en Calle 5.1.1 en sispp-SDP) y ya no queda ningún
+`codigo_no_reconocido`; ningún otro IR, IP ni objetivo cambia. En los 106
+seguimientos de sispp-gobierno, sispp-SDP y alertas-seguimientos solo cambian
+los códigos 2.2.10 de Negra-Afro y 3.1.4 de Migrantes. Golden: cambian
+`plan_negra_afro`, `plan_seguridad`, `plan_migrantes`, `seg_afro` y
+`seg_migrantes`, y nada más.
+
+En sispp-gobierno (corrida completa de los pasos 1–6) los 4 productos llegan a
+`dim_indicadores`, a las metas y al avance. Los avances de esas tres políticas
+cambian porque su ponderación ahora está completa (Seguridad Q4-2025: 37,0 % →
+38,4 % del total), y desaparecen sus alertas «reportado sin plan», de
+ponderación y la de la cadena resultado-productos del 4.2 de Seguridad.
+
+### Pruebas
+
+- `tests/test_unidades.py`: los casos reales y el espacio de ancho cero; que el
+  espacio por punto es solo respaldo (no cambia «1.1.1 2 estrategias», ni lee
+  años, números con cero adelante o números sueltos sin punto como nivel, ni
+  actúa sin niveles o con 2); y que el seguimiento relee el código corto solo
+  en un archivo de productos.
+- `tests/test_smoke.py::test_codigos_con_prefijo_y_no_reconocidos`: «2..1..1»
+  era su ejemplo de código no reconocible y ahora se lee; el ejemplo pasa a ser
+  un producto con solo dos niveles («2.1 …») y se agregan filas con punto
+  doble, BOM y espacio por punto, que se extraen con su IR.
+- Golden regenerados de las cinco políticas que cambian.
 
 ## [0.23.1] — Listado 1.0.2: grafías de los planes de sispp-gobierno y sispp-SDP
 
