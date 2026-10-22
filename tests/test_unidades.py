@@ -43,6 +43,37 @@ def test_extraer_codigo(texto, niveles, esperado):
     assert extraer_codigo(texto, niveles) == esperado
 
 
+# Errores de captura de los planes reales que hacían perder el producto: el
+# maestro lo omitía con «codigo_no_reconocido» y no llegaba al listado.
+@pytest.mark.parametrize("texto,niveles,esperado", [
+    ("2..1..3  Instrumentos jurídicos", 3, "2.1.3"),        # Negra-Afro: punto doble
+    ("2..1..3  Instrumentos jurídicos", None, "2.1.3"),
+    ("\ufeff4.2.1 Estrategia para la no estigmatización", 3, "4.2.1"),  # Seguridad: BOM
+    ("\u200b1.1 Resultado", 2, "1.1"),                       # espacio de ancho cero
+    ("2.2 10 Estrategia pedagógica", 3, "2.2.10"),           # Negra-Afro: espacio por punto
+    ("3. 1 4. Parques y/o escenarios", 3, "3.1.4"),          # Migrantes
+    ("5 1.1 Fortalecimiento de las organizaciones", 3, "5.1.1"),  # Habitabilidad en calle (SDP)
+    ("P2.2 10 con prefijo", 3, "2.2.10"),
+])
+def test_extraer_codigo_tolera_errores_de_captura(texto, niveles, esperado):
+    assert extraer_codigo(texto, niveles) == esperado
+
+
+# El espacio por punto solo se acepta como respaldo y con niveles>=3: no cambia
+# los códigos que ya se leían, ni convierte números del texto en un nivel.
+@pytest.mark.parametrize("texto,niveles,esperado", [
+    ("2.2 10 Estrategia pedagógica", None, "2.2"),   # sin niveles: igual que antes
+    ("2.2 10 Estrategia pedagógica", 2, "2.2"),
+    ("1.1.1 2 estrategias", 3, "1.1.1"),             # el código con puntos manda
+    ("1.1 2024 Plan de contingencia", 3, None),      # un año no es un nivel
+    ("1 1.000 personas atendidas", 3, None),         # ni un nivel que empieza en 0
+    ("2 3 4 Algo", 3, None),                         # tiene que quedar algún punto
+    ("1.1 Resultado sin producto", 3, None),
+])
+def test_extraer_codigo_espacio_por_punto_es_solo_respaldo(texto, niveles, esperado):
+    assert extraer_codigo(texto, niveles) == esperado
+
+
 # Prefijo de tipo P/R/O/OE delante del código (Trata: «P1.1.1Acciones…»;
 # Trabajo Decente: «OE1. Promover…»).
 @pytest.mark.parametrize("texto,niveles,esperado", [
@@ -310,3 +341,19 @@ def test_leer_unidad_con_una_opcion_por_fila_y_la_casilla_a_la_izquierda():
 ])
 def test_es_nombre_politica(valor, esperado):
     assert _es_nombre_politica(valor) is esperado
+
+
+# ── seguimiento: código corto en un archivo de productos ──
+def test_seguimiento_relee_el_codigo_corto_con_los_niveles_del_archivo():
+    from extractor_pa.seguimiento.extractor import _codigo_indicador, _niveles_predominantes
+
+    niveles = _niveles_predominantes(["2.2.9", "2.2.11", "2.2", "3.1.1", None])
+    assert niveles == 3
+    # Negra-Afro y Migrantes: el seguimiento los reportaba como 2.2 y 3.1.
+    assert _codigo_indicador("2.2 10 Estrategia pedagógica", niveles) == "2.2.10"
+    assert _codigo_indicador("3. 1 4. Parques y/o escenarios", niveles) == "3.1.4"
+    assert _codigo_indicador("5 1.1 Fortalecimiento", niveles) == "5.1.1"
+    # Lo que no se puede leer con 3 niveles se queda como estaba.
+    assert _codigo_indicador("2.2 Resultado", niveles) == "2.2"
+    # En un archivo de resultados no se toca.
+    assert _codigo_indicador("2.2 10 Algo", _niveles_predominantes(["1.1", "1.2"])) == "2.2"

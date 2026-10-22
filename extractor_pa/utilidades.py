@@ -120,6 +120,11 @@ def a_int(valor: Any) -> Optional[int]:
 # Trabajo Decente («OE1.»–«OE4.») quedaban sin código.
 _PREFIJO_TIPO = r"(?:(?:OE|[PRO])[. ]?)?"
 
+# Caracteres invisibles que llegan pegados a la celda: la marca BOM (U+FEFF) y
+# los espacios de ancho cero. `str.strip()` no los quita y tapaban el código: el
+# producto «\ufeff4.2.1 Estrategia…» del plan de Seguridad se perdía.
+_INVISIBLES = re.compile(r"[\u200b-\u200d\u2060\ufeff]")
+
 
 def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
     """Extrae el código numérico al inicio de un texto.
@@ -129,19 +134,35 @@ def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
       usa un negative lookahead para NO confundir "1.1.1" con "1.1".
 
     Tolerante al nombre pegado al código ("4.1.5Nombre"), a separadores
-    irregulares ("1 . 1", "1.1.") y al prefijo de tipo P/R/O/OE ("P1.1.1",
-    "r 1.1", "P.1.1.1", "OE1.")."""
+    irregulares ("1 . 1", "1.1.", "2..1..3"), a la marca BOM delante del código
+    y al prefijo de tipo P/R/O/OE ("P1.1.1", "r 1.1", "P.1.1.1", "OE1.").
+
+    Con `niveles>=3`, si el código no aparece con puntos, acepta un espacio en
+    lugar de alguno de los puntos ("2.2 10" -> "2.2.10", "3. 1 4." -> "3.1.4",
+    "5 1.1" -> "5.1.1"). Tiene que quedar al menos un punto, y cada nivel leído
+    así es un número de 1 a 3 cifras que no empieza en 0, para no tomar
+    "2 3 Algo", "1.1 2024" ni "1 1.000 personas" por código."""
     if not texto:
         return None
-    # Colapsa espacios y normaliza separadores: "1 . 1" -> "1.1"
-    t = re.sub(r"\s*\.\s*", ".", re.sub(r"\s+", " ", str(texto).strip()))
+    # Colapsa espacios y normaliza separadores: "1 . 1" -> "1.1", "2..1" -> "2.1"
+    t = re.sub(r"\s*(?:\.\s*)+", ".",
+               re.sub(r"\s+", " ", _INVISIBLES.sub("", str(texto)).strip()))
     if niveles:
         # (?!\d) impide que "1.1.1" sea capturado como "1.1" cuando niveles=2.
         patron = r"^\s*" + _PREFIJO_TIPO + r"(\d+" + r"\.\d+" * (niveles - 1) + r")(?!\d)"
     else:
         patron = r"^" + _PREFIJO_TIPO + r"(\d+(?:\.\d+)*)"
     m = re.match(patron, t, re.IGNORECASE)
-    return m.group(1).rstrip(".") if m else None
+    if m:
+        return m.group(1).rstrip(".")
+    if niveles and niveles >= 3:
+        nivel = r"[1-9]\d{0,2}"
+        patron = (r"^\s*" + _PREFIJO_TIPO
+                  + "(" + nivel + (r"[. ]" + nivel) * (niveles - 1) + r")(?!\d)")
+        m = re.match(patron, t, re.IGNORECASE)
+        if m and "." in m.group(1):
+            return m.group(1).replace(" ", ".")
+    return None
 
 
 def es_vigente(valor: Any) -> bool:

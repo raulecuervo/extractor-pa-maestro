@@ -28,7 +28,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | seguimiento-pp-sdis | v0.9.11 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
 | generador-seguimiento | v0.9.11 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 
-Última versión publicada: **v0.23.1** (listado oficial 1.0.2).
+Última versión publicada: **v0.24.0** (códigos con punto doble, BOM o espacio por punto).
 
 ## Qué funcionalidad usa cada uno
 
