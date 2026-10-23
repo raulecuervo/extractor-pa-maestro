@@ -13,7 +13,7 @@ API:
         print(ind.codigo, ind.avances)
 """
 
-from .extractor import extraer_seguimiento
+from .extractor import extraer_seguimiento, niveles_predominantes, codigo_del_indicador
 from .cruce import cruzar_con_plan, consolidar, consolidar_periodo, PERIODO_TRIMESTRES
 from .validacion_seg import (
     validar_consistencia,
@@ -79,6 +79,8 @@ from .modelo import (
 
 __all__ = [
     "extraer_seguimiento",
+    "niveles_predominantes",
+    "codigo_del_indicador",
     "cruzar_con_plan",
     "consolidar",
     "consolidar_periodo",

@@ -20,8 +20,17 @@ CONTRATO = [
     # Plan: todos los adaptadores de extracción.
     ("extractor_pa", "extraer_plan_accion"),
     ("extractor_pa", "__version__"),
-    # sispp-gobierno (dashboard_pp/parche_extractor.py) parchea esta función.
+    # sispp-gobierno (dashboard_pp/parche_extractor.py) parchea esta función;
+    # el validador del plan de alertas-seguimientos lee con ella los códigos.
     ("extractor_pa.utilidades", "extraer_codigo"),
+    # alertas-seguimientos: el validador del plan (V13) y el generador de
+    # comentarios avisan los códigos mal escritos; el validador (V20) busca las
+    # fichas técnicas sin indicador en el plan.
+    ("extractor_pa.utilidades", "codigo_mal_escrito"),
+    ("extractor_pa.lector_fichas", "codigo_de_hoja_ficha"),
+    # alertas-seguimientos/extractor.py lee el «Panel de Control» con la misma regla.
+    ("extractor_pa.seguimiento", "niveles_predominantes"),
+    ("extractor_pa.seguimiento", "codigo_del_indicador"),
     # Seguimiento: alertas-seguimientos, sispp-sdis, sispp-gobierno, generador-seguimiento.
     ("extractor_pa.seguimiento", "extraer_seguimiento"),
     ("extractor_pa.seguimiento", "consolidar_periodo"),

@@ -1,6 +1,6 @@
 # Aplicativos que consumen extractor-pa
 
-Inventario al **2026-10-01**, tomado del código de cada repositorio en
+Inventario al **2026-10-01** (alertas-seguimientos, al 2026-10-22), tomado del código de cada repositorio en
 `C:\Users\RaulEsteban\Proyectos\`. Lo que cada aplicativo importa está fijado en
 [`tests/test_contrato_consumidores.py`](../tests/test_contrato_consumidores.py):
 si un nombre desaparece, esa prueba falla aquí antes de que falle en producción.
@@ -18,17 +18,17 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 
 | Aplicativo | Versión fijada | Plan de acción | Seguimiento | Dónde entra |
 |---|---|---|---|---|
-| alertas-seguimientos | v0.17.0 | — | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/` |
+| alertas-seguimientos | v0.25.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
 | sispp-gobierno | v0.13.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
 | sispp-SDP | v0.13.0 | Etapa 01 | Etapa 04 | Copia idéntica de sispp-gobierno |
 | sispp-sdis (backend) | v0.10.1 | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
-| validador_plan_accion | v0.9.11 | Sí | — | `validador/extraccion_maestro.py` |
+| validador_plan_accion (repositorio aparte) | v0.9.11 | Sí | — | `validador/extraccion_maestro.py` |
 | extractor-planes-accion | v0.9.11 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
 | creador-planes-accion | v0.9.11 | Sí | — | `app/import_excel_maestro.py` |
 | seguimiento-pp-sdis | v0.9.11 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
 | generador-seguimiento | v0.9.11 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 
-Última versión publicada: **v0.24.0** (códigos con punto doble, BOM o espacio por punto).
+Última versión publicada: **v0.25.0** (aviso de códigos mal escritos; lectura por niveles pública).
 
 ## Qué funcionalidad usa cada uno
 
@@ -96,11 +96,12 @@ Existe en la librería, pero ningún aplicativo lo llama:
 
 ## Detalle por aplicativo
 
-### alertas-seguimientos (v0.17.0)
-- **`extractor.py`**: `extraer_seguimiento` y convierte cada `IndicadorSeguimiento` a sus dicts.
+### alertas-seguimientos (v0.25.0)
+- **`extractor.py`**: `extraer_seguimiento` y convierte cada `IndicadorSeguimiento` a sus dicts. El «Panel de Control» lo lee con `niveles_predominantes` y `codigo_del_indicador`, para que sus códigos sean los del seguimiento.
 - **`validator.py`**: arma `ResultadoSeguimiento` con `indicador_desde_dict` y llama `validacion_seg.validar_consistencia` con `anio_min`, `entidad_sector` y los `umbrales` de su Parametrización; devuelve `as_finding()`.
 - **`motor_calculo.py`**: reexporta las fórmulas de `seguimiento.metricas` con sus nombres y usa `__version__` como versión de las fórmulas.
-- **`ml_comentarios/`**: `extraer_seguimiento`, `validar_consistencia`, `validar_archivo`, `safe_float`, `parse_period`, `limites_de_semaforo`.
+- **`ml_comentarios/`**: `extraer_seguimiento`, `validar_consistencia`, `validar_archivo`, `safe_float`, `parse_period`, `limites_de_semaforo` y `codigo_mal_escrito` (sección «Numeración de los indicadores» del borrador).
+- **`validador_plan_accion/`** (copia del validador dentro del aplicativo): `catalogo_entidades` (reglas V4), `extraer_codigo` para leer los códigos del plan, `codigo_mal_escrito` (V13) y `lector_fichas.codigo_de_hoja_ficha` (V20, fichas sin indicador). La extracción del plan es la suya, no `extraer_plan_accion`.
 - **Al subir de versión**: es el aplicativo más sensible. Cada versión marcada «Cambia cifras» en el CHANGELOG mueve sus números.
 
 ### sispp-gobierno y sispp-SDP (v0.13.0)
