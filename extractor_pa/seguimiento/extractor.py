@@ -56,14 +56,18 @@ def _fecha(valor):
     return limpiar(valor)
 
 
-def _niveles_predominantes(codigos) -> Optional[int]:
+def niveles_predominantes(codigos) -> Optional[int]:
     """Niveles que tienen la mayoría de los códigos del archivo (3 en uno de
-    productos, 2 en uno de resultados), o None si no hay ninguno."""
+    productos, 2 en uno de resultados), o None si no hay ninguno.
+
+    Es pública, con `codigo_del_indicador`, para que quien lea otra hoja del
+    mismo formato (el «Panel de Control» en alertas-seguimientos) saque los
+    códigos igual que este extractor."""
     n = Counter(c.count(".") + 1 for c in codigos if c)
     return n.most_common(1)[0][0] if n else None
 
 
-def _codigo_indicador(ind_esp, niveles: Optional[int]) -> Optional[str]:
+def codigo_del_indicador(ind_esp, niveles: Optional[int]) -> Optional[str]:
     """Código del indicador. Si trae menos niveles que el resto del archivo se
     relee con esos niveles, que toleran un espacio por punto: en un archivo de
     productos «2.2 10 Estrategia…» es el 2.2.10, no el resultado 2.2 (Negra-Afro),
@@ -96,14 +100,14 @@ def _leer_cuantitativo(mapa, meta, alertas):
     indice: dict = {}
     sin_codigo = 0
     filas_datos = sorted(f for f in mapa if f >= R.FILA_DATOS)
-    niveles = _niveles_predominantes(
+    niveles = niveles_predominantes(
         extraer_codigo(limpiar_texto(mapa[fn].get(R.COL_CODIGO))) for fn in filas_datos)
     for fn in filas_datos:
         fila = mapa[fn]
         ind_esp = limpiar_texto(fila.get(R.COL_CODIGO))
         if not ind_esp:
             continue
-        codigo = _codigo_indicador(ind_esp, niveles)
+        codigo = codigo_del_indicador(ind_esp, niveles)
         if not codigo:
             sin_codigo += 1
         ind = IndicadorSeguimiento(
@@ -170,13 +174,13 @@ def _leer_cualitativo(mapa_cual, indice, meta):
     if not mapa_cols:
         return
     # Los mismos niveles que el cuantitativo, para que el código empate.
-    niveles = _niveles_predominantes(indice)
+    niveles = niveles_predominantes(indice)
     for fn in sorted(f for f in mapa_cual if f >= R.FILA_DATOS):
         fila = mapa_cual[fn]
         ind_esp = limpiar_texto(fila.get(R.COL_CODIGO))
         if not ind_esp:
             continue
-        codigo = _codigo_indicador(ind_esp, niveles)
+        codigo = codigo_del_indicador(ind_esp, niveles)
         ind = indice.get(codigo)
         if ind is None:
             continue

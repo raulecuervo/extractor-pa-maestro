@@ -10,6 +10,8 @@ Combina las mejores versiones encontradas en el análisis comparativo:
                     al nombre pegado al código (de generador-seguimiento y
                     creador-planes-accion) y al prefijo de tipo «P1.1.1» (de
                     sispp-gobierno).
+- `codigo_mal_escrito`  el código que `extraer_codigo` lee, pero que está mal
+                    escrito en la celda («2..1..3», «2.2 10»), para corregirlo.
 - `leer_celda_escala`  lectura de metas respetando el number_format de Excel
                     (de generador-seguimiento: 0.0736 con formato % -> 7.36).
 - `fecha_de_valor`  lectura de fechas en todos los formatos de los planes y
@@ -163,6 +165,45 @@ def extraer_codigo(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
         if m and "." in m.group(1):
             return m.group(1).replace(" ", ".")
     return None
+
+
+# Un código bien escrito: números separados por un solo punto, con a lo sumo un
+# punto al final, y el texto pegado o después de un espacio («1.1.1. Estrategia»,
+# «4.1.5Nombre»). Sin espacios, sin puntos de más, sin prefijo y sin nada
+# invisible delante.
+_CODIGO_BIEN_ESCRITO = re.compile(r"^(\d+(?:\.\d+)*)\.?(?!\d)")
+# El código tal como se escribió: lo que va antes de la primera letra.
+_ESCRITURA_CODIGO = re.compile(
+    r"^[\s​-‍⁠﻿]*" + _PREFIJO_TIPO + r"[\d\s.​-‍⁠﻿]*",
+    re.IGNORECASE)
+
+
+def codigo_mal_escrito(texto: Any, niveles: Optional[int] = None) -> Optional[str]:
+    """El código tal como se escribió, si `extraer_codigo` lo lee pero está mal
+    escrito; None si está bien escrito o si el texto no trae código.
+
+    `extraer_codigo` tolera los errores de captura para no perder el indicador,
+    así que el código llega bien al listado aunque el texto siga mal. Esta
+    función los señala para que se corrijan en la fuente: punto doble
+    («2..1..3»), espacio en lugar de un punto o junto a él («2.2 10»,
+    «1. 1. 11.», «1 .3.15»), un carácter invisible delante («\\ufeff4.2.1», que
+    se devuelve como «[carácter invisible]4.2.1») y el prefijo de tipo
+    («P1.1.1»). No lo son el punto final ni el texto pegado al código.
+
+    `niveles` es el mismo de `extraer_codigo`: sin él, «2.2 10» se lee como 2.2
+    y no se considera mal escrito. Un texto sin código reconocible no se
+    reporta aquí: el extractor ya lo avisa con «codigo_no_reconocido»."""
+    codigo = extraer_codigo(texto, niveles)
+    if not codigo:
+        return None
+    # `strip()` no quita la marca BOM ni los espacios de ancho cero: si vienen
+    # delante, el código no cumple la forma y queda reportado.
+    t = str(texto).strip()
+    m = _CODIGO_BIEN_ESCRITO.match(t)
+    if m and m.group(1) == codigo:
+        return None
+    escrito = _ESCRITURA_CODIGO.match(t).group(0).rstrip()
+    return _INVISIBLES.sub("[carácter invisible]", escrito)
 
 
 def es_vigente(valor: Any) -> bool:

@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from extractor_pa.utilidades import (a_float, extraer_codigo, es_vigente,
+from extractor_pa.utilidades import (a_float, codigo_mal_escrito, extraer_codigo, es_vigente,
                                      peso_positivo, clave_grupo, tiene_contenido,
                                      elegir_peso_objetivo)
 from extractor_pa.lector_filas import prefiltrar_filas
@@ -106,6 +106,45 @@ def test_extraer_codigo_tolera_prefijo_de_tipo(texto, niveles, esperado):
 ])
 def test_extraer_codigo_no_inventa_codigos(texto, niveles):
     assert extraer_codigo(texto, niveles) is None
+
+
+# ── utilidades.codigo_mal_escrito ──
+# Los casos reales de S1-2026: el código se lee, pero el texto sigue mal escrito
+# en el plan de acción y en el formato que se copia de él.
+@pytest.mark.parametrize("texto,niveles,esperado", [
+    ("2..1..3  Instrumentos jurídicos", 3, "2..1..3"),          # Negra-Afro
+    ("2.2 10 Estrategia pedagógica", 3, "2.2 10"),              # Negra-Afro
+    ("1 .3.15 Documento de análisis", 3, "1 .3.15"),            # Negra-Afro
+    ("3. 1 4. Parques y/o escenarios", 3, "3. 1 4."),           # Migrantes
+    ("1. 1. 11. Asistencias técnicas", 3, "1. 1. 11."),         # Migrantes
+    ("2.1. 4  Estrategia para fortalecer", 3, "2.1. 4"),        # Mujeres
+    ("5. 1 Aumento de la productividad", 2, "5. 1"),            # Bicicleta, Rrom
+    ("﻿4.2.1 Estrategia para la no estigmatización", 3,
+     "[carácter invisible]4.2.1"),                               # Seguridad
+    ("4.​2.1 Con espacio de ancho cero", 3, "4.[carácter invisible]2.1"),
+    ("P1.1.1Acciones encaminadas", 3, "P1.1.1"),
+    ("OE1. Promover principios y derechos", 1, "OE1."),
+])
+def test_codigo_mal_escrito(texto, niveles, esperado):
+    assert codigo_mal_escrito(texto, niveles) == esperado
+
+
+@pytest.mark.parametrize("texto,niveles", [
+    ("1.1.1 Estrategia", 3),
+    ("1.1.1. Estrategia", 3),                  # el punto final es la convención
+    ("1.1.1.Jóvenes", 3),                      # texto pegado: se lee igual
+    ("4.1.5Nombre pegado", 3),
+    ("10.1.14 Producto", 3),
+    ("  1.1 Resultado con espacios alrededor  ", 2),
+    ("1.1.1 2 estrategias", 3),                # el número del texto no es código
+    ("4.4. ﻿Aumento de la participación", 2),  # lo invisible va en el nombre
+    ("2.2 10 Estrategia", None),               # sin niveles se lee 2.2, bien escrito
+    ("Sin código", 3),                         # sin código: otro aviso
+    ("1,1 Resultado con coma", 2),
+    (None, 3),
+])
+def test_codigo_bien_escrito_o_sin_codigo_no_se_reporta(texto, niveles):
+    assert codigo_mal_escrito(texto, niveles) is None
 
 
 @pytest.mark.parametrize("valor,esperado", [
@@ -345,15 +384,15 @@ def test_es_nombre_politica(valor, esperado):
 
 # ── seguimiento: código corto en un archivo de productos ──
 def test_seguimiento_relee_el_codigo_corto_con_los_niveles_del_archivo():
-    from extractor_pa.seguimiento.extractor import _codigo_indicador, _niveles_predominantes
+    from extractor_pa.seguimiento import codigo_del_indicador, niveles_predominantes
 
-    niveles = _niveles_predominantes(["2.2.9", "2.2.11", "2.2", "3.1.1", None])
+    niveles = niveles_predominantes(["2.2.9", "2.2.11", "2.2", "3.1.1", None])
     assert niveles == 3
     # Negra-Afro y Migrantes: el seguimiento los reportaba como 2.2 y 3.1.
-    assert _codigo_indicador("2.2 10 Estrategia pedagógica", niveles) == "2.2.10"
-    assert _codigo_indicador("3. 1 4. Parques y/o escenarios", niveles) == "3.1.4"
-    assert _codigo_indicador("5 1.1 Fortalecimiento", niveles) == "5.1.1"
+    assert codigo_del_indicador("2.2 10 Estrategia pedagógica", niveles) == "2.2.10"
+    assert codigo_del_indicador("3. 1 4. Parques y/o escenarios", niveles) == "3.1.4"
+    assert codigo_del_indicador("5 1.1 Fortalecimiento", niveles) == "5.1.1"
     # Lo que no se puede leer con 3 niveles se queda como estaba.
-    assert _codigo_indicador("2.2 Resultado", niveles) == "2.2"
+    assert codigo_del_indicador("2.2 Resultado", niveles) == "2.2"
     # En un archivo de resultados no se toca.
-    assert _codigo_indicador("2.2 10 Algo", _niveles_predominantes(["1.1", "1.2"])) == "2.2"
+    assert codigo_del_indicador("2.2 10 Algo", niveles_predominantes(["1.1", "1.2"])) == "2.2"

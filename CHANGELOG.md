@@ -16,6 +16,42 @@ de las fichas técnicas; fichas de Juventud) ·
 bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año) ·
 0.24.0 (códigos con punto doble, BOM o espacio por punto).
 
+## [0.25.0] — Avisar los códigos mal escritos para corregirlos en la fuente
+
+No cambia cifras: agrega funciones y no toca la extracción ni las reglas.
+
+Desde la 0.24.0 «2..1..3», «2.2 10» o la marca BOM se leen bien, así que el
+indicador ya no se pierde, pero el texto sigue mal escrito en el plan y en el
+formato de seguimiento que se copia de él. Los aplicativos con un pin anterior
+siguen perdiendo esos productos.
+
+### Agregado
+
+- **`utilidades.codigo_mal_escrito(texto, niveles)`**: el código tal como se
+  escribió cuando `extraer_codigo` lo lee pero no está escrito «N.N.N»; None si
+  está bien escrito o si no hay código. Señala el punto doble, el espacio en
+  lugar de un punto o junto a él («1. 1. 11.», «1 .3.15»), el carácter
+  invisible delante (se devuelve como «[carácter invisible]») y el prefijo
+  P/R/O/OE. No señala el punto final ni el texto pegado al código, ni un
+  carácter invisible en el nombre y no en el código. En S1-2026 aparece, por
+  ejemplo, en Negra-Afro, Migrantes, Mujeres y Seguridad, y en los 15 códigos
+  mal escritos de los formatos de seguimiento, que vienen escritos igual en el
+  plan vigente. Lo usan el Validador de Plan de Acción y el Generador de
+  Comentarios de alertas-seguimientos.
+- **`seguimiento.niveles_predominantes` y `seguimiento.codigo_del_indicador`**:
+  la regla con que el extractor de seguimiento relee un código corto («2.2 10»
+  en un archivo de productos es el 2.2.10) pasa a ser pública, antes como
+  `_niveles_predominantes` y `_codigo_indicador`. alertas-seguimientos la
+  necesita para leer el «Panel de Control» del formato con los mismos códigos.
+
+### Pruebas
+
+- `tests/test_unidades.py`: los casos reales de S1-2026 y lo que no es un
+  código mal escrito (punto final, texto pegado, número en el texto, carácter
+  invisible en el nombre, texto sin código).
+- `tests/test_contrato_consumidores.py`: los nombres nuevos y
+  `lector_fichas.codigo_de_hoja_ficha`, que el validador del plan pasa a usar.
+
 ## [0.24.0] — Los productos con el código mal escrito ya no se pierden
 
 ### Corregido
