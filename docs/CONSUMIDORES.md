@@ -19,16 +19,22 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | Aplicativo | Versión fijada | Plan de acción | Seguimiento | Dónde entra |
 |---|---|---|---|---|
 | alertas-seguimientos | v0.25.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
-| sispp-gobierno | v0.13.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
-| sispp-SDP | v0.13.0 | Etapa 01 | Etapa 04 | Copia idéntica de sispp-gobierno |
-| sispp-sdis (backend) | v0.10.1 | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
-| validador_plan_accion (repositorio aparte) | v0.9.11 | Sí | — | `validador/extraccion_maestro.py` |
-| extractor-planes-accion | v0.9.11 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
-| creador-planes-accion | v0.9.11 | Sí | — | `app/import_excel_maestro.py` |
-| seguimiento-pp-sdis | v0.9.11 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
-| generador-seguimiento | v0.9.11 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
+| sispp-gobierno | v0.25.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
+| sispp-SDP | v0.25.0 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
+| sispp-sdis (backend) | v0.25.0 | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
+| validador_plan_accion (repositorio aparte) | v0.25.0 | Sí | — | `validador/extraccion_maestro.py` |
+| extractor-planes-accion | v0.25.0 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
+| creador-planes-accion | v0.25.0 | Sí | — | `app/import_excel_maestro.py` |
+| seguimiento-pp-sdis | v0.25.0 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
+| generador-seguimiento | v0.25.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 
 Última versión publicada: **v0.25.0** (aviso de códigos mal escritos; lectura por niveles pública).
+
+Al 2026-10-25 los nueve consumidores fijan **v0.25.0** y leen el listado oficial de entidades y sectores
+de `extractor_pa.catalogo_entidades` (listado 1.0.2): sispp-gobierno y sispp-SDP reemplazaron su directorio
+embebido, generador-seguimiento y validador_plan_accion sus JSON propios, creador-planes-accion genera la
+hoja «Listas» del formato desde el listado, extractor-planes-accion valida con `clasificar_*`, y sispp-sdis
+y seguimiento-pp-sdis no tenían catálogo propio (sispp-sdis avisa erratas al cargar el plan).
 
 ## Qué funcionalidad usa cada uno
 
