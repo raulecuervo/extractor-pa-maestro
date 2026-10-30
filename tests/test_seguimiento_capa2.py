@@ -516,7 +516,8 @@ def test_constante_sin_reportes_avance_cero():
     assert m["av_acum"] == 0.0
     assert m["phv"] == 0.0
     assert m["paf"] == 0.0
-    assert m["pav"] is None                  # no reportó en el año
+    # Le tocaba reportar en Q2 y no lo hizo: cuenta un reporte de 0 (0.26.0)
+    assert m["pav"] == 0.0
     assert m["tid"] == pytest.approx(1.0)    # MA/MF: no depende de la LB
 
 
@@ -832,10 +833,14 @@ def test_metricas_corte_trae_pav():
     m = metricas_corte("Suma", "Trimestral", 0.0, segs, segs, 2026, 2)
     assert m["mp"] == pytest.approx(50)
     assert m["pav"] == pytest.approx(1.0)
-    # Sin reportes en el año no hay PAV, aunque sí % hasta la vigencia.
+    # Sin reportes en un año que le exige reporte, un CRECIENTE repite su
+    # último valor (0.26.0): 10 contra la meta de 20 → 50 %.
     nivel = _segs_nivel({2025: 10, 2026: 20}, 20, {2025: 10})
     m = metricas_corte("Creciente", "Anual", 0.0, nivel, nivel, 2026, 4)
-    assert m["pav"] is None and m["phv"] is not None
+    assert m["pav"] == pytest.approx(0.5) and m["phv"] is not None
+    # Si en el año aún no le toca reportar, sigue sin PAV.
+    m = metricas_corte("Creciente", "Anual", 0.0, nivel, nivel, 2026, 2)
+    assert m["pav"] is None
 
 
 def test_pct_vigencia_inicio_a_mitad_de_anio():

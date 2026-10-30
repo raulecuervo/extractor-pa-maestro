@@ -14,7 +14,65 @@ objetivo y en «2.86%», planes antiguos 2021–2025) · 0.20.0 (unidad de medid
 de las fichas técnicas; fichas de Juventud) ·
 0.21.0 (años sueltos en las fechas, tolerancia de los acumulados, formatos sin
 bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año) ·
-0.24.0 (códigos con punto doble, BOM o espacio por punto).
+0.24.0 (códigos con punto doble, BOM o espacio por punto) ·
+0.26.0 (exigencia de reporte por años con meta; CONSTANTE sin reporte exigible = 0).
+
+## [0.26.0] — Reglas de exigencia de reporte (OAP, 30-oct-2026)
+
+**Cambia cifras.** Aplica a los tres porcentajes (PAV, PHV, PAF) y a la
+trayectoria ideal (TID) de `metricas_corte`.
+
+### Cambiado
+
+- **Solo exigen reporte los años con meta.** Un año con meta vacía o 0 no
+  exige reporte (`exige_reporte_en`); tampoco los años posteriores a la fecha
+  de finalización ni al último año con meta. Las periodicidades plurianuales
+  se tratan como anuales en los años con meta: Movilidad Cero 1.1.5 (Suma
+  quinquenal, meta solo en 2025) queda con trayectoria 25 % en 2026 y no se le
+  pide reporte ni en 2026 Q4. `trimestre_efectivo` recibe `exige`.
+- **CONSTANTE sin reporte en el trimestre exigible vale 0**
+  (`avance_constante`). Afro 4.1.12 (trimestral, 1 en 2025 Q4, nada en 2026)
+  pasa de 100 % a 0 % a 2026 Q2; uno que reporta en Q1 y no en Q2 también vale
+  0 en Q2. Si en el año aún no le toca reportar (anual a junio, año sin meta)
+  vale lo de la última vigencia que sí exigía, con la misma regla (Afro 2.1.3,
+  anual sin reporte en 2025 → 0 en 2025 Q4 y en 2026 Q2). Un CONSTANTE sin
+  meta en el año toma el último año con meta y su reporte (Rrom 13.1.5 → 100 %).
+- **PAV cuando le tocaba reportar y no lo hizo:** SUMA y CONSTANTE cuentan un
+  reporte de 0; CRECIENTE/DECRECIENTE repiten el último valor (o la LB si nunca
+  reportó). Antes el PAV quedaba vacío. Si en el año aún no le toca, sigue vacío.
+- **Metas del plan para años sin fila de seguimiento.** `metas_plan` ya no es
+  solo para SUMA: completa la meta del año de un indicador que nunca reportó
+  (Afro 3.2.4, Creciente trimestral sin reportes: a 2026 Q2 MA = 0,0225 y TID
+  12,9 %, prorrateada al trimestre exigible).
+- **Producto terminado** (`fecha_fin`, nuevo parámetro de `metricas_corte`):
+  desde el trimestre que contiene la fecha de fin la trayectoria es la meta
+  final (100 %) y el avance queda en su último acumulado o reporte (Seguridad
+  2.3.1 termina el 31-dic-2025: en 2025 Q4 ya tiene la meta final).
+- **Metas anteriores a la fecha de inicio no cuentan** cuando llegan en
+  `metas_plan` (Educación 4.5.3 inicia en 2023 y el plan trae meta en 2022;
+  Vendedores 3.1.10 inicia en 2026 con meta en 2025).
+- **Un año ausente entre metas conocidas no exige reporte**: si se conocen las
+  metas del indicador, un año que no aparece es un año sin meta
+  (Comunicación Comunitaria 1.1.3: metas en 2024 y 2026, ninguna en 2025). Sin
+  ningún dato de metas, el año sigue exigiendo.
+
+Las mismas reglas quedaron en el formato de seguimiento 3.4 de la OAP
+(«Formato_de_Seguimiento_a_Indicadores_3.4-_2026_reglas_OAP.xlsx»): con 22
+productos reales en 2025 Q4, 2026 Q2 y 2026 Q4, el formato y `metricas_corte`
+dan lo mismo.
+
+### Sin cambio (documentado en pruebas)
+
+- Ponderación 0 mientras no llega su primer reporte exigible
+  (`sin_iniciar_al_corte`): Seguridad 3.1.6, Ruralidad 3.1.8.
+- Anual que nunca reportó, a junio: trayectoria de la vigencia anterior
+  (Afro 3.1.48 → 30 %). Si un consumidor obtiene 40 %, el error está en cómo
+  arma las filas o la meta del año, no aquí.
+- CRECIENTE que baja: se deja lo reportado, el PAF puede ser negativo; el
+  acotado a 0–100 % es de la agregación de cada aplicativo.
+- Reporte antes de lo exigido: cuenta ese trimestre (Vendedores 1.1.12).
+
+Pruebas: `tests/test_reglas_exigencia_2026.py`.
 
 ## [0.25.0] — Avisar los códigos mal escritos para corregirlos en la fuente
 
