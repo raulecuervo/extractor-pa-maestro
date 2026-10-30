@@ -726,7 +726,9 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         0.0 if t == "SUMA" else nivel_inicial)
     mp = calc_meta_periodo(t, meta_anual_mp, meta_prev, mes)
     ma = calc_meta_acum(t, mp, sum_metas_prev)
-    terminado = fin is not None and (int(anio), _trimestre_valido(trimestre)) > fin
+    # El trimestre que contiene la fecha de fin ya cuenta como terminado: un
+    # producto que termina el 31-dic-2025 tiene en 2025 Q4 la meta final.
+    terminado = fin is not None and (int(anio), _trimestre_valido(trimestre)) >= fin
     if terminado and safe_float(meta_final) is not None:
         ma = safe_float(meta_final)          # terminó: se le exige la meta final
     phv = calc_pct_hasta_vig(t, av_acum, ma, lb)
