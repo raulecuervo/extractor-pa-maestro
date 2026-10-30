@@ -144,7 +144,7 @@ def trimestre_exigible(trimestre: Any, periodicidad: Any = None) -> int:
 
 
 def trimestre_efectivo(trimestre: Any, periodicidad: Any = None,
-                       reportados=()) -> int:
+                       reportados=(), exige: bool = True) -> int:
     """Trimestre hasta el que se prorratea la meta del año del corte.
 
     Es el más reciente entre el último trimestre REPORTADO en el año (hasta el
@@ -156,7 +156,10 @@ def trimestre_efectivo(trimestre: Any, periodicidad: Any = None,
     - si le tocaba reportar y no lo hizo, igual se le exige el prorrateo.
 
     Es la regla del formato oficial de seguimiento (columnas "Acumulada" de la
-    tabla Metas_Productos), con la exigencia por periodicidad añadida."""
+    tabla Metas_Productos), con la exigencia por periodicidad añadida.
+
+    ``exige=False``: el año del corte no le exige reporte (no tiene meta, o es
+    plurianual y ese año no le toca): solo cuenta lo que haya reportado."""
     t = _trimestre_valido(trimestre)
     ultimo = 0
     for q in reportados or ():
@@ -166,7 +169,7 @@ def trimestre_efectivo(trimestre: Any, periodicidad: Any = None,
             continue
         if 1 <= q <= t and q > ultimo:
             ultimo = q
-    return max(ultimo, trimestre_exigible(t, periodicidad))
+    return max(ultimo, trimestre_exigible(t, periodicidad) if exige else 0)
 
 
 def trimestres_reportados(segs, anio: int, hasta_trimestre: int = 4) -> set:
@@ -511,10 +514,94 @@ def avance_sin_reportes(tipo, lb) -> float:
     return 0.0 if _tipo(tipo) == "CONSTANTE" else lb
 
 
+def metas_por_anio(segs_todos, metas_plan: Optional[dict] = None,
+                   tipo: Any = None, meta_final: Any = None) -> tuple:
+    """``(programada, valor)``: por año, si tiene meta programada y cuál es.
+
+    Se leen las filas de seguimiento (las que traen la clave ``meta_anual``) y,
+    para los años sin fila, el plan. Una meta vacía o 0 no es meta
+    (:func:`hay_meta`). ``programada`` solo trae los años de los que hay dato."""
+    programada: dict = {}
+    valor: dict = {}
+    for s in segs_todos or ():
+        if "meta_anual" not in s:
+            continue
+        try:
+            y = int(s["anio"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        ok = hay_meta(s.get("meta_anual"), tipo, meta_final)
+        programada[y] = programada.get(y, False) or ok
+        if ok:
+            valor.setdefault(y, s.get("meta_anual"))
+    for k, v in (metas_plan or {}).items():
+        if not str(k).strip().isdigit():
+            continue
+        y = int(str(k).strip())
+        ok = hay_meta(v, tipo, meta_final)
+        if y not in programada:
+            programada[y] = ok
+        if ok and y not in valor:
+            valor[y] = v
+    return programada, valor
+
+
+def exige_reporte_en(anio: int, programada: dict, anio_fin: Optional[int] = None) -> bool:
+    """¿El año le exige reporte al indicador?
+
+    Solo los años con meta programada (una meta 0 o vacía es un año sin meta):
+    así una periodicidad plurianual se trata como anual en los años que tienen
+    meta y no se le pide nada en los demás. Tampoco se exige después del año de
+    la fecha de finalización ni después del último año con meta. De un año sin
+    ningún dato de metas se asume que sí exige."""
+    anio = int(anio)
+    if anio_fin is not None and anio > anio_fin:
+        return False
+    if anio in programada:
+        return bool(programada[anio])
+    con_meta = [y for y, ok in programada.items() if ok]
+    if con_meta and anio > max(con_meta):
+        return False
+    return True
+
+
+def avance_constante(segs_al_corte, anio: int, trimestre: int, periodicidad: Any,
+                     exige_en) -> float:
+    """AV de un CONSTANTE al corte: el reporte del trimestre que se le exige.
+
+    En el año del corte manda el más reciente entre el último trimestre
+    reportado y el exigible por la periodicidad (:func:`trimestre_efectivo`).
+    Si reportó en ese trimestre (o después), vale ese reporte; si le tocaba
+    reportar y no lo hizo, vale 0: un CONSTANTE sostiene un nivel cada periodo
+    y no reportarlo no es sostenerlo (Afro 4.1.12: 1 en 2025 Q4 y nada en
+    2026 → 0 % a 2026 Q2). Si en el año aún no le toca reportar (anual a
+    junio, o año sin meta) se toma lo que valía al cierre de la vigencia
+    anterior que sí exigía, con la misma regla. Sin ningún reporte: 0."""
+    reales = [s for s in segs_al_corte or ()
+              if not s.get("sintetico") and safe_float(s.get("valor_avance")) is not None]
+    if not reales:
+        return 0.0
+    primero = min(int(s["anio"]) for s in reales)
+    y, q = int(anio), _trimestre_valido(trimestre)
+    while y >= primero:
+        del_anio = sorted(((int(s["trimestre"]), safe_float(s["valor_avance"]))
+                           for s in reales if int(s["anio"]) == y and int(s["trimestre"]) <= q),
+                          key=lambda x: x[0])
+        qe = trimestre_exigible(q, periodicidad) if exige_en(y) else 0
+        if del_anio:
+            ult_q, ult_v = del_anio[-1]
+            return ult_v if ult_q >= qe else 0.0
+        if qe > 0:
+            return 0.0
+        y, q = y - 1, 4
+    return 0.0
+
+
 def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
                    anio: int, trimestre: int,
                    metas_plan: Optional[dict] = None,
-                   fecha_inicio: Any = None) -> dict:
+                   fecha_inicio: Any = None,
+                   fecha_fin: Any = None) -> dict:
     """Núcleo de métricas de un indicador al corte (año, trimestre). Port de
     ``db._calc_metricas_indicador`` de Alertas-Seguimientos.
 
@@ -522,7 +609,16 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     ``anio, trimestre, meta_anual, meta_final, acumulado, valor_avance``
     (y opcionalmente ``sintetico``), ordenadas por (anio, trimestre); la
     primera filtrada al período ≤ corte, la segunda con toda la historia.
-    ``metas_plan``: metas por año del plan base (solo se usa en SUMA).
+    ``metas_plan``: metas por año del plan base; completan las de los años sin
+    fila de seguimiento (un indicador que nunca reportó no tiene filas).
+    ``fecha_fin``: tras su finalización la trayectoria es la meta final y no se
+    le exige reporte.
+
+    Reglas de exigencia (OAP, oct-2026): un año exige reporte solo si tiene
+    meta (:func:`exige_reporte_en`); si le tocaba reportar y no lo hizo, SUMA
+    suma 0, CONSTANTE vale 0 (:func:`avance_constante`) y CRECIENTE/DECRECIENTE
+    repiten el último valor (o la LB si nunca reportó). Lo mismo rige para el
+    PAV, el PHV y el PAF.
 
     La meta del año se prorratea hasta :func:`trimestre_efectivo`, que mira la
     periodicidad y los trimestres efectivamente reportados.
@@ -540,8 +636,19 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         (s["meta_final"] for s in reversed(segs_todos)
          if s.get("meta_final") is not None), None)
 
-    def _programada(s):
-        return hay_meta(s.get("meta_anual"), t, meta_final)
+    if meta_final is None and metas_plan:
+        meta_final = safe_float((metas_plan or {}).get("final"))
+
+    programada, valor_meta = metas_por_anio(segs_todos, metas_plan, t, meta_final)
+    fin = periodo_de_fecha(fecha_fin) if fecha_fin is not None else None
+    anio_fin = fin[0] if fin else None
+
+    def exige_en(y):
+        return exige_reporte_en(y, programada, anio_fin)
+
+    def _ultima_meta_antes(y):
+        previos = [k for k in valor_meta if k < y]
+        return valor_meta[max(previos)] if previos else None
 
     # meta_anual: la del año seleccionado. Si el plan no programó ese año, el
     # indicador sostiene el nivel del último año anterior que sí tiene meta;
@@ -549,18 +656,12 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     # meta en 2022, quedaba contra la meta final de 2024 y con trayectoria del
     # 100 % en 2022). Para SUMA no hay respaldo: la meta anual es un
     # incremento, no un nivel.
-    meta_anual = next(
-        (s["meta_anual"] for s in segs_todos
-         if s["anio"] == anio and _programada(s)), None)
+    meta_anual = valor_meta.get(anio)
     if meta_anual is None and t != "SUMA":
-        meta_anual = next(
-            (s["meta_anual"] for s in reversed(segs_todos)
-             if s["anio"] < anio and _programada(s)), None)
+        meta_anual = _ultima_meta_antes(anio)
 
     # meta_prev: meta anual del año anterior al seleccionado
-    meta_prev = next(
-        (s["meta_anual"] for s in reversed(segs_todos)
-         if s["anio"] == anio - 1 and _programada(s)), None)
+    meta_prev = valor_meta.get(anio - 1)
 
     # Sin meta en el año contiguo, MP se interpolaría desde 0 y marcaría como
     # sobre-ejecución a un indicador que solo sostiene su nivel. Se toma la
@@ -570,9 +671,7 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     #   CRECIENTE/DECRECIENTE -> se parte de la línea base.
     # SUMA no usa meta_prev (su MP es MV × mes/12).
     if t != "SUMA" and meta_prev is None:
-        meta_prev = next(
-            (s["meta_anual"] for s in reversed(segs_todos)
-             if s["anio"] < anio and _programada(s)), None)
+        meta_prev = _ultima_meta_antes(anio)
         if meta_prev is None:
             meta_prev = meta_anual if t == "CONSTANTE" else lb
 
@@ -582,9 +681,7 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     # meta anual en el plan sigue sin trayectoria: el plan está incompleto.
     nivel_inicial = None
     if t != "SUMA" and meta_anual is None:
-        despues = any(s["anio"] > anio and _programada(s) for s in segs_todos) or any(
-            str(k).isdigit() and int(k) > anio and hay_meta(v, t, meta_final)
-            for k, v in (metas_plan or {}).items())
+        despues = any(y > anio for y in valor_meta)
         if despues:
             nivel_inicial = lb if t in ("CRECIENTE", "DECRECIENTE") else 0.0
             meta_prev = nivel_inicial
@@ -593,15 +690,20 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         sum_metas_prev = suma_metas_anteriores_suma(
             segs_al_corte, segs_todos, anio, metas_plan)
         av_acum = avance_acumulado_suma(segs_al_corte, segs_todos, anio, trimestre)
+    elif t == "CONSTANTE":
+        sum_metas_prev = 0.0
+        av_acum = avance_constante(segs_al_corte, anio, trimestre, periodicidad, exige_en)
     else:
         sum_metas_prev = 0.0
         av_acum = next(
             (s["valor_avance"] for s in reversed(segs_al_corte)
              if s.get("valor_avance") is not None), avance_sin_reportes(t, lb))
 
+    exige_anio = exige_en(anio)
     reportados = trimestres_reportados(segs_al_corte, anio, trimestre)
-    q_ef = trimestre_efectivo(trimestre, periodicidad, reportados)
+    q_ef = trimestre_efectivo(trimestre, periodicidad, reportados, exige=exige_anio)
     mes = 3 * q_ef
+    q_exigible = trimestre_exigible(trimestre, periodicidad) if exige_anio else 0
     sin_iniciar = fecha_inicio is not None and sin_iniciar_al_corte(
         fecha_inicio, periodicidad, anio, trimestre,
         reportado=any(not s.get("sintetico") and s.get("valor_avance") is not None
@@ -612,11 +714,26 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         0.0 if t == "SUMA" else nivel_inicial)
     mp = calc_meta_periodo(t, meta_anual_mp, meta_prev, mes)
     ma = calc_meta_acum(t, mp, sum_metas_prev)
+    terminado = fin is not None and (int(anio), _trimestre_valido(trimestre)) > fin
+    if terminado and safe_float(meta_final) is not None:
+        ma = safe_float(meta_final)          # terminó: se le exige la meta final
     phv = calc_pct_hasta_vig(t, av_acum, ma, lb)
     tray = calc_trayectoria_ideal(t, mp, ma, meta_final, lb)
     paf = calc_paf(t, av_acum, meta_final, lb)
     tid = calc_tid(t, ma, meta_final, lb)
-    pav = calc_pct_vigencia(t, mp, lb, reportes_vigencia(segs_al_corte, anio, trimestre))
+
+    # PAV con las mismas reglas: si le tocaba reportar en el año y no lo hizo,
+    # SUMA y CONSTANTE cuentan un reporte de 0 y CRECIENTE/DECRECIENTE el
+    # último valor (o la LB). Un CONSTANTE que reportó antes del trimestre
+    # exigible y no en este también vale 0.
+    reportes = reportes_vigencia(segs_al_corte, anio, trimestre)
+    ultimo_q = max(reportados) if reportados else 0
+    if q_exigible > 0 and ultimo_q < q_exigible:
+        if t in ("SUMA", "CONSTANTE"):
+            reportes = (reportes if t == "SUMA" else []) + [0.0]
+        elif not reportes:
+            reportes = [av_acum]
+    pav = calc_pct_vigencia(t, mp, lb, reportes)
 
     return dict(
         av_acum=av_acum, meta_anual=meta_anual, meta_prev=meta_prev, meta_final=meta_final,
