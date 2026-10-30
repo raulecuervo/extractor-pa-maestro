@@ -552,15 +552,19 @@ def exige_reporte_en(anio: int, programada: dict, anio_fin: Optional[int] = None
     Solo los años con meta programada (una meta 0 o vacía es un año sin meta):
     así una periodicidad plurianual se trata como anual en los años que tienen
     meta y no se le pide nada en los demás. Tampoco se exige después del año de
-    la fecha de finalización ni después del último año con meta. De un año sin
-    ningún dato de metas se asume que sí exige."""
+    la fecha de finalización. Si se conocen las metas, un año ausente es un año
+    sin meta; solo sin ningún dato de metas se asume que sí exige."""
     anio = int(anio)
     if anio_fin is not None and anio > anio_fin:
         return False
     if anio in programada:
         return bool(programada[anio])
     con_meta = [y for y, ok in programada.items() if ok]
-    if con_meta and anio > max(con_meta):
+    # Si se conocen las metas del indicador, un año que no aparece entre ellas
+    # es un año sin meta y no exige reporte (Comunicación Comunitaria 1.1.3:
+    # meta en 2024 y 2026, ninguna en 2025). Solo sin ningún dato de metas se
+    # asume que el año exige.
+    if con_meta:
         return False
     return True
 

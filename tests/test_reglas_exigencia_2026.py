@@ -281,3 +281,15 @@ def test_meta_cero_no_exige_reporte():
     segs = [_fila(2025, 4, 1, 1, 1), _fila(2026, 2, 0, 1)]
     k = _m("Constante", "Trimestral", 0.0, segs, 2026, 2)
     assert k["av_acum"] == pytest.approx(1.0)
+
+
+def test_anio_ausente_entre_metas_conocidas_no_exige():
+    """Comunicación Comunitaria 1.1.3: metas en 2024 y 2026, ninguna en 2025.
+    2025 no exige reporte, así que en 2026 Q2 (anual, aún no exige) el
+    Constante conserva lo reportado en 2024 y no queda en 0."""
+    from extractor_pa.seguimiento.metricas import exige_reporte_en
+    programada = {2024: True, 2026: True}
+    assert exige_reporte_en(2025, programada) is False
+    assert exige_reporte_en(2024, programada) is True
+    assert exige_reporte_en(2026, programada) is True
+    assert exige_reporte_en(2025, {}) is True
