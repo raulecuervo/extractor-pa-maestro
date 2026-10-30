@@ -45,8 +45,21 @@ trayectoria ideal (TID) de `metricas_corte`.
   (Afro 3.2.4, Creciente trimestral sin reportes: a 2026 Q2 MA = 0,0225 y TID
   12,9 %, prorrateada al trimestre exigible).
 - **Producto terminado** (`fecha_fin`, nuevo parámetro de `metricas_corte`):
-  tras su finalización la trayectoria es la meta final (100 %) y el avance
-  queda en su último acumulado o reporte.
+  desde el trimestre que contiene la fecha de fin la trayectoria es la meta
+  final (100 %) y el avance queda en su último acumulado o reporte (Seguridad
+  2.3.1 termina el 31-dic-2025: en 2025 Q4 ya tiene la meta final).
+- **Metas anteriores a la fecha de inicio no cuentan** cuando llegan en
+  `metas_plan` (Educación 4.5.3 inicia en 2023 y el plan trae meta en 2022;
+  Vendedores 3.1.10 inicia en 2026 con meta en 2025).
+- **Un año ausente entre metas conocidas no exige reporte**: si se conocen las
+  metas del indicador, un año que no aparece es un año sin meta
+  (Comunicación Comunitaria 1.1.3: metas en 2024 y 2026, ninguna en 2025). Sin
+  ningún dato de metas, el año sigue exigiendo.
+
+Las mismas reglas quedaron en el formato de seguimiento 3.4 de la OAP
+(«Formato_de_Seguimiento_a_Indicadores_3.4-_2026_reglas_OAP.xlsx»): con 22
+productos reales en 2025 Q4, 2026 Q2 y 2026 Q4, el formato y `metricas_corte`
+dan lo mismo.
 
 ### Sin cambio (documentado en pruebas)
 
