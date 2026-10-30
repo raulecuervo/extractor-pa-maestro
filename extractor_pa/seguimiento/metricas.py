@@ -639,6 +639,14 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     if meta_final is None and metas_plan:
         meta_final = safe_float((metas_plan or {}).get("final"))
 
+    # Las metas del plan de años anteriores a la fecha de inicio no cuentan: el
+    # indicador todavía no existía (Educación 4.5.3 inicia en 2023 y el plan
+    # trae meta en 2022; su meta de 2023 Q1 se prorratea desde la LB).
+    ini = periodo_de_fecha(fecha_inicio) if fecha_inicio is not None else None
+    if ini and metas_plan:
+        metas_plan = {k: v for k, v in metas_plan.items()
+                      if not (str(k).strip().isdigit() and int(str(k).strip()) < ini[0])}
+
     programada, valor_meta = metas_por_anio(segs_todos, metas_plan, t, meta_final)
     fin = periodo_de_fecha(fecha_fin) if fecha_fin is not None else None
     anio_fin = fin[0] if fin else None
