@@ -1,6 +1,6 @@
 # Aplicativos que consumen extractor-pa
 
-Inventario al **2026-10-01** (alertas-seguimientos, al 2026-10-22), tomado del código de cada repositorio en
+Inventario al **2026-10-01** (alertas-seguimientos, al 2026-10-22; pines y gestor-planes-accion, al 2026-10-30), tomado del código de cada repositorio en
 `C:\Users\RaulEsteban\Proyectos\`. Lo que cada aplicativo importa está fijado en
 [`tests/test_contrato_consumidores.py`](../tests/test_contrato_consumidores.py):
 si un nombre desaparece, esa prueba falla aquí antes de que falle en producción.
@@ -18,17 +18,20 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 
 | Aplicativo | Versión fijada | Plan de acción | Seguimiento | Dónde entra |
 |---|---|---|---|---|
-| alertas-seguimientos | v0.25.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
-| sispp-gobierno | v0.25.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
-| sispp-SDP | v0.25.0 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
-| sispp-sdis (backend) | v0.25.0 | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
-| validador_plan_accion (repositorio aparte) | v0.25.0 | Sí | — | `validador/extraccion_maestro.py` |
-| extractor-planes-accion | v0.25.0 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
-| creador-planes-accion | v0.25.0 | Sí | — | `app/import_excel_maestro.py` |
-| seguimiento-pp-sdis | v0.25.0 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
-| generador-seguimiento | v0.25.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
+| alertas-seguimientos | v0.26.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
+| sispp-gobierno | v0.26.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
+| sispp-SDP | v0.26.0 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
+| sispp-sdis (backend) | v0.26.0 (por commit `804d72a`) | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
+| validador_plan_accion (repositorio aparte) | v0.26.0 | Sí | — | `validador/extraccion_maestro.py` |
+| extractor-planes-accion | v0.26.0 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
+| creador-planes-accion | v0.26.0 | Sí | — | `app/import_excel_maestro.py` |
+| seguimiento-pp-sdis | v0.26.0 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
+| generador-seguimiento | v0.26.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
+| gestor-planes-accion | v0.26.0 (Dockerfile por commit `804d72a`) | Sí, por adaptadores | — | `extractor_pa.py` en `paquetes/` (tres adaptadores) |
 
-Última versión publicada: **v0.25.0** (aviso de códigos mal escritos; lectura por niveles pública).
+Última versión publicada: **v0.26.0** (reglas de exigencia OAP en `metricas_corte`: peso desde el inicio, reporte faltante, producto terminado, metas previas al inicio).
+
+Al 2026-10-30 los diez consumidores fijan **v0.26.0**. Solo alertas-seguimientos, sispp-gobierno y sispp-SDP cambian cifras (usan `metricas_corte`); los demás no usan las funciones modificadas.
 
 Al 2026-10-25 los nueve consumidores fijan **v0.25.0** y leen el listado oficial de entidades y sectores
 de `extractor_pa.catalogo_entidades` (listado 1.0.2): sispp-gobierno y sispp-SDP reemplazaron su directorio
