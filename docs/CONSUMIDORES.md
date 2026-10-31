@@ -18,7 +18,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 
 | Aplicativo | Versión fijada | Plan de acción | Seguimiento | Dónde entra |
 |---|---|---|---|---|
-| alertas-seguimientos | v0.26.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
+| alertas-seguimientos | v0.27.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
 | sispp-gobierno | v0.26.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
 | sispp-SDP | v0.26.0 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
 | sispp-sdis (backend) | v0.26.0 (por commit `804d72a`) | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
@@ -29,7 +29,9 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | generador-seguimiento | v0.26.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 | gestor-planes-accion | v0.26.0 (Dockerfile por commit `804d72a`) | Sí, por adaptadores | — | `extractor_pa.py` en `paquetes/` (tres adaptadores) |
 
-Última versión publicada: **v0.26.0** (reglas de exigencia OAP en `metricas_corte`: peso desde el inicio, reporte faltante, producto terminado, metas previas al inicio).
+Última versión publicada: **v0.27.0** (fin efectivo según periodicidad en `metricas_corte`, metas anteriores al inicio vuelven a contar, `metas_antes_de_inicio` para la alerta de calidad). El tag `v0.27.0` lo crea el usuario sobre el commit de fusión del PR.
+
+Al 2026-10-31 alertas-seguimientos pasa a **v0.27.0** y genera la alerta «meta antes de la fecha de inicio». Los demás siguen en v0.26.0: sispp-gobierno y sispp-SDP cambian cifras al subir (usan `metricas_corte`); el resto no usa las funciones modificadas.
 
 Al 2026-10-30 los diez consumidores fijan **v0.26.0**. Solo alertas-seguimientos, sispp-gobierno y sispp-SDP cambian cifras (usan `metricas_corte`); los demás no usan las funciones modificadas.
 
@@ -105,10 +107,11 @@ Existe en la librería, pero ningún aplicativo lo llama:
 
 ## Detalle por aplicativo
 
-### alertas-seguimientos (v0.25.0)
+### alertas-seguimientos (v0.27.0)
 - **`extractor.py`**: `extraer_seguimiento` y convierte cada `IndicadorSeguimiento` a sus dicts. El «Panel de Control» lo lee con `niveles_predominantes` y `codigo_del_indicador`, para que sus códigos sean los del seguimiento.
 - **`validator.py`**: arma `ResultadoSeguimiento` con `indicador_desde_dict` y llama `validacion_seg.validar_consistencia` con `anio_min`, `entidad_sector` y los `umbrales` de su Parametrización; devuelve `as_finding()`.
 - **`motor_calculo.py`**: reexporta las fórmulas de `seguimiento.metricas` con sus nombres y usa `__version__` como versión de las fórmulas.
+- **`db.py`**: `metas_antes_de_inicio` para la alerta de calidad «meta antes de la fecha de inicio» (desde la 0.27.0).
 - **`ml_comentarios/`**: `extraer_seguimiento`, `validar_consistencia`, `validar_archivo`, `safe_float`, `parse_period`, `limites_de_semaforo` y `codigo_mal_escrito` (sección «Numeración de los indicadores» del borrador).
 - **`validador_plan_accion/`** (copia del validador dentro del aplicativo): `catalogo_entidades` (reglas V4), `extraer_codigo` para leer los códigos del plan, `codigo_mal_escrito` (V13) y `lector_fichas.codigo_de_hoja_ficha` (V20, fichas sin indicador). La extracción del plan es la suya, no `extraer_plan_accion`.
 - **Al subir de versión**: es el aplicativo más sensible. Cada versión marcada «Cambia cifras» en el CHANGELOG mueve sus números.

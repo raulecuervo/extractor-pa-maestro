@@ -212,6 +212,51 @@ def sin_iniciar_al_corte(fecha_inicio: Any, periodicidad: Any, anio: int,
     return trimestre_exigible(t, periodicidad) < q_ini
 
 
+def fin_efectivo(fecha_fin: Any, periodicidad: Any = None) -> Optional[tuple]:
+    """``(año, trimestre)`` en que termina de verdad un producto con ``fecha_fin``.
+
+    Es el fin del periodo de reporte que contiene la fecha de fin según la
+    periodicidad (OAP Secretaría de Gobierno, 31-oct-2026): mensual, bimestral
+    y trimestral → el trimestre de la fecha; semestral → Q2 o Q4; anual y las
+    plurianuales → Q4 del año de la fecha. Un anual que termina en junio
+    espera al reporte de Q4: en Q2 todavía no está terminado. Sin periodicidad
+    reconocible, el trimestre de la fecha. ``None`` si no hay fecha legible."""
+    fin = periodo_de_fecha(fecha_fin) if fecha_fin is not None else None
+    if fin is None:
+        return None
+    anio, q = fin
+    meses = _meses_periodicidad(periodicidad)
+    if meses is None or meses <= 3:
+        return anio, q
+    if meses < 12:
+        paso = meses // 3                      # semestral: 2 trimestres
+        return anio, min(4, -(-q // paso) * paso)
+    return anio, 4
+
+
+def metas_antes_de_inicio(metas_plan: Optional[dict], fecha_inicio: Any) -> list:
+    """Años con meta mayor que 0 anteriores al año de ``fecha_inicio``.
+
+    Las metas del plan se toman todas para la meta acumulada (desde la 0.27.0),
+    pero una meta programada antes de que el producto inicie es, casi siempre,
+    un error del plan de acción: los consumidores la avisan como alerta de
+    calidad («meta programada antes de la fecha de inicio»). Educación 4.5.3
+    inicia en 2023 con meta en 2022 → ``[2022]``. Lista vacía si no hay fecha
+    de inicio legible o no hay metas."""
+    ini = periodo_de_fecha(fecha_inicio) if fecha_inicio is not None else None
+    if ini is None or not metas_plan:
+        return []
+    out = []
+    for k, v in dict(metas_plan).items():
+        txt = str(k).strip()
+        if not txt.isdigit():
+            continue
+        mv = safe_float(v)
+        if int(txt) < ini[0] and mv is not None and mv > 0:
+            out.append(int(txt))
+    return sorted(out)
+
+
 # ─────────────────────────── fórmulas §10.1–§10.4 ───────────────────────────
 
 def calc_mes(trimestre: Any, periodicidad: Any = None, reportados=None) -> int:
@@ -414,8 +459,8 @@ def lb_de_indicador(linea_base, tipo, metas: Optional[dict] = None,
 def suma_metas_anteriores_suma(segs_al_corte, segs_todos, anio: int,
                                metas_plan: Optional[dict] = None) -> float:
     """SUMA: Σ meta_anual por año calendario < ``anio``. Por año se usa lo
-    reportado en seguimiento si existe; si no, la meta del plan solo cuando
-    ``max(año en seguimientos) > año``. Sin imputación sintética hacia atrás.
+    reportado en seguimiento si existe; si no, la meta del plan. Sin imputación
+    sintética hacia atrás.
     Réplica de ``db._suma_metas_prev_suma_merged``."""
     por_anio = {}
     for s in segs_al_corte:
@@ -425,23 +470,24 @@ def suma_metas_anteriores_suma(segs_al_corte, segs_todos, anio: int,
         if mv_seg is not None:
             por_anio[s["anio"]] = mv_seg
 
-    plan = dict(metas_plan or {})
-    if plan:
-        max_seg_anio = max((s["anio"] for s in segs_todos), default=None)
-        if max_seg_anio is not None:
-            for key, raw in plan.items():
-                if str(key).strip().lower() == "final":
-                    continue
-                try:
-                    y = int(key)
-                except (TypeError, ValueError):
-                    continue
-                if y >= anio or max_seg_anio <= y:
-                    continue
-                mv = safe_float(raw)
-                if mv is None:
-                    continue
-                por_anio.setdefault(y, mv)
+    # Los años sin meta en el seguimiento toman la del plan. Todos los años
+    # anteriores al corte cuentan: un indicador que nunca reportó puede no
+    # tener filas (o tenerlas solo de años anteriores), y sus metas del plan
+    # igual hacen parte de la trayectoria (0.27.0; antes solo contaban los años
+    # anteriores al último año con filas, y sin filas la MA era la del año).
+    for key, raw in (metas_plan or {}).items():
+        if str(key).strip().lower() == "final":
+            continue
+        try:
+            y = int(key)
+        except (TypeError, ValueError):
+            continue
+        if y >= anio:
+            continue
+        mv = safe_float(raw)
+        if mv is None:
+            continue
+        por_anio.setdefault(y, mv)
 
     total = 0.0
     for y, v in por_anio.items():
@@ -570,7 +616,7 @@ def exige_reporte_en(anio: int, programada: dict, anio_fin: Optional[int] = None
 
 
 def avance_constante(segs_al_corte, anio: int, trimestre: int, periodicidad: Any,
-                     exige_en) -> float:
+                     exige_en, fin: Optional[tuple] = None) -> float:
     """AV de un CONSTANTE al corte: el reporte del trimestre que se le exige.
 
     En el año del corte manda el más reciente entre el último trimestre
@@ -580,7 +626,11 @@ def avance_constante(segs_al_corte, anio: int, trimestre: int, periodicidad: Any
     y no reportarlo no es sostenerlo (Afro 4.1.12: 1 en 2025 Q4 y nada en
     2026 → 0 % a 2026 Q2). Si en el año aún no le toca reportar (anual a
     junio, o año sin meta) se toma lo que valía al cierre de la vigencia
-    anterior que sí exigía, con la misma regla. Sin ningún reporte: 0."""
+    anterior que sí exigía, con la misma regla. Sin ningún reporte: 0.
+
+    ``fin``: :func:`fin_efectivo` del producto. En el año final no se exige
+    después del fin efectivo: un trimestral que termina en junio y reportó en
+    Q2 conserva ese reporte en Q3, Q4 y los años siguientes."""
     reales = [s for s in segs_al_corte or ()
               if not s.get("sintetico") and safe_float(s.get("valor_avance")) is not None]
     if not reales:
@@ -592,6 +642,8 @@ def avance_constante(segs_al_corte, anio: int, trimestre: int, periodicidad: Any
                            for s in reales if int(s["anio"]) == y and int(s["trimestre"]) <= q),
                           key=lambda x: x[0])
         qe = trimestre_exigible(q, periodicidad) if exige_en(y) else 0
+        if fin is not None and y == fin[0]:
+            qe = min(qe, fin[1])
         if del_anio:
             ult_q, ult_v = del_anio[-1]
             return ult_v if ult_q >= qe else 0.0
@@ -615,8 +667,13 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     primera filtrada al período ≤ corte, la segunda con toda la historia.
     ``metas_plan``: metas por año del plan base; completan las de los años sin
     fila de seguimiento (un indicador que nunca reportó no tiene filas).
-    ``fecha_fin``: tras su finalización la trayectoria es la meta final y no se
-    le exige reporte.
+    ``fecha_fin``: el producto termina en su fin efectivo (:func:`fin_efectivo`,
+    el fin del periodo de reporte que contiene la fecha según la periodicidad).
+    En el año final la meta del año se reparte entre los trimestres hasta el
+    fin efectivo; desde él la trayectoria es la meta final y no se le exige
+    reporte.
+    ``fecha_inicio``: antes del año de inicio no se exige reporte; las metas
+    del plan de esos años sí cuentan (ver :func:`metas_antes_de_inicio`).
 
     Reglas de exigencia (OAP, oct-2026): un año exige reporte solo si tiene
     meta (:func:`exige_reporte_en`); si le tocaba reportar y no lo hizo, SUMA
@@ -629,7 +686,9 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
 
     Retorna dict con ``av_acum, meta_anual, meta_prev, meta_final, mp, ma,
     sum_metas_prev, pav, phv, tray, paf, tid, brecha, periodo_str,
-    trimestre_efectivo, sin_iniciar`` — porcentajes en FRACCIÓN 0–1.
+    trimestre_efectivo, sin_iniciar, fin_efectivo, terminado`` — porcentajes en
+    FRACCIÓN 0–1. ``fin_efectivo`` es ``(año, trimestre)`` o None; ``terminado``,
+    si el corte ya llegó al fin efectivo.
     ``sin_iniciar`` solo se evalúa si se pasa ``fecha_inicio``: el indicador
     aún no debe entrar en los cálculos del corte (ver
     :func:`sin_iniciar_al_corte`)."""
@@ -643,19 +702,23 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     if meta_final is None and metas_plan:
         meta_final = safe_float((metas_plan or {}).get("final"))
 
-    # Las metas del plan de años anteriores a la fecha de inicio no cuentan: el
-    # indicador todavía no existía (Educación 4.5.3 inicia en 2023 y el plan
-    # trae meta en 2022; su meta de 2023 Q1 se prorratea desde la LB).
+    # Todas las metas del plan cuentan, también las de años anteriores a la
+    # fecha de inicio (0.27.0; la 0.26.0 las descartaba). Una meta antes del
+    # inicio es un probable error del plan: se avisa con
+    # :func:`metas_antes_de_inicio`, no se corrige aquí. Lo que sí rige la
+    # fecha de inicio es la exigencia: antes del año de inicio no se exige
+    # reporte (y el peso lo decide :func:`sin_iniciar_al_corte`).
     ini = periodo_de_fecha(fecha_inicio) if fecha_inicio is not None else None
-    if ini and metas_plan:
-        metas_plan = {k: v for k, v in metas_plan.items()
-                      if not (str(k).strip().isdigit() and int(str(k).strip()) < ini[0])}
 
     programada, valor_meta = metas_por_anio(segs_todos, metas_plan, t, meta_final)
-    fin = periodo_de_fecha(fecha_fin) if fecha_fin is not None else None
+    # Fin efectivo: el fin del periodo de reporte que contiene la fecha de fin
+    # (un anual que termina en junio termina en Q4).
+    fin = fin_efectivo(fecha_fin, periodicidad)
     anio_fin = fin[0] if fin else None
 
     def exige_en(y):
+        if ini is not None and int(y) < ini[0]:
+            return False
         return exige_reporte_en(y, programada, anio_fin)
 
     def _ultima_meta_antes(y):
@@ -704,7 +767,7 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         av_acum = avance_acumulado_suma(segs_al_corte, segs_todos, anio, trimestre)
     elif t == "CONSTANTE":
         sum_metas_prev = 0.0
-        av_acum = avance_constante(segs_al_corte, anio, trimestre, periodicidad, exige_en)
+        av_acum = avance_constante(segs_al_corte, anio, trimestre, periodicidad, exige_en, fin)
     else:
         sum_metas_prev = 0.0
         av_acum = next(
@@ -714,8 +777,18 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
     exige_anio = exige_en(anio)
     reportados = trimestres_reportados(segs_al_corte, anio, trimestre)
     q_ef = trimestre_efectivo(trimestre, periodicidad, reportados, exige=exige_anio)
-    mes = 3 * q_ef
     q_exigible = trimestre_exigible(trimestre, periodicidad) if exige_anio else 0
+    # En el año final la meta del año se reparte solo entre los trimestres que
+    # van hasta el fin efectivo, y después de él no se exige reporte: un
+    # trimestral que termina en junio lleva en Q1 la mitad de la meta del año y
+    # en Q2 la completa (mes 6 de 12 → 1 de 2 trimestres).
+    q_fin = fin[1] if fin is not None and int(anio) == fin[0] else None
+    if q_fin is not None:
+        q_ef = min(q_ef, q_fin)
+        q_exigible = min(q_exigible, q_fin)
+        mes = 12 * q_ef / q_fin
+    else:
+        mes = 3 * q_ef
     sin_iniciar = fecha_inicio is not None and sin_iniciar_al_corte(
         fecha_inicio, periodicidad, anio, trimestre,
         reportado=any(not s.get("sintetico") and s.get("valor_avance") is not None
@@ -726,8 +799,9 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         0.0 if t == "SUMA" else nivel_inicial)
     mp = calc_meta_periodo(t, meta_anual_mp, meta_prev, mes)
     ma = calc_meta_acum(t, mp, sum_metas_prev)
-    # El trimestre que contiene la fecha de fin ya cuenta como terminado: un
-    # producto que termina el 31-dic-2025 tiene en 2025 Q4 la meta final.
+    # Desde el fin efectivo el producto está terminado y se le exige la meta
+    # final: uno que termina el 31-dic-2025 la tiene en 2025 Q4; un trimestral
+    # que termina en junio, desde Q2; un anual que termina en junio, en Q4.
     terminado = fin is not None and (int(anio), _trimestre_valido(trimestre)) >= fin
     if terminado and safe_float(meta_final) is not None:
         ma = safe_float(meta_final)          # terminó: se le exige la meta final
@@ -755,4 +829,5 @@ def metricas_corte(tipo, periodicidad, lb, segs_al_corte, segs_todos,
         pav=pav, phv=phv, tray=tray, paf=paf, tid=tid, brecha=calc_brecha(paf, tid),
         periodo_str=f"{anio} Q{trimestre}",
         trimestre_efectivo=q_ef, sin_iniciar=sin_iniciar,
+        fin_efectivo=fin, terminado=terminado,
     )

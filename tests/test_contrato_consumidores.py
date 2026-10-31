@@ -54,13 +54,16 @@ CONTRATO = [
         "calc_pct_hasta_vig", "calc_paf", "calc_tid", "calc_trayectoria_ideal",
         "calc_brecha", "avance_acumulado_suma", "avance_sin_reportes", "metricas_corte",
     )],
+    # alertas-seguimientos/db.py: alerta de calidad «meta antes de la fecha de inicio» (0.27.0).
+    ("extractor_pa.seguimiento.metricas", "metas_antes_de_inicio"),
+    ("extractor_pa.seguimiento.metricas", "fin_efectivo"),
 ]
 
 # Lo que se usa desde un submódulo también debe estar en la API pública del
 # subpaquete, para que los consumidores puedan dejar de importar de submódulos.
 PUBLICOS_SEGUIMIENTO = [
     "safe_float", "parse_lb", "parse_period", "limites_de_semaforo",
-    "suma_metas_anteriores_suma",
+    "suma_metas_anteriores_suma", "metas_antes_de_inicio", "fin_efectivo",
 ]
 
 
