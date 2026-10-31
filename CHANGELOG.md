@@ -15,7 +15,67 @@ de las fichas técnicas; fichas de Juventud) ·
 0.21.0 (años sueltos en las fechas, tolerancia de los acumulados, formatos sin
 bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año) ·
 0.24.0 (códigos con punto doble, BOM o espacio por punto) ·
-0.26.0 (exigencia de reporte por años con meta; CONSTANTE sin reporte exigible = 0).
+0.26.0 (exigencia de reporte por años con meta; CONSTANTE sin reporte exigible = 0) ·
+0.27.0 (fin efectivo según periodicidad; metas anteriores al inicio cuentan).
+
+## [0.27.0] — Producto terminado según su periodicidad y metas antes del inicio (OAP SDG, 31-oct-2026)
+
+**Cambia cifras.** Aplica a la trayectoria ideal (TID), la meta acumulada (MA)
+y los tres porcentajes (PAV, PHV, PAF) de `metricas_corte` para productos con
+`fecha_fin` en el año del corte, con metas antes de su `fecha_inicio` o SUMA
+sin filas de seguimiento de años anteriores.
+
+### Cambiado
+
+- **Fin efectivo según la periodicidad** (`fin_efectivo(fecha_fin,
+  periodicidad)`, nueva y pública). El producto termina al cierre del periodo
+  de reporte que contiene la fecha de fin: trimestral (y mensual, bimestral) →
+  el trimestre de la fecha; semestral → Q2 o Q4; anual y plurianuales → Q4 del
+  año de la fecha. Un anual que termina en junio espera al reporte de Q4: en
+  Q2 no se le exige ni está terminado; en Q4 sí. Desde el fin efectivo la MA es
+  la meta final (trayectoria 100 %), como en la 0.26.0 pero con el fin efectivo
+  en lugar del trimestre de la fecha.
+- **En el año final la meta del año se reparte hasta el fin efectivo.** Un
+  trimestral con meta anual 100 (= MF) que termina el 30-jun: Q1 → MA 50,
+  TID 50 % (la 0.26.0 daba 25 %); Q2 → MA 100, TID 100 %. Con meta 100 en 2025
+  y 100 en 2026 (MF 200): Q1 2026 → 150 (75 %), Q2 → 200 (100 %). Un anual que
+  termina en junio con las mismas metas: Q2 → 100 (50 %), Q4 → 200 (100 %). Un
+  trimestral que termina en septiembre: 1/3, 2/3 y 3/3 de la meta del año.
+- **La exigencia del año final también usa el fin efectivo**: después de él
+  no se exige reporte (PAV y `avance_constante`). Un CONSTANTE trimestral que
+  termina en junio y reportó en Q2 conserva ese reporte en Q3, Q4 y los años
+  siguientes (la 0.26.0 lo dejaba en 0 en Q3). `avance_constante` recibe `fin`.
+- **Se toman todas las metas del plan, también las anteriores a la fecha de
+  inicio** (se revierte el filtro de la 0.26.0, commit `ee2c719`). Educación
+  4.5.3 inicia en 2023 y el plan trae meta en 2022: esa meta vuelve a contar en
+  la MA (SUMA) y como meta previa (CRECIENTE/DECRECIENTE). La exigencia sigue
+  rigiéndose por la fecha de inicio: antes del año de inicio no se exige
+  reporte, y el peso lo sigue decidiendo `sin_iniciar_al_corte`.
+- **SUMA: las metas del plan de todos los años anteriores al corte cuentan**
+  en `suma_metas_anteriores_suma`, aunque el indicador no tenga filas de
+  seguimiento de esos años (antes solo contaban los años anteriores al último
+  año con filas, y sin filas la MA era solo la del año: un SUMA trimestral que
+  nunca reportó, con metas 10/10/10 y MF 30, quedaba a 2026 Q2 con MA 5 en vez
+  de 25).
+
+### Agregado
+
+- **`metas_antes_de_inicio(metas_plan, fecha_inicio) -> list[int]`**: años con
+  meta mayor que 0 anteriores al año de inicio. Para la alerta de calidad
+  «meta programada antes de la fecha de inicio: probable error del plan de
+  acción» de los consumidores (alertas-seguimientos).
+- `metricas_corte` devuelve además `fin_efectivo` (`(año, trimestre)` o None)
+  y `terminado`.
+
+### Sin cambio (documentado en pruebas)
+
+- **Nunca reportado y exigible queda en 0 %**: PAV, PHV y PAF en 0 (no vacíos),
+  peso completo (`sin_iniciar` False) y trayectoria normal, en SUMA,
+  CONSTANTE, CRECIENTE y DECRECIENTE, con filas vacías o sin ninguna fila.
+  Si en el año aún no le toca reportar (anual a junio), el PAV sigue vacío.
+- Las demás reglas de la 0.26.0.
+
+Pruebas: `tests/test_reglas_terminado_metas_027.py`.
 
 ## [0.26.0] — Reglas de exigencia de reporte (OAP, 30-oct-2026)
 
