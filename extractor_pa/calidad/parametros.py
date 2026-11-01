@@ -13,13 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Optional
 
-from ..seguimiento.validacion_seg import UMBRALES_SEMAFORO, limites_de_semaforo
-from ..validacion import EPSILON as TOLERANCIA_META_FINAL
-from ..validacion import TOLERANCIA_PESO_PP
-
-# Sobre ejecución por encima de este múltiplo de la meta es «posible error de
-# escala» (ADR-001: el doble de la sobre ejecución del semáforo naranja).
-UMBRAL_ESCALA = 2.5
+from ..seguimiento.validacion_seg import UMBRAL_ESCALA, UMBRALES_SEMAFORO, limites_de_semaforo
+from ..validacion import TOLERANCIA_META_FINAL, TOLERANCIA_PESO_PP
 
 
 @dataclass(frozen=True)
@@ -48,9 +43,9 @@ class ParametrosCalidad:
     periodicidad_de: str = "plan"
     # Corte del análisis ``(año, trimestre)``. ``None``: el del archivo.
     corte: Optional[tuple] = None
-    # ``False``: se descartan los hallazgos de indicadores No Vigentes, salvo
-    # «No Vigente con ponderación» (RN-06 de alertas-seguimientos).
-    incluir_no_vigentes: bool = True
+    # ``False`` (ADR-001): se descartan los hallazgos de indicadores No Vigentes,
+    # salvo «No Vigente con ponderación» y el cambio de estado (RN-06 de la app).
+    incluir_no_vigentes: bool = False
     # ``False``: no se incluyen las alertas estructurales de la extracción
     # (``res.alertas``) entre los hallazgos.
     incluir_estructurales: bool = True

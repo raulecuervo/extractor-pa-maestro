@@ -61,6 +61,7 @@ CONTRATO = [
     *[("extractor_pa.calidad", n) for n in (
         "evaluar", "Hallazgo", "ParametrosCalidad", "CATALOGO_CALIDAD", "Regla",
         "regla_de_tipo", "COLS_OBSERVACION", "desde_alerta", "desde_hallazgo_seguimiento",
+        "alertas_plan", "observaciones_desde", "hallazgos_app",
     )],
     ("extractor_pa.validacion", "validar_reglas"),
     ("extractor_pa.validacion", "TOLERANCIA_PESO_PP"),

@@ -527,6 +527,7 @@ def _construir_excel_reglas(ruta: str, *, limpio: bool) -> None:
         22: "1.1.1 Producto uno", 23: "IP uno", 24: "Vigente", 25: peso_ip,
         27: "Suma", 28: "Anual", 34: 0, 35: 2023, 37: "2024-01-01", 38: "2025-12-31",
         39: 40, 40: 60, 41: 100,
+        42: "Gobierno", 43: "Secretaría Distrital de Gobierno",
     }
     for c, v in fila.items():
         ws.cell(row=12, column=c, value=v)

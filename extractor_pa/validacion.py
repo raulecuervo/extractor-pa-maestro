@@ -25,10 +25,12 @@ from collections import defaultdict
 from typing import Optional
 
 from .alertas import crear_alerta
-from .utilidades import _norm, a_float, elegir_peso_objetivo, fecha_de_valor
+from .seguimiento.metricas import hay_meta, metas_antes_de_inicio
+from .utilidades import _norm, a_float, codigo_mal_escrito, elegir_peso_objetivo, fecha_de_valor
 
-# Tolerancia de las sumas de ponderación, en puntos porcentuales (ADR-001).
-TOLERANCIA_PESO_PP = 0.5
+# Tolerancia de las sumas de ponderación, en puntos porcentuales (ADR-001: 0,1 pp
+# desde la 0.29.0; antes 0,5).
+TOLERANCIA_PESO_PP = 0.1
 # Tolerancia absoluta entre las metas anuales y la meta final (V17).
 TOLERANCIA_META_FINAL = 0.5
 EPSILON = TOLERANCIA_PESO_PP  # nombre histórico; se conserva por compatibilidad
@@ -47,6 +49,7 @@ _NULOS = {"", "nan", "none", "nd", "n/a", "n.a.", "n.a", "na", "_", "-"}
 _RE_OBJ = re.compile(r"^\d+$")
 _RE_IR = re.compile(r"^\d+\.\d+$")
 _RE_IP = re.compile(r"^\d+\.\d+\.\d+$")
+_RE_ANIO = re.compile(r"^(19|20)\d\d(\.0+)?$")
 
 
 # ─────────────────────────── helpers ────────────────────────────
@@ -74,6 +77,14 @@ def _leer_peso(valor) -> tuple[Optional[float], bool]:
     no depende del resto del plan. Un número suelto (0.0286 o 2.86) es ambiguo y
     su escala la decide `_factor` con los demás números sueltos del plan."""
     return a_float(valor), isinstance(valor, str) and valor.strip().endswith("%")
+
+
+def _difiere(a: float, b: float, tol: float) -> bool:
+    """¿``a`` y ``b`` difieren más allá de la tolerancia? La tolerancia absoluta
+    (``tol``, 0,5 por defecto) se acota al 1 % de la mayor magnitud, para que una
+    meta en fracción (0,8 frente a 1) no quede escondida por una tolerancia
+    pensada para conteos."""
+    return abs(a - b) > min(tol, 0.01 * max(abs(a), abs(b)))
 
 
 def _parse_fecha(v) -> Optional[_dt.date]:
@@ -227,13 +238,33 @@ def _tipologia(inds, alertas, archivo, politica, tipo_label, cod_attr):
                  valor=ind.periodicidad)
 
 
+def _fecha_como_texto(raw) -> bool:
+    """La celda trae la fecha como texto («01/01/2024», «2024-01-01») en vez de
+    una fecha de Excel. Un año suelto no cuenta: es una convención del plan."""
+    return (isinstance(raw, str) and not _RE_ANIO.match(raw.strip())
+            and fecha_de_valor(raw) is not None)
+
+
 def _fechas(inds, alertas, archivo, politica, tipo_label, cod_attr):
-    """V5: parseo y orden de fechas."""
+    """V5: parseo y orden de fechas; fecha vacía y fecha escrita como texto (0.29.0)."""
     for ind in inds:
         cod = getattr(ind, cod_attr)
         fi_raw, ff_raw = ind.fecha_inicio, ind.fecha_fin
         fi = _parse_fecha(fi_raw) if not _vacio(fi_raw) else None
         ff = _parse_fecha(ff_raw) if not _vacio(ff_raw) else None
+        for campo, raw, nombre in (("fecha_inicio", fi_raw, "inicio"), ("fecha_fin", ff_raw, "fin")):
+            if _vacio(raw):
+                _add(alertas, "PLAN_FECHA_VACIA",
+                     f"{tipo_label} '{cod}': sin fecha de {nombre}; la exigencia de reporte "
+                     f"y el fin efectivo no se pueden calcular.",
+                     archivo=archivo, politica=politica, cod_ir=getattr(ind, 'codigo_ir', None),
+                     cod_ip=getattr(ind, 'codigo_ip', None), campo=campo)
+            elif _fecha_como_texto(raw):
+                _add(alertas, "PLAN_FECHA_COMO_TEXTO",
+                     f"{tipo_label} '{cod}': la fecha de {nombre} está escrita como texto "
+                     f"('{raw}'), no como fecha de Excel.",
+                     archivo=archivo, politica=politica, cod_ir=getattr(ind, 'codigo_ir', None),
+                     cod_ip=getattr(ind, 'codigo_ip', None), campo=campo, valor=raw)
         if not _vacio(fi_raw) and fi is None:
             _add(alertas, "fecha_invalida",
                  f"{tipo_label} '{cod}': fecha de inicio no parseable ('{fi_raw}').",
@@ -324,15 +355,28 @@ def _metas_y_lb(inds, alertas, archivo, politica, tipo_label, cod_attr,
                      archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip,
                      campo="meta_final", valor=mf)
 
-        # V15: metas fuera del rango de vigencia.
+        # V15, partida en dos (0.29.0): metas antes de la fecha de inicio (una
+        # sola implementación: `metricas.metas_antes_de_inicio`, meta > 0) y
+        # metas después de la fecha de fin (con meta programada).
         fi = _parse_fecha(ind.fecha_inicio)
         ff = _parse_fecha(ind.fecha_fin)
-        if fi and ff and metas:
-            fuera = sorted(str(a) for a in metas if a < fi.year or a > ff.year)
-            if fuera:
+        if fi and metas:
+            antes = metas_antes_de_inicio(ind.metas_por_anio, fi)
+            if antes:
                 _add(alertas, "meta_fuera_de_rango",
-                     f"{tipo_label} '{cod}': metas fuera del rango de vigencia ({fi.year}-{ff.year}): {', '.join(fuera)}.",
-                     archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="metas")
+                     f"{tipo_label} '{cod}': metas anteriores a la fecha de inicio ({fi.year}): "
+                     f"{', '.join(str(a) for a in antes)}. Esa meta cuenta en la meta acumulada.",
+                     archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="metas",
+                     valor=", ".join(str(a) for a in antes))
+        if ff and metas:
+            despues = sorted(a for a, v in metas.items()
+                             if a > ff.year and hay_meta(v, tipo, mf))
+            if despues:
+                _add(alertas, "meta_fuera_de_rango",
+                     f"{tipo_label} '{cod}': metas posteriores a la fecha de fin ({ff.year}): "
+                     f"{', '.join(str(a) for a in despues)}.",
+                     archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="metas",
+                     valor=", ".join(str(a) for a in despues))
 
         # V12: brechas en metas.
         if fi and ff and metas:
@@ -344,26 +388,82 @@ def _metas_y_lb(inds, alertas, archivo, politica, tipo_label, cod_attr,
                      f"{tipo_label} '{cod}': faltan metas en años esperados (cada {intervalo} año(s)): {', '.join(brechas)}.",
                      archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="metas")
 
-        # V17: metas anuales vs meta final.
+        # V17: metas anuales vs meta final, en tres casos (0.29.0).
         if mf is not None and metas:
             if tipo == "SUMA":
                 suma = sum(metas.values())
-                if abs(suma - mf) > tol_mf:
+                if _difiere(suma, mf, tol_mf):
                     _add(alertas, "metas_vs_meta_final",
                          f"{tipo_label} '{cod}': SUMA — Σ metas ({suma:.2f}) ≠ meta_final ({mf:.2f}).",
                          archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="meta_final")
-            elif tipo in ("CONSTANTE", "CRECIENTE", "DECRECIENTE"):
+            elif tipo == "CONSTANTE":
+                distintas = sorted(a for a, v in metas.items()
+                                   if hay_meta(v, tipo, mf) and _difiere(v, mf, tol_mf))
+                if distintas:
+                    _add(alertas, "metas_vs_meta_final",
+                         f"{tipo_label} '{cod}': CONSTANTE — metas distintas de la meta_final "
+                         f"({mf:.2f}) en {', '.join(str(a) for a in distintas)}.",
+                         archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="meta_final",
+                         valor=", ".join(f"{a}: {metas[a]:g}" for a in distintas))
+            elif tipo in ("CRECIENTE", "DECRECIENTE"):
                 anios_ord = sorted(metas)
                 ultima = next((metas[y] for y in reversed(anios_ord) if metas[y] != 0),
                               metas[anios_ord[-1]])
-                if abs(ultima - mf) > tol_mf:
+                if _difiere(ultima, mf, tol_mf):
                     _add(alertas, "metas_vs_meta_final",
                          f"{tipo_label} '{cod}': {tipo} — última meta ({ultima:.2f}) ≠ meta_final ({mf:.2f}).",
                          archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="meta_final")
 
+        # Metas no monótonas (0.29.0): CRECIENTE que baja, DECRECIENTE que sube.
+        if tipo in ("CRECIENTE", "DECRECIENTE") and metas:
+            serie = [(a, v) for a, v in sorted(metas.items()) if hay_meta(v, tipo, mf)]
+            quiebres = [f"{a0}→{a1} ({v0:g}→{v1:g})" for (a0, v0), (a1, v1) in zip(serie, serie[1:])
+                        if (v1 < v0 if tipo == "CRECIENTE" else v1 > v0)]
+            if quiebres:
+                _add(alertas, "PLAN_METAS_NO_MONOTONAS",
+                     f"{tipo_label} '{cod}': {tipo} con metas que "
+                     f"{'bajan' if tipo == 'CRECIENTE' else 'suben'}: {'; '.join(quiebres)}.",
+                     archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="metas",
+                     valor="; ".join(quiebres))
+
+
+def _vigencia_y_responsable(irs, ips, alertas, archivo, politica):
+    """Vigencia vacía (IR e IP) y producto vigente sin entidad responsable (0.29.0)."""
+    for inds, tipo_label, cod_attr in ((irs, "IR", "codigo_ir"), (ips, "IP", "codigo_ip")):
+        for ind in inds:
+            cod = getattr(ind, cod_attr)
+            if _vacio(ind.es_vigente):
+                _add(alertas, "PLAN_VIGENCIA_VACIA",
+                     f"{tipo_label} '{cod}': la casilla Vigente/No Vigente está vacía; se "
+                     f"asume vigente.",
+                     archivo=archivo, politica=politica, cod_ir=getattr(ind, 'codigo_ir', None),
+                     cod_ip=getattr(ind, 'codigo_ip', None), campo="es_vigente")
+    for ip in ips:
+        if not _es_no_vigente(ip) and _vacio(ip.entidad_responsable):
+            _add(alertas, "PLAN_SIN_RESPONSABLE",
+                 f"IP '{ip.codigo_ip}': producto vigente sin entidad responsable.",
+                 archivo=archivo, politica=politica, cod_ir=ip.codigo_ir, cod_ip=ip.codigo_ip,
+                 campo="entidad_responsable")
+
 
 def _codigos_y_estructura(irs, ips, alertas, archivo, politica):
-    """V13 (códigos malformados) y V11 (IR sin productos)."""
+    """V13 (códigos malformados y mal escritos) y V11 (IR sin productos)."""
+    for ir in irs:
+        for texto, niveles, campo in ((ir.objetivo_especifico, 1, "objetivo"),
+                                      (ir.resultado_esperado, 2, "resultado")):
+            mal = codigo_mal_escrito(texto, niveles)
+            if mal:
+                _add(alertas, "PLAN_CODIGO_MAL_ESCRITO",
+                     f"Código de {campo} mal escrito en la celda: '{mal}'.",
+                     archivo=archivo, politica=politica, cod_obj=ir.codigo_objetivo,
+                     cod_ir=ir.codigo_ir, campo=campo, valor=mal)
+    for ip in ips:
+        mal = codigo_mal_escrito(ip.producto_esperado, 3)
+        if mal:
+            _add(alertas, "PLAN_CODIGO_MAL_ESCRITO",
+                 f"Código de producto mal escrito en la celda: '{mal}'.",
+                 archivo=archivo, politica=politica, cod_ir=ip.codigo_ir, cod_ip=ip.codigo_ip,
+                 campo="producto", valor=mal)
     for ir in irs:
         for code, rex, label in ((ir.codigo_objetivo, _RE_OBJ, "OBJ"),
                                   (ir.codigo_ir, _RE_IR, "IR")):
@@ -454,6 +554,7 @@ def validar_reglas(resultado, catalogo_oficial=None, *, tolerancia_peso_pp=None,
     _fechas(ips, alertas, archivo, politica, "IP", "codigo_ip")
     _metas_y_lb(irs, alertas, archivo, politica, "IR", "codigo_ir", tol_mf)
     _metas_y_lb(ips, alertas, archivo, politica, "IP", "codigo_ip", tol_mf)
+    _vigencia_y_responsable(irs, ips, alertas, archivo, politica)
     _codigos_y_estructura(irs, ips, alertas, archivo, politica)
     _sector_entidad(irs, ips, alertas, archivo, politica, catalogo_oficial)
 

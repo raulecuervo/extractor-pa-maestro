@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Fase 1 de la unificación de alertas (ADR-001): el motor ``calidad.evaluar``
-envuelve las validaciones existentes y devuelve EXACTAMENTE las mismas alertas
-que ``validar_reglas`` / ``validar_archivo`` / ``validar_consistencia``.
+Unificación de alertas (ADR-001): el motor ``calidad.evaluar`` envuelve las
+validaciones existentes y devuelve EXACTAMENTE las mismas alertas que
+``validar_reglas`` / ``validar_archivo`` / ``validar_consistencia`` (más las
+reglas nuevas de la 0.29.0, que se prueban en ``test_calidad_reglas.py``).
 """
 
 from __future__ import annotations
@@ -93,13 +94,22 @@ def _seguimiento_con_defectos():
     )
 
 
+# Sin el filtro de No Vigentes (RN-06), para comparar con las fachadas.
+_TODO = ParametrosCalidad(incluir_no_vigentes=True)
+
+
+def _legados(hs):
+    """Solo los hallazgos de las reglas envueltas (tipo legado ≠ código canónico)."""
+    return [h for h in hs if h.tipo != h.regla]
+
+
 # ─────────────────────────── catálogo ───────────────────────────
 
 
 def test_codigos_canonicos_unicos_y_con_forma():
     assert len(CATALOGO_CALIDAD) == len(REGLAS)
     for r in REGLAS:
-        assert r.codigo.split("_")[0] in {"EXT", "PLAN", "SEG", "SERIE", "CARGA", "CRUCE"}, r.codigo
+        assert r.codigo.split("_")[0] in {"EXT", "PLAN", "SEG", "SERIE", "CARGA", "CRUCE", "META"}, r.codigo
         assert r.severidad in SEVERIDAD_A_NIVEL
 
 
@@ -122,7 +132,7 @@ def test_tipos_de_la_app_cubiertos_con_la_misma_severidad():
 
 
 def test_severidad_de_las_reglas_del_plan_coincide_con_el_catalogo_legado():
-    """En la 0.28.0 no cambia ninguna severidad: la del catálogo legado manda."""
+    """La severidad de la regla y el nivel del tipo legado son la misma cosa."""
     for r in REGLAS:
         for tipo in r.tipos_legados:
             t = catalogo_legado.CATALOGO.get(tipo)
@@ -145,9 +155,9 @@ def test_evaluar_plan_devuelve_las_mismas_alertas_que_validar_reglas():
     plan = _plan_con_defectos()
     esperadas = validar_reglas(plan)
     assert len(esperadas) >= 12  # el plan sintético sí dispara reglas
-    hs = evaluar(plan=plan, aplica_a=["plan"])
+    hs = evaluar(plan=plan, aplica_a=["plan"], parametros=_TODO)
     assert [asdict(h.a_alerta()) for h in hs] == [asdict(a) for a in esperadas]
-    assert all(isinstance(h, Hallazgo) and h.regla.startswith("PLAN_") for h in hs)
+    assert all(isinstance(h, Hallazgo) and h.regla.startswith(("PLAN_", "META_")) for h in hs)
     assert {h.regla for h in hs} >= {"PLAN_PESO_OBJETIVOS", "PLAN_VIGENTE_SIN_PESO",
                                      "PLAN_NO_VIGENTE_CON_PESO", "PLAN_FECHA_INVALIDA",
                                      "PLAN_META_NO_NUMERICA", "PLAN_JERARQUIA_ROTA",
@@ -159,24 +169,25 @@ def test_evaluar_plan_incluye_las_estructurales_y_enriquece_con_el_plan():
     from extractor_pa.alertas import crear_alerta
     plan.alertas.append(crear_alerta("sin_ip", "No se extrajo ningún IP.",
                                      archivo_fuente="pa_demo.xlsx", nombre_politica="PP Demo"))
-    hs = evaluar(plan=plan)
+    hs = evaluar(plan=plan, parametros=_TODO)
     est = [h for h in hs if h.aplica_a == "estructura_plan"]
     assert [h.regla for h in est] == ["EXT_SIN_IP"] and est[0].severidad == "Advertencia"
     assert asdict(est[0].a_alerta()) == asdict(plan.alertas[0])
     h = next(h for h in hs if h.regla == "PLAN_NO_VIGENTE_CON_PESO")
     assert h.codigo == "2.1" and h.cod_ir == "2.1" and h.nombre == "IR dos"
-    assert evaluar(plan=plan, parametros=ParametrosCalidad(incluir_estructurales=False)) == \
+    assert evaluar(plan=plan, parametros=_TODO.con(incluir_estructurales=False)) == \
         [x for x in hs if x.aplica_a != "estructura_plan"]
 
 
 def test_tolerancias_se_pasan_a_validar_reglas():
     plan = _plan_con_defectos()
     plan.indicadores_resultado[0].peso_objetivo_pct = 70.3  # objetivos suman 100,3
-    assert not any(h.regla == "PLAN_PESO_OBJETIVOS" for h in evaluar(plan=plan))
-    estricto = ParametrosCalidad(tolerancia_peso_pp=0.1)
-    assert any(h.regla == "PLAN_PESO_OBJETIVOS" for h in evaluar(plan=plan, parametros=estricto))
-    assert [asdict(h.a_alerta()) for h in evaluar(plan=plan, parametros=estricto, aplica_a=["plan"])] \
-        == [asdict(a) for a in validar_reglas(plan, tolerancia_peso_pp=0.1)]
+    # ADR-001: 0,1 pp por defecto → 100,3 % sí se alerta.
+    assert any(h.regla == "PLAN_PESO_OBJETIVOS" for h in evaluar(plan=plan))
+    laxo = _TODO.con(tolerancia_peso_pp=0.5)
+    assert not any(h.regla == "PLAN_PESO_OBJETIVOS" for h in evaluar(plan=plan, parametros=laxo))
+    assert [asdict(h.a_alerta()) for h in evaluar(plan=plan, parametros=laxo, aplica_a=["plan"])] \
+        == [asdict(a) for a in validar_reglas(plan, tolerancia_peso_pp=0.5)]
 
 
 # ─────────────────────────── no regresión: seguimiento ───────────────────────────
@@ -186,9 +197,9 @@ def test_evaluar_seguimiento_devuelve_los_mismos_findings_que_validar_archivo():
     res = _seguimiento_con_defectos()
     esperados = [h.as_finding() for h in validar_archivo(res)]
     assert len(esperados) >= 8
-    hs = evaluar(seguimiento=res)
-    assert [h.as_finding() for h in hs] == esperados
-    assert all(h.regla.startswith("SEG_") for h in hs)
+    hs = evaluar(seguimiento=res, parametros=_TODO)
+    assert [h.as_finding() for h in _legados(hs)] == esperados
+    assert all(h.regla.startswith(("SEG_", "SERIE_")) for h in hs)
 
 
 def test_evaluar_con_base_devuelve_lo_mismo_que_validar_consistencia():
@@ -201,8 +212,8 @@ def test_evaluar_con_base_devuelve_lo_mismo_que_validar_consistencia():
     u = {"rojo": 40, "amarillo": 70, "naranja": 130}
     esperados = [h.as_finding() for h in validar_consistencia(base, nuevo, anio_min=2020, umbrales=u)]
     hs = evaluar(seguimiento=nuevo, base=base,
-                 parametros=ParametrosCalidad(anio_min=2020, umbrales_semaforo=u))
-    assert [h.as_finding() for h in hs] == esperados
+                 parametros=_TODO.con(anio_min=2020, umbrales_semaforo=u))
+    assert [h.as_finding() for h in _legados(hs)] == esperados
     assert {h.regla for h in hs} >= {"CARGA_VALOR_HISTORICO", "CARGA_CAMBIO_META",
                                      "CARGA_CAMPO_INMUTABLE", "CARGA_INDICADOR_NUEVO",
                                      "CARGA_INDICADOR_FALTANTE"}
@@ -222,10 +233,10 @@ def test_entidad_sector_llega_a_la_regla_de_sector():
 
 def test_filtros_por_regla_y_no_vigentes():
     res = _seguimiento_con_defectos()
-    todos = evaluar(seguimiento=res)
+    todos = evaluar(seguimiento=res, parametros=_TODO)
     assert any(h.codigo == "1.1.3" for h in todos)
-    sin_nv = evaluar(seguimiento=res, parametros=ParametrosCalidad(incluir_no_vigentes=False))
-    assert not any(h.codigo == "1.1.3" for h in sin_nv)
+    sin_nv = evaluar(seguimiento=res)  # por defecto (ADR-001) sin los No Vigentes…
+    assert {h.regla for h in sin_nv if h.codigo == "1.1.3"} == {"SEG_NO_VIGENTE_CON_PESO"}  # …salvo esta
     solo = evaluar(seguimiento=res, codigos=["SEG_NO_NUMERICO"])
     assert solo and {h.regla for h in solo} == {"SEG_NO_NUMERICO"}
     apagada = evaluar(seguimiento=res, parametros=ParametrosCalidad(reglas_inactivas=frozenset({"SEG_NO_NUMERICO"})))
