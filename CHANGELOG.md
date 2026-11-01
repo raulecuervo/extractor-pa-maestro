@@ -18,6 +18,40 @@ bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año) ·
 0.26.0 (exigencia de reporte por años con meta; CONSTANTE sin reporte exigible = 0) ·
 0.27.0 (fin efectivo según periodicidad; metas anteriores al inicio cuentan).
 
+## [0.28.0] — Catálogo único de reglas de calidad y motor `calidad.evaluar` (1-nov-2026)
+
+No cambia cifras ni alertas: las reglas existentes se envuelven tal cual.
+
+### Añadido
+
+- **`extractor_pa.calidad`** (ADR-001, `docs/adr/ADR-001-catalogo-alertas.md`):
+  - `CATALOGO_CALIDAD` / `REGLAS`: una `Regla` por chequeo, con código canónico
+    estable (`PLAN_…`, `SEG_…`, `CARGA_…`, `CRUCE_…`, `EXT_…`), severidad, nivel
+    del objeto, a qué se aplica, familia, acción sugerida y los tipos legados que
+    sustituye (`regla_de_tipo`). Generado a `docs/CATALOGO_CALIDAD.md`
+    (`scripts/gen_catalogo_calidad.py`).
+  - `Hallazgo`, que extiende `HallazgoSeguimiento` (mismo `as_finding()`, gate de
+    paridad intacto) con `regla`, `aplica_a`, objeto (`cod_objetivo`/`cod_ir`/
+    `cod_ip`), `accion`, `afecta_avance`, `cortes`, `fuente`; y dos salidas más:
+    `a_alerta()` (la `Alerta` del plan, ida y vuelta sin pérdida) y
+    `a_observacion(politica_key=…)` (fila de `observaciones_politica` del tablero
+    de sispp-gobierno, columnas `COLS_OBSERVACION`).
+  - `ParametrosCalidad`: semáforo, tolerancias, corte, catálogos inyectados,
+    No Vigentes, reglas activas/inactivas.
+  - `evaluar(plan=…, seguimiento=…, base=…, corte=…, parametros=…)`: corre las
+    reglas cuyos datos están disponibles y devuelve `list[Hallazgo]`; envuelve
+    `validar_reglas`, `validar_archivo` / `validar_consistencia` y las alertas
+    estructurales de `res.alertas`. Filtros `aplica_a`, `familias`, `codigos`.
+- `validar_reglas(..., tolerancia_peso_pp=, tolerancia_meta_final=)` (opcionales;
+  por defecto las de siempre). Constantes `TOLERANCIA_PESO_PP` y
+  `TOLERANCIA_META_FINAL` en `validacion.py` (`EPSILON` se conserva).
+
+### Pruebas
+
+- `tests/test_calidad_catalogo.py`: mismas alertas que `validar_reglas` /
+  `validar_archivo` / `validar_consistencia` (no regresión), cobertura del
+  catálogo legado, severidades idénticas, filtros y columnas de las salidas.
+
 ## [0.27.0] — Producto terminado según su periodicidad y metas antes del inicio (OAP SDG, 31-oct-2026)
 
 **Cambia cifras.** Aplica a la trayectoria ideal (TID), la meta acumulada (MA)
