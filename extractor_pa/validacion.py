@@ -27,7 +27,11 @@ from typing import Optional
 from .alertas import crear_alerta
 from .utilidades import _norm, a_float, elegir_peso_objetivo, fecha_de_valor
 
-EPSILON = 0.5  # tolerancia de sumas de ponderación (en puntos porcentuales)
+# Tolerancia de las sumas de ponderación, en puntos porcentuales (ADR-001).
+TOLERANCIA_PESO_PP = 0.5
+# Tolerancia absoluta entre las metas anuales y la meta final (V17).
+TOLERANCIA_META_FINAL = 0.5
+EPSILON = TOLERANCIA_PESO_PP  # nombre histórico; se conserva por compatibilidad
 
 TIPOS_ANUALIZACION_VALIDOS = {"CRECIENTE", "DECRECIENTE", "CONSTANTE", "SUMA"}
 PERIODICIDADES_VALIDAS = {
@@ -94,7 +98,7 @@ def _add(alertas, tipo, desc, ind=None, *, archivo="", politica="", campo=None, 
 
 # ─────────────────────────── reglas ─────────────────────────────
 
-def _ponderacion(irs, ips, alertas, archivo, politica):
+def _ponderacion(irs, ips, alertas, archivo, politica, tol=TOLERANCIA_PESO_PP):
     """V0/V1/V2 (sumas de pesos) + ponderación faltante.
 
     Las sumas se hacen en puntos porcentuales. Cada peso se lee como
@@ -158,7 +162,7 @@ def _ponderacion(irs, ips, alertas, archivo, politica):
     # V0
     if peso_de_obj:
         total = sum(peso_de_obj.values())
-        if abs(total - 100.0) > EPSILON:
+        if abs(total - 100.0) > tol:
             _add(alertas, "ponderacion_objetivos",
                  f"Los {len(peso_de_obj)} objetivo(s) suman {total:.2f}% (esperado 100%).",
                  archivo=archivo, politica=politica, campo="peso_objetivo",
@@ -167,7 +171,7 @@ def _ponderacion(irs, ips, alertas, archivo, politica):
     for obj, pesos in pesos_por_obj.items():
         total = sum(pesos)
         esperado = peso_de_obj.get(obj)
-        if esperado is not None and abs(total - esperado) > EPSILON:
+        if esperado is not None and abs(total - esperado) > tol:
             _add(alertas, "ponderacion_ir",
                  f"Pesos de IRs del OBJ '{obj}' suman {total:.2f}% pero el peso del objetivo es {esperado:.2f}%.",
                  archivo=archivo, politica=politica, cod_obj=obj, campo="peso_pct",
@@ -176,7 +180,7 @@ def _ponderacion(irs, ips, alertas, archivo, politica):
     for irk, pesos in pesos_por_ir.items():
         total = sum(pesos)
         esperado = peso_de_ir.get(irk)
-        if esperado is not None and abs(total - esperado) > EPSILON:
+        if esperado is not None and abs(total - esperado) > tol:
             _add(alertas, "ponderacion_ip",
                  f"Pesos de IPs del IR '{irk}' suman {total:.2f}% pero el peso del IR es {esperado:.2f}%.",
                  archivo=archivo, politica=politica, cod_ir=irk, campo="peso_pct",
@@ -247,7 +251,8 @@ def _fechas(inds, alertas, archivo, politica, tipo_label, cod_attr):
                  cod_ip=getattr(ind, 'codigo_ip', None), campo="fecha_inicio", valor=str(fi))
 
 
-def _metas_y_lb(inds, alertas, archivo, politica, tipo_label, cod_attr):
+def _metas_y_lb(inds, alertas, archivo, politica, tipo_label, cod_attr,
+                tol_mf=TOLERANCIA_META_FINAL):
     """V6/V7 (meta no numérica), V8 (meta final), V9/V16 (línea base),
     V14 (meta vs LB), V15 (fuera de rango), V17 (metas vs meta final)."""
     for ind in inds:
@@ -343,7 +348,7 @@ def _metas_y_lb(inds, alertas, archivo, politica, tipo_label, cod_attr):
         if mf is not None and metas:
             if tipo == "SUMA":
                 suma = sum(metas.values())
-                if abs(suma - mf) > EPSILON:
+                if abs(suma - mf) > tol_mf:
                     _add(alertas, "metas_vs_meta_final",
                          f"{tipo_label} '{cod}': SUMA — Σ metas ({suma:.2f}) ≠ meta_final ({mf:.2f}).",
                          archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="meta_final")
@@ -351,7 +356,7 @@ def _metas_y_lb(inds, alertas, archivo, politica, tipo_label, cod_attr):
                 anios_ord = sorted(metas)
                 ultima = next((metas[y] for y in reversed(anios_ord) if metas[y] != 0),
                               metas[anios_ord[-1]])
-                if abs(ultima - mf) > EPSILON:
+                if abs(ultima - mf) > tol_mf:
                     _add(alertas, "metas_vs_meta_final",
                          f"{tipo_label} '{cod}': {tipo} — última meta ({ultima:.2f}) ≠ meta_final ({mf:.2f}).",
                          archivo=archivo, politica=politica, cod_ir=cir, cod_ip=cip, campo="meta_final")
@@ -423,27 +428,32 @@ def _sector_entidad(irs, ips, alertas, archivo, politica, catalogo):
                          campo=campo, valor=valor)
 
 
-def validar_reglas(resultado, catalogo_oficial=None) -> list:
+def validar_reglas(resultado, catalogo_oficial=None, *, tolerancia_peso_pp=None,
+                   tolerancia_meta_final=None) -> list:
     """Ejecuta las reglas de negocio V0–V18 sobre el modelo canónico.
 
     `catalogo_oficial` (opcional): si se provee un `CatalogoOficial`, se evalúa
     además la regla **V4** (sector/entidad oficial). Por defecto V4 NO se ejecuta.
+    `tolerancia_peso_pp` y `tolerancia_meta_final` (opcionales) sustituyen las
+    tolerancias de la librería (ver ``extractor_pa.calidad.ParametrosCalidad``).
     Devuelve la lista de alertas (no modifica `resultado`)."""
+    tol = TOLERANCIA_PESO_PP if tolerancia_peso_pp is None else tolerancia_peso_pp
+    tol_mf = TOLERANCIA_META_FINAL if tolerancia_meta_final is None else tolerancia_meta_final
     irs = resultado.indicadores_resultado
     ips = resultado.indicadores_producto
     archivo = resultado.metadatos.archivo_fuente
     politica = resultado.metadatos.nombre_politica
     alertas = []
 
-    _ponderacion(irs, ips, alertas, archivo, politica)
+    _ponderacion(irs, ips, alertas, archivo, politica, tol)
     _vigencia_ponderacion(irs, alertas, archivo, politica, "IR", "codigo_ir")
     _vigencia_ponderacion(ips, alertas, archivo, politica, "IP", "codigo_ip")
     _tipologia(irs, alertas, archivo, politica, "IR", "codigo_ir")
     _tipologia(ips, alertas, archivo, politica, "IP", "codigo_ip")
     _fechas(irs, alertas, archivo, politica, "IR", "codigo_ir")
     _fechas(ips, alertas, archivo, politica, "IP", "codigo_ip")
-    _metas_y_lb(irs, alertas, archivo, politica, "IR", "codigo_ir")
-    _metas_y_lb(ips, alertas, archivo, politica, "IP", "codigo_ip")
+    _metas_y_lb(irs, alertas, archivo, politica, "IR", "codigo_ir", tol_mf)
+    _metas_y_lb(ips, alertas, archivo, politica, "IP", "codigo_ip", tol_mf)
     _codigos_y_estructura(irs, ips, alertas, archivo, politica)
     _sector_entidad(irs, ips, alertas, archivo, politica, catalogo_oficial)
 

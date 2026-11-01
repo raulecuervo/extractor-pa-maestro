@@ -57,6 +57,13 @@ CONTRATO = [
     # alertas-seguimientos/db.py: alerta de calidad «meta antes de la fecha de inicio» (0.27.0).
     ("extractor_pa.seguimiento.metricas", "metas_antes_de_inicio"),
     ("extractor_pa.seguimiento.metricas", "fin_efectivo"),
+    # Motor de calidad (0.28.0): lo adoptan el pipeline (F3) y la app (F4).
+    *[("extractor_pa.calidad", n) for n in (
+        "evaluar", "Hallazgo", "ParametrosCalidad", "CATALOGO_CALIDAD", "Regla",
+        "regla_de_tipo", "COLS_OBSERVACION", "desde_alerta", "desde_hallazgo_seguimiento",
+    )],
+    ("extractor_pa.validacion", "validar_reglas"),
+    ("extractor_pa.validacion", "TOLERANCIA_PESO_PP"),
 ]
 
 # Lo que se usa desde un submódulo también debe estar en la API pública del

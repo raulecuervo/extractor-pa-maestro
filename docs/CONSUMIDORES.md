@@ -29,7 +29,7 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | generador-seguimiento | v0.27.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 | gestor-planes-accion | v0.27.0 (Dockerfile por commit `b8e8c04`) | Sí, por adaptadores | — | `extractor_pa.py` en `paquetes/` (tres adaptadores) |
 
-Última versión publicada: **v0.27.0** (fin efectivo según periodicidad en `metricas_corte`, metas anteriores al inicio vuelven a contar, `metas_antes_de_inicio` para la alerta de calidad). El tag `v0.27.0` apunta al commit de fusión del PR #23 (`b8e8c04`).
+Última versión publicada: **v0.28.0** (paquete `extractor_pa.calidad`: catálogo único de reglas y motor `evaluar`; no cambia cifras ni alertas). Anterior: v0.27.0 (tag en `b8e8c04`, PR #23).
 
 Al 2026-11-01 los diez consumidores fijan **v0.27.0**. sispp-gobierno (PR #33) y sispp-SDP (PR #23) cambian cifras (usan `metricas_corte`); sispp-sdis solo cambia la columna «libreria» del informe `comparar-formulas` (sus cifras salen de `calc_paf`/`calc_tid`/`calc_brecha`, que no cambian); validador_plan_accion, extractor-planes-accion, creador-planes-accion, seguimiento-pp-sdis, generador-seguimiento y gestor-planes-accion no usan las funciones modificadas y sus pruebas dan lo mismo que con la 0.26.0.
 
@@ -42,6 +42,22 @@ de `extractor_pa.catalogo_entidades` (listado 1.0.2): sispp-gobierno y sispp-SDP
 embebido, generador-seguimiento y validador_plan_accion sus JSON propios, creador-planes-accion genera la
 hoja «Listas» del formato desde el listado, extractor-planes-accion valida con `clasificar_*`, y sispp-sdis
 y seguimiento-pp-sdis no tenían catálogo propio (sispp-sdis avisa erratas al cargar el plan).
+
+## Motor de calidad (`extractor_pa.calidad`, desde la 0.28.0)
+
+Nombres públicos del contrato (ADR-001, `docs/adr/ADR-001-catalogo-alertas.md`):
+
+| Nombre | Para qué | Quién lo adopta |
+|---|---|---|
+| `calidad.evaluar(plan=, seguimiento=, base=, corte=, parametros=)` → `list[Hallazgo]` | Todas las reglas del catálogo sobre lo que se reciba | sispp-gobierno y sispp-SDP (F3), alertas-seguimientos (F4) |
+| `calidad.ParametrosCalidad(umbrales_semaforo=, tolerancia_peso_pp=, umbral_escala=, anio_min=, periodicidad_de=, corte=, incluir_no_vigentes=, entidad_sector=, catalogo_oficial=, reglas_activas=, reglas_inactivas=)` | Parámetros del motor; `.con(...)` copia con cambios | app (semáforo de Parametrizaciones, alias de entidades), pipeline (SDP 3.1) |
+| `calidad.Hallazgo` (extiende `HallazgoSeguimiento`) con `.as_finding()`, `.a_alerta()`, `.a_observacion(politica_key=)` | Salidas para la tabla `alertas` de la app, `alertas_planes_accion.csv` y `observaciones_politica` | app, pipeline |
+| `calidad.CATALOGO_CALIDAD`, `REGLAS`, `Regla`, `regla_de_tipo(tipo)` | Catálogo y correspondencia con los tipos legados | validador de la app (F5), reportes |
+| `calidad.COLS_OBSERVACION` | Columnas de `observaciones_politica` | pipeline |
+| `validacion.validar_reglas(res, tolerancia_peso_pp=, tolerancia_meta_final=)` | Fachada V0–V18 (se conserva) | — |
+
+Las fachadas `validar_archivo`, `validar_consistencia`, `HallazgoSeguimiento.as_finding()`,
+`TIPOS_HALLAZGO`, `SEVERIDAD` y `catalogo.CATALOGO` no cambian.
 
 ## Qué funcionalidad usa cada uno
 
