@@ -24,6 +24,24 @@ calidad (tipos, severidades o cuándo saltan) y no sobre las cifras:
 Advertencia; exigencia de reporte con fin efectivo y periodicidad del plan;
 reglas nuevas del plan, la serie y el cruce).
 
+## [0.29.1] — Unidades de las ponderaciones en los mensajes (1-nov-2026)
+
+Corrección de texto. **No cambia cifras ni alertas**: los mismos hallazgos, con la
+misma severidad y el mismo `valor`; solo cambia la descripción.
+
+- **`PLAN_NO_VIGENTE_CON_PESO`** (V18, `vigencia_ponderacion`): en un plan en
+  fracción el mensaje imprimía el peso crudo con «%» («No Vigente pero pondera
+  0.005%»). Ahora lo lleva a puntos porcentuales con la escala del plan (el mismo
+  `_factor` de V0–V2, calculado sobre los pesos sueltos de IR e IP): «pondera
+  0.5%». El texto con «%» («0,5%») no se multiplica. `valor` conserva el número
+  tal como lo trae el plan.
+- **`CRUCE_IND_NO_EN_SEGUIMIENTO`**: el detalle decía «peso 0.005» sin unidad y
+  en la escala del archivo; ahora «peso 0.5%», con la escala del plan.
+- Revisados sin cambio: V0/V1/V2 (`PLAN_PESO_*`, ya en puntos), `SEG_NO_VIGENTE_CON_PESO`
+  (muestra el número del formato sin «%»), las reglas de la serie y de
+  sobre ejecución (formatean la fracción con `:.0%`) y las descripciones del catálogo.
+- Pruebas: `tests/test_b2_jerarquia.py::test_v18_*`.
+
 ## [0.29.0] — Reglas unificadas de calidad: decisiones F0, reglas del pipeline y nuevas (1-nov-2026)
 
 **Cambia alertas** (ADR-001, `docs/adr/ADR-001-catalogo-alertas.md`). No cambia

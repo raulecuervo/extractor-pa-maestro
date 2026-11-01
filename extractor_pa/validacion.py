@@ -79,6 +79,24 @@ def _leer_peso(valor) -> tuple[Optional[float], bool]:
     return a_float(valor), isinstance(valor, str) and valor.strip().endswith("%")
 
 
+def _texto_pp(puntos: float) -> str:
+    """Puntos porcentuales para un mensaje: 0.5 → '0.5%'; 2.857142 → '2.8571%'."""
+    return f"{round(puntos, 4):g}%"
+
+
+def _factor_plan(*grupos) -> float:
+    """Factor de escala (100 o 1) de las ponderaciones sueltas de todo el plan
+    (IR e IP), el mismo criterio de `_ponderacion`: un plan en fracción
+    (0.005, 0.0377…) se lleva a puntos porcentuales antes de mostrarse."""
+    sueltos = []
+    for inds in grupos:
+        for ind in inds:
+            v, pct = _leer_peso(ind.peso_pct)
+            if v is not None and not pct:
+                sueltos.append(v)
+    return _factor(sueltos)
+
+
 def _difiere(a: float, b: float, tol: float) -> bool:
     """¿``a`` y ``b`` difieren más allá de la tolerancia? La tolerancia absoluta
     (``tol``, 0,5 por defecto) se acota al 1 % de la mayor magnitud, para que una
@@ -198,17 +216,22 @@ def _ponderacion(irs, ips, alertas, archivo, politica, tol=TOLERANCIA_PESO_PP):
                  valor=round(total, 2))
 
 
-def _vigencia_ponderacion(inds, alertas, archivo, politica, tipo_label, cod_attr):
-    """V18: No Vigente debe pesar 0; Vigente debe pesar > 0."""
+def _vigencia_ponderacion(inds, alertas, archivo, politica, tipo_label, cod_attr, factor=1.0):
+    """V18: No Vigente debe pesar 0; Vigente debe pesar > 0.
+
+    ``factor`` (0.29.1) es la escala del plan (`_factor_plan`): el mensaje muestra
+    la ponderación en puntos porcentuales (0.005 en un plan en fracción → «0.5%»,
+    no «0.005%»). El campo ``valor`` conserva el número tal como lo trae el plan."""
     for ind in inds:
         cod = getattr(ind, cod_attr)
-        peso = a_float(ind.peso_pct)
+        peso, pct = _leer_peso(ind.peso_pct)
         if peso is None:
             continue
         no_vig = _es_no_vigente(ind)
         if no_vig and peso != 0:
+            puntos = peso if pct else peso * factor
             _add(alertas, "vigencia_ponderacion",
-                 f"{tipo_label} '{cod}': No Vigente pero pondera {peso}% (debe ser 0%).",
+                 f"{tipo_label} '{cod}': No Vigente pero pondera {_texto_pp(puntos)} (debe ser 0%).",
                  archivo=archivo, politica=politica, cod_ir=getattr(ind, 'codigo_ir', None),
                  cod_ip=getattr(ind, 'codigo_ip', None), campo="peso_pct", valor=peso)
         elif not no_vig and peso == 0:
@@ -546,8 +569,9 @@ def validar_reglas(resultado, catalogo_oficial=None, *, tolerancia_peso_pp=None,
     alertas = []
 
     _ponderacion(irs, ips, alertas, archivo, politica, tol)
-    _vigencia_ponderacion(irs, alertas, archivo, politica, "IR", "codigo_ir")
-    _vigencia_ponderacion(ips, alertas, archivo, politica, "IP", "codigo_ip")
+    factor = _factor_plan(irs, ips)
+    _vigencia_ponderacion(irs, alertas, archivo, politica, "IR", "codigo_ir", factor)
+    _vigencia_ponderacion(ips, alertas, archivo, politica, "IP", "codigo_ip", factor)
     _tipologia(irs, alertas, archivo, politica, "IR", "codigo_ir")
     _tipologia(ips, alertas, archivo, politica, "IP", "codigo_ip")
     _fechas(irs, alertas, archivo, politica, "IR", "codigo_ir")

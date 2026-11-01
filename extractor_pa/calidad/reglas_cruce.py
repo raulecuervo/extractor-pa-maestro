@@ -16,10 +16,10 @@ También entrega :func:`periodicidad_del_plan`, el mapa que usa
 from __future__ import annotations
 
 from ..seguimiento.hallazgos import crear_hallazgo
-from ..seguimiento.metricas import periodo_de_fecha, safe_float
+from ..seguimiento.metricas import periodo_de_fecha
 from ..seguimiento.validacion_seg import normalise, parse_period
 from ..validacion import _es_no_vigente as _plan_no_vigente
-from ..validacion import _leer_peso
+from ..validacion import _factor, _leer_peso, _texto_pp
 from .catalogo import APLICA_CRUCE
 from .hallazgo import FUENTE_CRUCE, Hallazgo, desde_hallazgo_seguimiento
 
@@ -94,10 +94,13 @@ def hallazgos_cruce(plan, seguimiento, parametros) -> list:
 
     # Plan → seguimiento.
     year, q = _corte_de(seguimiento, parametros)
+    # Escala del plan (0.29.1): el peso del mensaje va en puntos porcentuales.
+    factor = _factor([v for v, pct in (_leer_peso(p.peso_pct) for p in idx.values())
+                      if v is not None and not pct])
     for cod, pl in idx.items():
         if cod in en_seg or _plan_no_vigente(pl):
             continue
-        peso = _leer_peso(pl.peso_pct)[0]
+        peso, peso_pct = _leer_peso(pl.peso_pct)
         if peso is None or peso <= 0:
             continue
         ini = periodo_de_fecha(pl.fecha_inicio)
@@ -107,7 +110,8 @@ def hallazgos_cruce(plan, seguimiento, parametros) -> list:
             "CRUCE_IND_NO_EN_SEGUIMIENTO", codigo=cod, politica=politica,
             sector=pl.sector_responsable, entidad=pl.entidad_responsable,
             nombre=pl.nombre_indicador, archivo=archivo, campo="Código", val_base=cod,
-            detalle=(f"El indicador '{cod}' del plan (vigente, peso {safe_float(peso):g}, "
+            detalle=(f"El indicador '{cod}' del plan (vigente, peso "
+                     f"{_texto_pp(peso if peso_pct else peso * factor)}, "
                      f"inicio {pl.fecha_inicio}) no aparece en el formato de seguimiento con "
                      f"ese código: ¿se renumeró o no se reporta?"))
         hh = desde_hallazgo_seguimiento(h, aplica_a=APLICA_CRUCE, fuente=FUENTE_CRUCE)

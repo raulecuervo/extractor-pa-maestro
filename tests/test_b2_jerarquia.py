@@ -212,3 +212,28 @@ if __name__ == "__main__":
     test_ponderacion_descuadre_en_cada_escala()
     test_ponderacion_peso_objetivo_vigente_en_texto_pct()
     print("B2 OK")
+
+
+# ── V18 (0.29.1): el mensaje muestra la ponderación en puntos porcentuales ──
+
+def _v18(res):
+    return [a for a in validar_reglas(res) if a.tipo == "vigencia_ponderacion"]
+
+
+def test_v18_plan_decimal_muestra_el_porcentaje_correcto():
+    # Antes: «IP '1.1.2': No Vigente pero pondera 0.005% (debe ser 0%)» en un
+    # plan en fracción, cuando el peso real es medio punto (0,5 %).
+    res = _plan_pesos({"1": 1.0}, {"1.1": 1.0}, {"1.1.1": 0.995, "1.1.2": 0.005})
+    res.indicadores_producto[1].es_vigente = "No Vigente"
+    alertas = _v18(res)
+    assert len(alertas) == 1
+    assert "pondera 0.5% (debe ser 0%)" in alertas[0].descripcion
+    assert float(alertas[0].valor) == 0.005  # el valor conserva el número del plan
+
+
+def test_v18_plan_en_porcentaje_y_texto_pct_no_se_multiplican():
+    res = _plan_pesos({"1": 100}, {"1.1": 100}, {"1.1.1": 97, "1.1.2": 2.5, "1.1.3": "0,5%"})
+    res.indicadores_producto[1].es_vigente = "No Vigente"
+    res.indicadores_producto[2].es_vigente = "No Vigente"
+    d = [a.descripcion for a in _v18(res)]
+    assert any("pondera 2.5% " in x for x in d) and any("pondera 0.5% " in x for x in d)
