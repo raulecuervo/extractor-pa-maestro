@@ -109,8 +109,9 @@ _TIPOS = [
                "No se extrajo ningún indicador de seguimiento.", implementado=True),
     TipoAlerta("indicador_seguimiento_sin_codigo", NIVEL_INFO, "Estructura seguimiento", CAPA_EXTRACCION,
                "Fila de seguimiento sin código de indicador reconocible.", implementado=True),
-    TipoAlerta("codigo_seguimiento_sin_plan", NIVEL_INFO, "Estructura seguimiento", CAPA_SEGUIMIENTO,
-               "Un código de seguimiento no se encontró en el plan de acción.",
+    TipoAlerta("codigo_seguimiento_sin_plan", NIVEL_ADVERTENCIA, "Estructura seguimiento", CAPA_SEGUIMIENTO,
+               "Un código de seguimiento no se encontró en el plan de acción "
+               "(ADVERTENCIA desde la 0.29.0, como CRUCE_IND_NO_EN_PLAN).",
                implementado=True),
 
     # ── Familia: Códigos / Jerarquía (capa validación, estructurales) ──
@@ -194,6 +195,26 @@ _TIPOS = [
                "Las metas anuales del indicador mezclan escalas (fracción 0-1 y "
                "valores >1.5), posible error de unidades.", regla="escala", implementado=True),
 
+    # ── Reglas nuevas del plan (0.29.0, ADR-001; el tipo es el código canónico) ──
+    TipoAlerta("PLAN_FECHA_VACIA", NIVEL_ADVERTENCIA, "Fechas", CAPA_VALIDACION_PLAN,
+               "Sin fecha de inicio o de fin: la exigencia de reporte y el fin efectivo "
+               "no se pueden calcular.", regla="ADR-001", implementado=True),
+    TipoAlerta("PLAN_FECHA_COMO_TEXTO", NIVEL_INFO, "Fechas", CAPA_VALIDACION_PLAN,
+               "La fecha está escrita como texto, no como fecha de Excel.",
+               regla="ADR-001", implementado=True),
+    TipoAlerta("PLAN_METAS_NO_MONOTONAS", NIVEL_ADVERTENCIA, "Metas", CAPA_VALIDACION_PLAN,
+               "CRECIENTE con metas que bajan o DECRECIENTE con metas que suben.",
+               regla="ADR-001", implementado=True),
+    TipoAlerta("PLAN_VIGENCIA_VACIA", NIVEL_ADVERTENCIA, "Ponderación", CAPA_VALIDACION_PLAN,
+               "La casilla Vigente/No Vigente está vacía (se asume vigente).",
+               regla="ADR-001", implementado=True),
+    TipoAlerta("PLAN_SIN_RESPONSABLE", NIVEL_ADVERTENCIA, "Tipología", CAPA_VALIDACION_PLAN,
+               "Producto vigente sin entidad responsable.",
+               regla="ADR-001", implementado=True),
+    TipoAlerta("PLAN_CODIGO_MAL_ESCRITO", NIVEL_INFO, "Códigos", CAPA_VALIDACION_PLAN,
+               "El código se lee pero está mal escrito en la celda (punto doble, espacio, "
+               "carácter invisible, prefijo).", regla="ADR-001", implementado=True),
+
     # ── Familia: Línea base V9/V16 ──
     TipoAlerta("linea_base_faltante", NIVEL_INFO, "Línea base", CAPA_VALIDACION_PLAN,
                "Línea base (valor y/o año) no registrada.", regla="V9", implementado=True),
@@ -223,13 +244,14 @@ _TIPOS = [
                "Reporte cuantitativo con valor no numérico."),
     TipoAlerta("ADVERTENCIA_ESCALA", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
                "Incoherencia de escala entre la meta y el reporte."),
-    TipoAlerta("ADVERTENCIA_AVANCE", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
-               "El avance supera la meta + 25% (umbral 125%)."),
-    TipoAlerta("ADVERTENCIA_LIMITE_VIG", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+    TipoAlerta("ADVERTENCIA_AVANCE", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
+               "El % de avance de la vigencia supera el techo del semáforo (125 %): sobre "
+               "ejecución (Info); por encima de 250 % es Advertencia (posible error de escala)."),
+    TipoAlerta("ADVERTENCIA_LIMITE_VIG", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
                "El reporte/suma de la vigencia supera el 125% de la meta programada."),
-    TipoAlerta("ADVERTENCIA_ACUM_META_VIG", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+    TipoAlerta("ADVERTENCIA_ACUM_META_VIG", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
                "El acumulado supera la meta acumulada de la vigencia."),
-    TipoAlerta("ADVERTENCIA_ACUM_META_FIN", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+    TipoAlerta("ADVERTENCIA_ACUM_META_FIN", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
                "El acumulado supera la meta final."),
     TipoAlerta("ADVERTENCIA_META_SIN_REP", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
                "Existe meta para la vigencia pero no hay reporte."),
@@ -245,6 +267,33 @@ _TIPOS = [
                "Indicador nuevo (no existía en el archivo base)."),
     TipoAlerta("INFO_IND_FALTANTE", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
                "Indicador presente en la base pero ausente en el nuevo archivo."),
+    # Reglas nuevas del seguimiento, la serie y el cruce (0.29.0, ADR-001).
+    TipoAlerta("SEG_REPORTE_NEGATIVO", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Un reporte cuantitativo es negativo.", regla="ADR-001"),
+    TipoAlerta("SEG_NO_VIGENTE_CON_PESO", NIVEL_ERROR, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Indicador No Vigente con ponderación mayor que 0 en el formato.", regla="ADR-001"),
+    TipoAlerta("SERIE_RETROCESO", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "CRECIENTE cuyos reportes bajan o DECRECIENTE cuyos reportes suben.", regla="ADR-001"),
+    TipoAlerta("SERIE_REPORTE_SIN_META", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Reportes en años cerrados sin meta programada.", regla="ADR-001"),
+    TipoAlerta("SERIE_ESCALA", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "En un año cerrado el avance supera 250 % de la meta, o la meta está en 0–1 y "
+               "el reporte supera 1 (posible error de escala).", regla="ADR-001"),
+    TipoAlerta("SERIE_SOBREEJECUCION", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
+               "En un año cerrado el avance supera el techo del semáforo (hasta 250 %).",
+               regla="ADR-001"),
+    TipoAlerta("META_ANTES_INICIO", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Meta programada antes de la fecha de inicio (metas del formato, sin plan).",
+               regla="ADR-001"),
+    TipoAlerta("CRUCE_IND_NO_EN_PLAN", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Indicador vigente del seguimiento que no existe en el plan de acción.",
+               regla="ADR-001"),
+    TipoAlerta("CRUCE_IND_NO_EN_SEGUIMIENTO", NIVEL_ADVERTENCIA, "Seguimiento", CAPA_SEGUIMIENTO,
+               "Indicador vigente del plan, con peso e iniciado, que no está en el seguimiento.",
+               regla="ADR-001"),
+    TipoAlerta("CRUCE_PERIODICIDAD_DISTINTA", NIVEL_INFO, "Seguimiento", CAPA_SEGUIMIENTO,
+               "La periodicidad del plan no coincide con la del formato de seguimiento.",
+               regla="ADR-001"),
 
     # ── Familia: Operativas / temporales (sispp-sdis) ──
     TipoAlerta("INDICADOR_SIN_RESPONSABLE", NIVEL_ADVERTENCIA, "Operativa", CAPA_OPERATIVA,

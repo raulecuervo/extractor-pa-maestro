@@ -3,7 +3,7 @@
 > Generado desde `extractor_pa/calidad/catalogo.py` (fuente única; ADR-001).
 > Severidad: Error · Advertencia · Info (en `observaciones_politica`: Alta · Media · Baja).
 
-**64 reglas** · 64 implementadas · 0 apagadas por defecto.
+**81 reglas** · 81 implementadas · 0 apagadas por defecto.
 
 
 ## Estructura del plan (extracción)
@@ -44,23 +44,32 @@
 | `PLAN_PESO_CADENA_IR_IP` | Pesos de los productos no cuadran con el resultado | Error | resultado | Ponderación | `ponderacion_ip`, `V2`, `cadena_resultado_productos` | Solicitar el ajuste del plan de acción ante la SDP. | V2 |
 | `PLAN_VIGENTE_SIN_PESO` | Indicador vigente sin ponderación | Error | indicador | Ponderación | `ponderacion_faltante`, `vigencia_ponderacion`, `V18`, `indicador_sin_ponderacion` | Solicitar el ajuste del plan de acción ante la SDP. | V1/V2/V18 |
 | `PLAN_NO_VIGENTE_CON_PESO` | Indicador No Vigente con ponderación | Error | indicador | Ponderación | `vigencia_ponderacion`, `V18`, `Producto No Vigente con peso` | Solicitar ajuste del plan: peso 0 o redistribuirlo. | V18; observaciones.obs_no_vigentes |
+| `PLAN_VIGENCIA_VACIA` | Vigencia sin diligenciar | Advertencia | indicador | Ponderación | `PLAN_VIGENCIA_VACIA`, `indicador_sin_vigencia` | Solicitar el ajuste del plan de acción ante la SDP. | alertas_datos (pipeline) |
+| `PLAN_SIN_RESPONSABLE` | Producto sin entidad responsable | Advertencia | producto | Tipología | `PLAN_SIN_RESPONSABLE`, `indicador_sin_responsable`, `INDICADOR_SIN_RESPONSABLE`, `V4c` | Solicitar el ajuste del plan de acción ante la SDP. | alertas_datos (pipeline); V4c |
 | `PLAN_TIPO_ANUALIZACION_INVALIDO` | Tipo de anualización no reconocido | Error | indicador | Tipología | `tipo_anualizacion_invalido`, `V3` | Solicitar el ajuste del plan de acción ante la SDP. | V3 |
 | `PLAN_PERIODICIDAD_INVALIDA` | Periodicidad fuera del catálogo | Advertencia | indicador | Tipología | `periodicidad_invalida` | Solicitar el ajuste del plan de acción ante la SDP. | sispp-gobierno |
 | `PLAN_SECTOR_NO_OFICIAL` | Sector fuera del listado oficial | Info | indicador | Tipología | `sector_no_oficial`, `V4` | — | V4 |
 | `PLAN_ENTIDAD_NO_OFICIAL` | Entidad fuera del listado oficial | Info | indicador | Tipología | `entidad_no_oficial`, `V4` | — | V4 |
 | `PLAN_FECHA_INVALIDA` | Fecha no legible | Advertencia | indicador | Fechas | `fecha_invalida`, `V5` | Solicitar el ajuste del plan de acción ante la SDP. | V5 |
+| `PLAN_FECHA_VACIA` | Sin fecha de inicio o de fin | Advertencia | indicador | Fechas | `PLAN_FECHA_VACIA` | Solicitar el ajuste del plan de acción ante la SDP. | formato 3.4 (ADR-001) |
+| `PLAN_FECHA_COMO_TEXTO` | Fecha escrita como texto | Info | indicador | Fechas | `PLAN_FECHA_COMO_TEXTO` | — | formato 3.4 (ADR-001) |
 | `PLAN_FECHA_INICIO_MAYOR_FIN` | Fecha de fin anterior a la de inicio | Error | indicador | Fechas | `fecha_inicio_mayor_fin`, `V5` | Solicitar el ajuste del plan de acción ante la SDP. | V5 |
 | `PLAN_META_NO_NUMERICA` | Meta anual no numérica | Error | indicador | Metas | `meta_no_numerica`, `V6`, `V7` | Solicitar el ajuste del plan de acción ante la SDP. | V6/V7 |
 | `PLAN_META_FINAL_FALTANTE` | Sin meta final | Error | indicador | Metas | `meta_final_faltante`, `V8` | Solicitar el ajuste del plan de acción ante la SDP. | V8 |
 | `PLAN_BRECHA_EN_METAS` | Faltan metas en años de la vigencia | Advertencia | indicador | Metas | `brecha_en_metas`, `V12` | Solicitar el ajuste del plan de acción ante la SDP. | V12 |
-| `PLAN_META_FUERA_VIGENCIA` | Metas fuera de la vigencia | Advertencia | indicador | Metas | `meta_fuera_de_rango`, `V15` | Solicitar el ajuste del plan de acción ante la SDP. | V15 |
+| `META_ANTES_INICIO` | Meta antes de la fecha de inicio | Advertencia | indicador | Metas | `META_ANTES_INICIO`, `meta_fuera_de_rango`, `V15`, `Meta antes de la fecha de inicio`, `ADVERTENCIA_META_ANTES_INICIO`, `EXTRA_FECHAS_INICIO_SIN_META` | Solicitar el ajuste del plan: corregir la fecha de inicio o las metas. | V15; metricas.metas_antes_de_inicio (0.27.0); app db; pipeline |
+| `PLAN_META_DESPUES_FIN` | Meta después de la fecha de fin | Advertencia | indicador | Metas | `meta_fuera_de_rango`, `V15`, `EXTRA_FECHAS_FIN_CON_META` | Solicitar el ajuste del plan de acción ante la SDP. | V15 |
 | `PLAN_META_VS_LINEA_BASE` | Meta final en sentido contrario a la línea base | Error | indicador | Metas | `meta_vs_linea_base`, `V14` | Solicitar el ajuste del plan de acción ante la SDP. | V14 |
-| `PLAN_METAS_VS_META_FINAL` | Metas anuales inconsistentes con la meta final | Error | indicador | Metas | `metas_vs_meta_final`, `V17` | Solicitar el ajuste del plan de acción ante la SDP. | V17 |
+| `PLAN_SUMA_METAS_VS_MF` | SUMA: las metas anuales no suman la meta final | Error | indicador | Metas | `metas_vs_meta_final`, `V17`, `EXTRA_META_FINAL_VS_SUMA` | Solicitar el ajuste del plan de acción ante la SDP. | V17 |
+| `PLAN_CONSTANTE_METAS_DISTINTAS` | CONSTANTE con metas distintas de la meta final | Error | indicador | Metas | `metas_vs_meta_final`, `V17` | Solicitar el ajuste del plan de acción ante la SDP. | V17; formato 3.4 |
+| `PLAN_ULTIMA_META_VS_MF` | Última meta distinta de la meta final | Error | indicador | Metas | `metas_vs_meta_final`, `V17` | Solicitar el ajuste del plan de acción ante la SDP. | V17 |
+| `PLAN_METAS_NO_MONOTONAS` | Metas no monótonas | Advertencia | indicador | Metas | `PLAN_METAS_NO_MONOTONAS` | Solicitar el ajuste del plan de acción ante la SDP. | formato 3.4 (ADR-001) |
 | `PLAN_ESCALA_MEZCLADA` | Metas en escalas mezcladas | Advertencia | indicador | Escala | `escala_mezclada` | Solicitar el ajuste del plan de acción ante la SDP. | extractor-pa |
 | `PLAN_LINEA_BASE_FALTANTE` | Sin línea base | Info | indicador | Línea base | `linea_base_faltante`, `V9` | — | V9 |
 | `PLAN_LINEA_BASE_NO_NUMERICA` | Línea base no numérica | Advertencia | indicador | Línea base | `linea_base_no_numerica`, `V9` | Solicitar el ajuste del plan de acción ante la SDP. | V9 |
 | `PLAN_LB_OBLIGATORIA_DECRECIENTE` | DECRECIENTE sin línea base | Error | indicador | Línea base | `lb_obligatoria_decreciente`, `V16` | Solicitar el ajuste del plan de acción ante la SDP. | V16 |
 | `PLAN_CODIGO_MALFORMADO` | Código con formato inesperado | Info | indicador | Códigos | `codigo_malformado`, `V13` | — | V13 |
+| `PLAN_CODIGO_MAL_ESCRITO` | Código mal escrito | Info | indicador | Códigos | `PLAN_CODIGO_MAL_ESCRITO` | Solicitar el ajuste del plan de acción ante la SDP. | utilidades.codigo_mal_escrito (ADR-001) |
 | `PLAN_IR_SIN_PRODUCTOS` | Resultado vigente sin productos | Advertencia | resultado | Códigos | `ir_sin_productos`, `V11`, `resultado_sin_productos` | — | V11 |
 | `PLAN_JERARQUIA_ROTA` | Producto sin su resultado | Error | producto | Códigos | `jerarquia_ip`, `producto_sin_resultado` | Solicitar el ajuste del plan de acción ante la SDP. | creador; pipeline |
 | `PLAN_OBJETIVO_SIN_RESULTADOS` | Objetivo sin resultados | Advertencia | objetivo | Códigos | `objetivo_sin_resultados` | — | sispp-gobierno |
@@ -71,17 +80,28 @@
 |---|---|---|---|---|---|---|---|
 | `SEG_NO_NUMERICO` | Reporte no numérico | Error | indicador | Reporte | `ERROR_NO_NUMERICO` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | alertas-seguimientos |
 | `SEG_ESCALA` | Escala del reporte distinta de la meta | Advertencia | indicador | Escala | `ADVERTENCIA_ESCALA`, `Escala: meta en fracción y reporte en 0-100` | Solicitar alcance a la entidad: reportar en la misma escala de la meta. | alertas-seguimientos; observaciones.obs_escala |
-| `SEG_SOBREEJECUCION_PCT` | % de avance de la vigencia sobre el umbral de sobre ejecución | Advertencia | indicador | Sobre ejecución | `ADVERTENCIA_AVANCE` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo. | alertas-seguimientos |
-| `SEG_SOBREEJECUCION_VIG` | Avance de la vigencia sobre el umbral de sobre ejecución | Advertencia | indicador | Sobre ejecución | `ADVERTENCIA_LIMITE_VIG` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo. | alertas-seguimientos |
-| `SEG_ACUMULADO_SOBRE_META_VIG` | Acumulado supera la meta acumulada | Advertencia | indicador | Sobre ejecución | `ADVERTENCIA_ACUM_META_VIG` | — | alertas-seguimientos |
-| `SEG_ACUMULADO_SOBRE_META_FINAL` | Acumulado supera la meta final | Advertencia | indicador | Sobre ejecución | `ADVERTENCIA_ACUM_META_FIN` | — | alertas-seguimientos |
+| `SEG_SOBREEJECUCION_PCT` | % de avance de la vigencia sobre el umbral de sobre ejecución | Info | indicador | Sobre ejecución | `ADVERTENCIA_AVANCE`, `Avance entre 200 % y 500 %`, `Avance mayor a 500 %`, `pct_total > 300%` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo; por encima de 250 % revisar la escala y, si es error, solicitar alcance. | alertas-seguimientos; observaciones.obs_escala; calidad.py |
+| `SEG_SOBREEJECUCION_VIG` | Avance de la vigencia sobre el umbral de sobre ejecución | Info | indicador | Sobre ejecución | `ADVERTENCIA_LIMITE_VIG`, `EXTRA_SOBRE_EJECUCION_VIG` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo; por encima de 250 % revisar la escala y, si es error, solicitar alcance. | alertas-seguimientos |
+| `SEG_ACUMULADO_SOBRE_META_VIG` | Acumulado supera la meta acumulada | Info | indicador | Sobre ejecución | `ADVERTENCIA_ACUM_META_VIG` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo; por encima de 250 % revisar la escala y, si es error, solicitar alcance. | alertas-seguimientos |
+| `SEG_ACUMULADO_SOBRE_META_FINAL` | Acumulado supera la meta final | Info | indicador | Sobre ejecución | `ADVERTENCIA_ACUM_META_FIN` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo; por encima de 250 % revisar la escala y, si es error, solicitar alcance. | alertas-seguimientos |
 | `SEG_META_SIN_REPORTE` | Meta sin reporte exigible | Advertencia | indicador | Exigencia | `ADVERTENCIA_META_SIN_REP`, `Sin reporte`, `Falta reporte exigible` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | alertas-seguimientos; estado_reporte |
 | `SEG_REPORTE_SIN_META` | Reporte en año sin meta | Advertencia | indicador | Exigencia | `ADVERTENCIA_REP_SIN_META`, `meta_anual = 0 con valor reportado` | Solicitar el ajuste del plan de acción ante la SDP. | alertas-seguimientos |
-| `SEG_PCT_HASTA_VIG_FUERA_RANGO` | % hasta la vigencia fuera del semáforo | Advertencia | indicador | Sobre ejecución | `ADVERTENCIA_PCT_HASTA_VIG` | — | alertas-seguimientos |
+| `SEG_PCT_HASTA_VIG_FUERA_RANGO` | % hasta la vigencia fuera del semáforo | Advertencia | indicador | Sobre ejecución | `ADVERTENCIA_PCT_HASTA_VIG` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo; por encima de 250 % revisar la escala y, si es error, solicitar alcance. | alertas-seguimientos |
 | `SEG_DISCREPANCIA_PCT` | % reportado distinto del calculado | Advertencia | indicador | Reporte | `ADVERTENCIA_DISCREPANCIA_PCT` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | alertas-seguimientos |
 | `SEG_CUALITATIVO_VACIO` | Cualitativo vacío | Advertencia | indicador | Reporte | `ADVERTENCIA_CUAL` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | alertas-seguimientos |
 | `SEG_VIGENTE_SIN_PESO` | Indicador vigente sin ponderación (seguimiento) | Error | indicador | Ponderación | `ERROR_PONDERACION_OBLIGATORIA` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | alertas-seguimientos |
 | `SEG_SECTOR_ENTIDAD` | Sector distinto del oficial de la entidad | Advertencia | indicador | Tipología | `ADVERTENCIA_SECTOR_ENTIDAD` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | alertas-seguimientos |
+| `SEG_REPORTE_NEGATIVO` | Reporte negativo | Advertencia | indicador | Reporte | `SEG_REPORTE_NEGATIVO`, `valor_reportado negativo` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | calidad.py (pipeline); formato 3.4 |
+| `SEG_NO_VIGENTE_CON_PESO` | Indicador No Vigente con ponderación (seguimiento) | Error | indicador | Ponderación | `SEG_NO_VIGENTE_CON_PESO`, `Producto No Vigente con peso` | Solicitar ajuste: peso 0 o redistribuirlo. | observaciones.obs_no_vigentes (ADR-001) |
+
+## Seguimiento: serie histórica
+
+| código | nombre | severidad | nivel | familia | sustituye a | acción | origen |
+|---|---|---|---|---|---|---|---|
+| `SERIE_RETROCESO` | Retroceso del indicador | Advertencia | indicador | Serie | `SERIE_RETROCESO`, `DISMINUCION_CRECIENTE`, `AUMENTO_DECRECIENTE`, `EXTRA_SENTIDO_CONTRARIO` | Confirmar con la entidad; si es error, solicitar alcance. | ml_comentarios (87 %); sispp-sdis RN-CUA; formato 3.4 |
+| `SERIE_REPORTE_SIN_META` | Reporte en año sin meta (serie) | Advertencia | indicador | Exigencia | `SERIE_REPORTE_SIN_META` | Solicitar el ajuste del plan de acción ante la SDP. | calidad.py (pipeline); formato 3.4 |
+| `SERIE_ESCALA` | Posible error de escala en la serie | Advertencia | indicador | Escala | `SERIE_ESCALA`, `EXTRA_ESCALA_SERIE`, `Avance mayor a 500 %`, `valor > 10× la meta (posible escala)` | Revisar la escala con la entidad; si es error, solicitar alcance. | observaciones.obs_escala; calidad.py (ADR-001) |
+| `SERIE_SOBREEJECUCION` | Sobre ejecución en un año cerrado | Info | indicador | Sobre ejecución | `SERIE_SOBREEJECUCION`, `pct_total entre 150% y 300%` | Confirmar con la entidad si es real y dejar la explicación en el cualitativo; por encima de 250 % revisar la escala y, si es error, solicitar alcance. | calidad.py (ADR-001) |
 
 ## Seguimiento: entre cargas
 
@@ -98,4 +118,6 @@
 
 | código | nombre | severidad | nivel | familia | sustituye a | acción | origen |
 |---|---|---|---|---|---|---|---|
-| `CRUCE_IND_NO_EN_PLAN` | Indicador del seguimiento que no está en el plan | Info | indicador | Cruce | `codigo_seguimiento_sin_plan`, `indicador_reportado_sin_plan`, `Productos del seguimiento que no están en el plan 2026` | Verificar la correspondencia de códigos con la entidad y la SDP. | seguimiento.cruzar_con_plan; alertas_datos; observaciones |
+| `CRUCE_IND_NO_EN_PLAN` | Indicador del seguimiento que no está en el plan | Advertencia | indicador | Cruce | `CRUCE_IND_NO_EN_PLAN`, `codigo_seguimiento_sin_plan`, `indicador_reportado_sin_plan`, `Productos del seguimiento que no están en el plan 2026` | Verificar la correspondencia de códigos con la entidad y la SDP. | seguimiento.cruzar_con_plan; alertas_datos; observaciones |
+| `CRUCE_IND_NO_EN_SEGUIMIENTO` | Indicador del plan que no está en el seguimiento | Advertencia | indicador | Cruce | `CRUCE_IND_NO_EN_SEGUIMIENTO`, `Productos del plan que no están en el seguimiento` | Verificar con la entidad y con la SDP la correspondencia de códigos. | observaciones.obs_cruce_plan_seguimiento |
+| `CRUCE_PERIODICIDAD_DISTINTA` | Periodicidad distinta entre plan y seguimiento | Info | indicador | Cruce | `CRUCE_PERIODICIDAD_DISTINTA` | Solicitar alcance a la entidad para corregir el formato de seguimiento. | ADR-001 (C5) |

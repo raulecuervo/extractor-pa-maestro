@@ -29,7 +29,9 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | generador-seguimiento | v0.27.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 | gestor-planes-accion | v0.27.0 (Dockerfile por commit `b8e8c04`) | Sí, por adaptadores | — | `extractor_pa.py` en `paquetes/` (tres adaptadores) |
 
-Última versión publicada: **v0.28.0** (paquete `extractor_pa.calidad`: catálogo único de reglas y motor `evaluar`; no cambia cifras ni alertas). Anterior: v0.27.0 (tag en `b8e8c04`, PR #23).
+Última versión publicada: **v0.29.0** («Cambia alertas»: tolerancia de pesos 0,1 pp, sobre ejecución Info / posible escala Advertencia, exigencia con `fin_efectivo` y periodicidad del plan, reglas del pipeline y nuevas en `extractor_pa.calidad`). Anteriores: v0.28.0 (esqueleto del motor, PR #25, `54dbdf5`) y v0.27.0 (`b8e8c04`, PR #23).
+
+Al 2026-11-01 los diez consumidores siguen fijando **v0.27.0**. Subir a 0.29.0 cambia alertas en alertas-seguimientos (severidades de sobre ejecución, `ADVERTENCIA_META_SIN_REP`, V15/V17 partidas) y en sispp-gobierno/sispp-SDP (si adoptan `calidad.alertas_plan` y `observaciones_desde`, F3); no cambia cifras en ninguno.
 
 Al 2026-11-01 los diez consumidores fijan **v0.27.0**. sispp-gobierno (PR #33) y sispp-SDP (PR #23) cambian cifras (usan `metricas_corte`); sispp-sdis solo cambia la columna «libreria» del informe `comparar-formulas` (sus cifras salen de `calc_paf`/`calc_tid`/`calc_brecha`, que no cambian); validador_plan_accion, extractor-planes-accion, creador-planes-accion, seguimiento-pp-sdis, generador-seguimiento y gestor-planes-accion no usan las funciones modificadas y sus pruebas dan lo mismo que con la 0.26.0.
 
@@ -54,6 +56,10 @@ Nombres públicos del contrato (ADR-001, `docs/adr/ADR-001-catalogo-alertas.md`)
 | `calidad.Hallazgo` (extiende `HallazgoSeguimiento`) con `.as_finding()`, `.a_alerta()`, `.a_observacion(politica_key=)` | Salidas para la tabla `alertas` de la app, `alertas_planes_accion.csv` y `observaciones_politica` | app, pipeline |
 | `calidad.CATALOGO_CALIDAD`, `REGLAS`, `Regla`, `regla_de_tipo(tipo)` | Catálogo y correspondencia con los tipos legados | validador de la app (F5), reportes |
 | `calidad.COLS_OBSERVACION` | Columnas de `observaciones_politica` | pipeline |
+| `calidad.alertas_plan(plan, parametros=)` → `list[Alerta]` | Paso 01 del pipeline (`alertas_planes_accion.csv`); sustituye a `validar_plan` | sispp-gobierno, sispp-SDP (F3) |
+| `calidad.observaciones_desde(plan, seguimiento, corte, politica_key=, responsable_por_defecto=, parametros=)` → `list[dict]` | Paso 06 del pipeline: filas automáticas de `observaciones_politica`; `observaciones.construir` añade las manuales | sispp-gobierno, sispp-SDP (F3) |
+| `calidad.hallazgos_app(seguimiento, base=, parametros=, plan=)` → `list[dict]` | `validator.run_all_validations` de la app (dicts de `as_finding()`) | alertas-seguimientos (F4) |
+| `validar_archivo` / `validar_consistencia(..., umbral_escala=, periodicidad_plan=)` | Parámetros nuevos de las fachadas (opcionales) | — |
 | `validacion.validar_reglas(res, tolerancia_peso_pp=, tolerancia_meta_final=)` | Fachada V0–V18 (se conserva) | — |
 
 Las fachadas `validar_archivo`, `validar_consistencia`, `HallazgoSeguimiento.as_finding()`,

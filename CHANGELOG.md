@@ -18,6 +18,80 @@ bloques de %) · 0.22.0 (fechas escritas como texto día/mes/año) ·
 0.26.0 (exigencia de reporte por años con meta; CONSTANTE sin reporte exigible = 0) ·
 0.27.0 (fin efectivo según periodicidad; metas anteriores al inicio cuentan).
 
+**Cambia alertas.** Igual que las anteriores, pero sobre las alertas de
+calidad (tipos, severidades o cuándo saltan) y no sobre las cifras:
+0.29.0 (tolerancia de pesos 0,1 pp; sobre ejecución Info / posible escala
+Advertencia; exigencia de reporte con fin efectivo y periodicidad del plan;
+reglas nuevas del plan, la serie y el cruce).
+
+## [0.29.0] — Reglas unificadas de calidad: decisiones F0, reglas del pipeline y nuevas (1-nov-2026)
+
+**Cambia alertas** (ADR-001, `docs/adr/ADR-001-catalogo-alertas.md`). No cambia
+cifras. Los consumidores que se comparan entre sí (alertas-seguimientos,
+sispp-gobierno, sispp-SDP) deben subir juntos; el gate de paridad de la app
+cambia en las severidades y en `ADVERTENCIA_META_SIN_REP`.
+
+### Cambiado
+
+- **Tolerancia de las sumas de ponderación: 0,1 pp** (`TOLERANCIA_PESO_PP`,
+  antes 0,5). V0, V1 y V2 alertan diferencias mayores que 0,1 puntos.
+- **Sobre ejecución y escala.** `ADVERTENCIA_AVANCE`, `ADVERTENCIA_LIMITE_VIG`,
+  `ADVERTENCIA_ACUM_META_VIG`, `ADVERTENCIA_ACUM_META_FIN` y el lado alto de
+  `ADVERTENCIA_PCT_HASTA_VIG` pasan a severidad **Info** (sobre ejecución, techo
+  naranja del semáforo) y suben a **Advertencia** por encima de **250 %** de la
+  meta (`UMBRAL_ESCALA`; posible error de escala). Los tipos conservan su nombre.
+  `validar_archivo` / `validar_consistencia` reciben `umbral_escala=`.
+- **`ADVERTENCIA_META_SIN_REP` (meta sin reporte exigible)** usa las reglas de
+  exigencia de la 0.27.0: `exige_reporte_en` (solo años con meta programada y
+  no después del año de fin), `sin_iniciar_al_corte`, `trimestre_exigible` y
+  **`fin_efectivo`** (un anual que termina en junio no exige Q2; un trimestral
+  que termina en junio no exige Q3). Con `periodicidad_plan={código: periodicidad}`
+  (nuevo parámetro de `validar_archivo` / `validar_consistencia`) manda la
+  **periodicidad del plan**; `calidad.evaluar(plan=…, seguimiento=…)` la pasa
+  sola. Es la misma regla que da «Sin reporte» en `estado_reporte` del tablero.
+- **V15 `meta_fuera_de_rango`** se parte en dos alertas del mismo tipo: metas
+  anteriores a la fecha de inicio (con `metas_antes_de_inicio`: solo metas > 0;
+  regla `META_ANTES_INICIO`) y metas posteriores a la fecha de fin (con meta
+  programada; `PLAN_META_DESPUES_FIN`).
+- **V17 `metas_vs_meta_final`** se parte en tres (`PLAN_SUMA_METAS_VS_MF`,
+  `PLAN_CONSTANTE_METAS_DISTINTAS` —ahora compara **todas** las metas del
+  CONSTANTE, no solo la última—, `PLAN_ULTIMA_META_VS_MF`). La tolerancia (0,5)
+  se acota al 1 % de la meta: 0,8 frente a 1 sí alerta.
+- `codigo_seguimiento_sin_plan` pasa de INFO a ADVERTENCIA (como `CRUCE_IND_NO_EN_PLAN`).
+- `ParametrosCalidad.incluir_no_vigentes` es `False` por defecto: los No Vigentes
+  solo conservan «No Vigente con ponderación» y el cambio de estado (RN-06).
+
+### Añadido
+
+- Reglas nuevas del **plan** (en `validar_reglas`, tipo = código canónico):
+  `PLAN_METAS_NO_MONOTONAS` (CRECIENTE que baja / DECRECIENTE que sube),
+  `PLAN_FECHA_VACIA`, `PLAN_FECHA_COMO_TEXTO`, `PLAN_VIGENCIA_VACIA`,
+  `PLAN_SIN_RESPONSABLE` (producto vigente sin entidad), `PLAN_CODIGO_MAL_ESCRITO`
+  (`utilidades.codigo_mal_escrito` hecho alerta).
+- Reglas nuevas del **seguimiento** (`calidad.reglas_seguimiento`, solo por
+  `evaluar`): `SEG_REPORTE_NEGATIVO`, `SEG_NO_VIGENTE_CON_PESO`, `SERIE_RETROCESO`,
+  `SERIE_REPORTE_SIN_META`, `SERIE_ESCALA` (> 250 % o meta 0–1 con reporte > 1 en
+  años cerrados), `SERIE_SOBREEJECUCION` (Info), `META_ANTES_INICIO` sobre las
+  metas del formato cuando no hay plan.
+- Reglas de **cruce** plan ↔ seguimiento (`calidad.reglas_cruce`):
+  `CRUCE_IND_NO_EN_PLAN` (solo vigentes), `CRUCE_IND_NO_EN_SEGUIMIENTO` (vigente,
+  con peso e iniciado al corte), `CRUCE_PERIODICIDAD_DISTINTA`.
+- `evaluar(..., corte=(año, trimestre))` sitúa el seguimiento en ese corte.
+- Funciones de conveniencia: `calidad.alertas_plan(plan)` (paso 01 del
+  pipeline, `list[Alerta]`), `calidad.observaciones_desde(plan, seguimiento,
+  corte, politica_key=…)` (paso 06, filas de `observaciones_politica`, con los
+  indicadores que no cruzan agrupados por política) y
+  `calidad.hallazgos_app(seguimiento, base, parametros, plan)` (dicts de
+  `as_finding()` para la app).
+- `crear_hallazgo(..., severidad=)` fuerza la severidad de un hallazgo.
+- `docs/CATALOGO_CALIDAD.md`: 81 reglas.
+
+### Pruebas
+
+- `tests/test_calidad_reglas.py`: un caso que activa y otro que no por cada
+  regla y decisión (tolerancia, 125/250 %, anual que termina en junio,
+  Educación 4.5.3, periodicidad del plan, No Vigentes, cruce, salidas).
+
 ## [0.28.0] — Catálogo único de reglas de calidad y motor `calidad.evaluar` (1-nov-2026)
 
 No cambia cifras ni alertas: las reglas existentes se envuelven tal cual.

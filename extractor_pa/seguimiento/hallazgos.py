@@ -41,20 +41,34 @@ TIPOS_HALLAZGO = {
     "INFO_CAMBIO_ESTADO":           "Info – El indicador cambió de estado entre cargas",
     "INFO_IND_NUEVO":              "Info – Indicador nuevo (no existía en el archivo base cargado, se creará automáticamente)",
     "INFO_IND_FALTANTE":           "Info – Indicador faltante (existía en base pero no aparece en este archivo)",
+    # Reglas nuevas del catálogo de calidad (0.29.0, ADR-001).
+    "SEG_REPORTE_NEGATIVO":        "Advertencia – Reporte negativo",
+    "SEG_NO_VIGENTE_CON_PESO":     "Error – Indicador No Vigente con ponderación",
+    "SERIE_RETROCESO":             "Advertencia – Retroceso del indicador (CRECIENTE que baja / DECRECIENTE que sube)",
+    "SERIE_REPORTE_SIN_META":      "Advertencia – Reporte en un año sin meta (serie)",
+    "SERIE_ESCALA":                "Advertencia – Avance muy por encima de la meta en la serie (posible error de escala)",
+    "SERIE_SOBREEJECUCION":        "Info – Sobre ejecución en un año cerrado de la serie",
+    "META_ANTES_INICIO":           "Advertencia – Meta programada antes de la fecha de inicio",
+    "CRUCE_IND_NO_EN_PLAN":        "Advertencia – Indicador del seguimiento que no está en el plan de acción",
+    "CRUCE_IND_NO_EN_SEGUIMIENTO": "Advertencia – Indicador del plan que no está en el seguimiento",
+    "CRUCE_PERIODICIDAD_DISTINTA": "Info – Periodicidad del plan distinta de la del seguimiento",
 }
 
+# Sobre ejecución (ADR-001, 0.29.0): por encima del techo del semáforo es Info;
+# por encima de UMBRAL_ESCALA veces la meta, quien valida la sube a Advertencia
+# (`crear_hallazgo(..., severidad=)`). Los tipos conservan su nombre histórico.
 SEVERIDAD = {
     "ERROR_ESTABILIDAD":           "Error",
     "ERROR_PONDERACION_OBLIGATORIA": "Error",
     "ADVERTENCIA_SECTOR_ENTIDAD":  "Advertencia",
     "ERROR_RETROACTIVO":           "Error",
     "ERROR_NO_NUMERICO":           "Error",
-    "ADVERTENCIA_AVANCE":          "Advertencia",
+    "ADVERTENCIA_AVANCE":          "Info",
     "ADVERTENCIA_CUAL":            "Advertencia",
     "ADVERTENCIA_ESCALA":          "Advertencia",
-    "ADVERTENCIA_LIMITE_VIG":      "Advertencia",
-    "ADVERTENCIA_ACUM_META_VIG":   "Advertencia",
-    "ADVERTENCIA_ACUM_META_FIN":   "Advertencia",
+    "ADVERTENCIA_LIMITE_VIG":      "Info",
+    "ADVERTENCIA_ACUM_META_VIG":   "Info",
+    "ADVERTENCIA_ACUM_META_FIN":   "Info",
     "ADVERTENCIA_META_SIN_REP":    "Advertencia",
     "ADVERTENCIA_REP_SIN_META":    "Advertencia",
     "ADVERTENCIA_PCT_HASTA_VIG":   "Advertencia",
@@ -63,6 +77,16 @@ SEVERIDAD = {
     "INFO_CAMBIO_ESTADO":          "Info",
     "INFO_IND_NUEVO":              "Info",
     "INFO_IND_FALTANTE":           "Info",
+    "SEG_REPORTE_NEGATIVO":        "Advertencia",
+    "SEG_NO_VIGENTE_CON_PESO":     "Error",
+    "SERIE_RETROCESO":             "Advertencia",
+    "SERIE_REPORTE_SIN_META":      "Advertencia",
+    "SERIE_ESCALA":                "Advertencia",
+    "SERIE_SOBREEJECUCION":        "Info",
+    "META_ANTES_INICIO":           "Advertencia",
+    "CRUCE_IND_NO_EN_PLAN":        "Advertencia",
+    "CRUCE_IND_NO_EN_SEGUIMIENTO": "Advertencia",
+    "CRUCE_PERIODICIDAD_DISTINTA": "Info",
 }
 
 _NIVEL_DE_SEVERIDAD = {"Error": "ERROR", "Advertencia": "ADVERTENCIA", "Info": "INFO"}
@@ -131,7 +155,7 @@ class HallazgoSeguimiento:
 
 def crear_hallazgo(tipo, *, codigo=None, politica=None, sector=None, entidad=None,
                    nombre=None, campo=None, val_base=None, val_nuevo=None,
-                   periodo=None, detalle=None, archivo=None) -> HallazgoSeguimiento:
+                   periodo=None, detalle=None, archivo=None, severidad=None) -> HallazgoSeguimiento:
     """Factory con la MISMA semántica de coerción/truncado de ``make_finding``.
 
     Los campos identitarios (codigo/politica/sector/entidad) se pasan CRUDOS —
@@ -142,10 +166,13 @@ def crear_hallazgo(tipo, *, codigo=None, politica=None, sector=None, entidad=Non
     El ``str()`` sobre ``nombre``/``campo``/``periodo``/``detalle`` es una
     defensa: para un texto es la identidad (la paridad se conserva) y evita el
     ``TypeError`` si un ``.xlsb`` cuela un número donde va texto. La corrección
-    de origen está en ``utilidades.limpiar_texto``."""
+    de origen está en ``utilidades.limpiar_texto``.
+
+    ``severidad``: fuerza la severidad de este hallazgo (p. ej. una sobre
+    ejecución que pasa a Advertencia por posible error de escala)."""
     return HallazgoSeguimiento(
         tipo=tipo,
-        severidad=SEVERIDAD[tipo],
+        severidad=severidad or SEVERIDAD[tipo],
         codigo=codigo,
         politica=politica,
         sector=sector,

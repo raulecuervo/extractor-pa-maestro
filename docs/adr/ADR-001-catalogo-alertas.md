@@ -24,7 +24,8 @@ cuatro tolerancias de peso, seis umbrales de escala y severidades contradictoria
    (`ParametrosCalidad.tolerancia_peso_pp`). Sustituye a 0,01 pp (app), 0,5 pp
    (extractor), 2 pp (`alertas_datos`) y 2 % relativo (`validar_plan`, `observaciones`).
    Rige desde la 0.29.0. La tolerancia de metas anuales contra la meta final (V17)
-   sigue en 0,5 absoluto (`tolerancia_meta_final`).
+   sigue en 0,5 absoluto (`tolerancia_meta_final`), acotada al 1 % de la meta para
+   que una meta en fracción (0,8 frente a 1) no quede escondida.
 4. **Sobre ejecución y escala.** Un avance **> 125 %** de la meta (techo naranja del
    semáforo, configurable con `umbrales_semaforo`) es **sobre ejecución: severidad
    Info**. Un avance **> 250 %** (`umbral_escala`, «el doble de la sobre ejecución»)
@@ -110,7 +111,7 @@ cuatro tolerancias de peso, seis umbrales de escala y severidades contradictoria
 | `SEG_REPORTE_SIN_META` / `SERIE_REPORTE_SIN_META` | `ADVERTENCIA_REP_SIN_META`, «meta_anual = 0 con valor reportado» |
 | `SEG_REPORTE_NEGATIVO` | «valor_reportado negativo» |
 | `SERIE_RETROCESO` | `DISMINUCION_CRECIENTE`, `AUMENTO_DECRECIENTE`, `EXTRA_SENTIDO_CONTRARIO` |
-| `CRUCE_IND_NO_EN_PLAN` | `codigo_seguimiento_sin_plan`, `indicador_reportado_sin_plan`, «Productos del seguimiento que no están en el plan 2026» |
+| `CRUCE_IND_NO_EN_PLAN` | `codigo_seguimiento_sin_plan` (pasa a ADVERTENCIA), `indicador_reportado_sin_plan`, «Productos del seguimiento que no están en el plan 2026»; solo indicadores vigentes |
 | `CRUCE_IND_NO_EN_SEGUIMIENTO` | `obs_cruce_plan_seguimiento` («Productos del plan que no están en el seguimiento») |
 | `CARGA_*` | `ERROR_ESTABILIDAD`, `ERROR_RETROACTIVO`, `ADVERTENCIA_CAMBIO_META`, `INFO_CAMBIO_ESTADO`, `INFO_IND_NUEVO`, `INFO_IND_FALTANTE` |
 | `EXT_*` | alertas estructurales de `res.alertas` (plan y seguimiento) |

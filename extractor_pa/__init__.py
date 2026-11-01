@@ -61,7 +61,7 @@ from .exportadores import (
     a_dataframes_consolidado,
 )
 
-__version__ = "0.28.0"
+__version__ = "0.29.0"
 
 __all__ = [
     "extraer_plan_accion",
