@@ -1,6 +1,6 @@
 # Aplicativos que consumen extractor-pa
 
-Inventario al **2026-10-01** (alertas-seguimientos, al 2026-10-22; gestor-planes-accion, al 2026-10-30; pines, al 2026-11-01), tomado del código de cada repositorio en
+Inventario al **2026-10-01** (alertas-seguimientos, al 2026-10-22; gestor-planes-accion, al 2026-10-30; pines, al 2026-11-01 con la 0.29.1), tomado del código de cada repositorio en
 `C:\Users\RaulEsteban\Proyectos\`. Lo que cada aplicativo importa está fijado en
 [`tests/test_contrato_consumidores.py`](../tests/test_contrato_consumidores.py):
 si un nombre desaparece, esa prueba falla aquí antes de que falle en producción.
@@ -18,9 +18,9 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 
 | Aplicativo | Versión fijada | Plan de acción | Seguimiento | Dónde entra |
 |---|---|---|---|---|
-| alertas-seguimientos | v0.27.0 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
-| sispp-gobierno | v0.27.0 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
-| sispp-SDP | v0.27.0 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
+| alertas-seguimientos | v0.29.1 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
+| sispp-gobierno | v0.29.1 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
+| sispp-SDP | v0.29.1 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
 | sispp-sdis (backend) | v0.27.0 (por commit `b8e8c04`) | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
 | validador_plan_accion (repositorio aparte) | v0.27.0 | Sí | — | `validador/extraccion_maestro.py` |
 | extractor-planes-accion | v0.27.0 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
@@ -29,7 +29,11 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | generador-seguimiento | v0.27.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 | gestor-planes-accion | v0.27.0 (Dockerfile por commit `b8e8c04`) | Sí, por adaptadores | — | `extractor_pa.py` en `paquetes/` (tres adaptadores) |
 
-Última versión publicada: **v0.29.0** («Cambia alertas»: tolerancia de pesos 0,1 pp, sobre ejecución Info / posible escala Advertencia, exigencia con `fin_efectivo` y periodicidad del plan, reglas del pipeline y nuevas en `extractor_pa.calidad`). Anteriores: v0.28.0 (esqueleto del motor, PR #25, `54dbdf5`) y v0.27.0 (`b8e8c04`, PR #23).
+Última versión publicada: **v0.29.1** (corrección de texto: las ponderaciones de `PLAN_NO_VIGENTE_CON_PESO` y `CRUCE_IND_NO_EN_SEGUIMIENTO` se muestran en puntos porcentuales con la escala del plan; no cambia cifras ni alertas).
+
+Al 2026-11-01 (0.29.1): sispp-gobierno, sispp-SDP y alertas-seguimientos pasan de v0.29.0 a **v0.29.1**; los otros siete (sispp-sdis, validador_plan_accion, extractor-planes-accion, creador-planes-accion, seguimiento-pp-sdis, generador-seguimiento y gestor-planes-accion) siguen en **v0.27.0**.
+
+Versión anterior: **v0.29.0** («Cambia alertas»: tolerancia de pesos 0,1 pp, sobre ejecución Info / posible escala Advertencia, exigencia con `fin_efectivo` y periodicidad del plan, reglas del pipeline y nuevas en `extractor_pa.calidad`). Anteriores: v0.28.0 (esqueleto del motor, PR #25, `54dbdf5`) y v0.27.0 (`b8e8c04`, PR #23).
 
 Al 2026-11-01 los diez consumidores siguen fijando **v0.27.0**. Subir a 0.29.0 cambia alertas en alertas-seguimientos (severidades de sobre ejecución, `ADVERTENCIA_META_SIN_REP`, V15/V17 partidas) y en sispp-gobierno/sispp-SDP (si adoptan `calidad.alertas_plan` y `observaciones_desde`, F3); no cambia cifras en ninguno.
 
