@@ -21,15 +21,21 @@ grep -rnE "^\s*(from extractor_pa|import extractor_pa)" ../*/ --include=*.py
 | alertas-seguimientos | v0.29.1 | Validador de Plan de Acción: códigos, fichas y listado de entidades | Extracción, validación y fórmulas | `extractor.py`, `validator.py`, `motor_calculo.py`, `ml_comentarios/`, `validador_plan_accion/` |
 | sispp-gobierno | v0.29.1 | Etapa 01 | Etapa 04 | `extraccion_maestro.py`, `extraccion_seg_maestro.py` |
 | sispp-SDP | v0.29.1 | Etapa 01 | Etapa 04 | Copia de sispp-gobierno, con el motor de formatos propio |
-| sispp-sdis (backend) | v0.27.0 (por commit `b8e8c04`) | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
-| validador_plan_accion (repositorio aparte) | v0.27.0 | Sí | — | `validador/extraccion_maestro.py` |
-| extractor-planes-accion | v0.27.0 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
-| creador-planes-accion | v0.27.0 | Sí | — | `app/import_excel_maestro.py` |
-| seguimiento-pp-sdis | v0.27.0 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
-| generador-seguimiento | v0.27.0 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
+| sispp-sdis (backend) | v0.29.1 | ETL de planes | Importador y fórmulas | `app/etl_maestro.py`, `app/routers/importador.py`, `app/servicios.py` |
+| validador_plan_accion (repositorio aparte) | v0.29.1 | Sí | — | `validador/extraccion_maestro.py` |
+| extractor-planes-accion | v0.29.1 | Solo formato nuevo | — | `modulo_planes_accion/extractor_maestro.py` |
+| creador-planes-accion | v0.29.1 | Sí | — | `app/import_excel_maestro.py` |
+| seguimiento-pp-sdis | v0.29.1 | Solo los IR | — | `app/services/plan_accion_import_maestro.py` |
+| generador-seguimiento | v0.29.1 | — | Extracción y consolidación | `extractors/parsear_maestro.py` |
 | gestor-planes-accion | v0.27.0 (Dockerfile por commit `b8e8c04`) | Sí, por adaptadores | — | `extractor_pa.py` en `paquetes/` (tres adaptadores) |
 
 Última versión publicada: **v0.29.1** (corrección de texto: las ponderaciones de `PLAN_NO_VIGENTE_CON_PESO` y `CRUCE_IND_NO_EN_SEGUIMIENTO` se muestran en puntos porcentuales con la escala del plan; no cambia cifras ni alertas).
+
+Al 2026-11-01 (tarde): los seis restantes (generador-seguimiento, validador_plan_accion, creador-planes-accion,
+extractor-planes-accion, seguimiento-pp-sdis y sispp-sdis) pasan de v0.27.0 a **v0.29.1** con sus suites en verde;
+ninguno de ellos compara cifras con los otros, así que el cambio de severidades de la 0.29.0 solo se nota en las
+alertas que muestran (validador: reglas del plan; extractor-planes-accion: alertas de extracción; sispp-sdis:
+`validar_consistencia`). Los diez consumidores quedan en **v0.29.1**.
 
 Al 2026-11-01 (0.29.1): sispp-gobierno, sispp-SDP y alertas-seguimientos pasan de v0.29.0 a **v0.29.1**; los otros siete (sispp-sdis, validador_plan_accion, extractor-planes-accion, creador-planes-accion, seguimiento-pp-sdis, generador-seguimiento y gestor-planes-accion) siguen en **v0.27.0**.
 
